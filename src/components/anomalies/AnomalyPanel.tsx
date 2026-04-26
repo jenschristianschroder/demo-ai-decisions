@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { Anomaly, AnomalyStatus, AiResponse } from '../../types/finance';
 import { generateAnomalyExplanation } from '../../lib/mockAi';
+import { formatCurrency } from '../../lib/formatters';
 import FollowUpAssistant from './FollowUpAssistant';
 import AuditTrail from '../audit/AuditTrail';
 
@@ -29,15 +30,10 @@ const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ anomaly, onStatusChange, on
       setAiResponse(res);
       setLoading(false);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anomaly.id]);
 
   const sev = severityStyle[anomaly.severity];
-
-  const formatAmount = (amount: number, currency: string) => {
-    const symbol = currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : currency === 'USD' ? '$' : currency + ' ';
-    if (Math.abs(amount) >= 1000000) return `${symbol}${(amount / 1000000).toFixed(2)}m`;
-    return `${symbol}${(amount / 1000).toFixed(0)}k`;
-  };
 
   return (
     <div className="anomaly-panel">
@@ -112,16 +108,16 @@ const AnomalyPanel: React.FC<AnomalyPanelProps> = ({ anomaly, onStatusChange, on
                   <div className="metrics-grid">
                     <div className="metric-item">
                       <div className="metric-label">Actual</div>
-                      <div className="metric-value">{formatAmount(anomaly.actual, anomaly.currency)}</div>
+                      <div className="metric-value">{formatCurrency(anomaly.actual, anomaly.currency)}</div>
                     </div>
                     <div className="metric-item">
                       <div className="metric-label">Benchmark</div>
-                      <div className="metric-value">{formatAmount(anomaly.benchmark, anomaly.currency)}</div>
+                      <div className="metric-value">{formatCurrency(anomaly.benchmark, anomaly.currency)}</div>
                     </div>
                     <div className="metric-item">
                       <div className="metric-label">Variance</div>
                       <div className={`metric-value ${anomaly.varianceAmount > 0 ? 'metric-positive' : 'metric-negative'}`}>
-                        {anomaly.varianceAmount > 0 ? '+' : ''}{formatAmount(anomaly.varianceAmount, anomaly.currency)}
+                        {anomaly.varianceAmount > 0 ? '+' : ''}{formatCurrency(anomaly.varianceAmount, anomaly.currency)}
                       </div>
                     </div>
                     <div className="metric-item">

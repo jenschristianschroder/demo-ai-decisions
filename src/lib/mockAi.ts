@@ -1,4 +1,5 @@
 import type { Anomaly, AiResponse } from '../types/finance';
+import { formatCurrency } from './formatters';
 
 // TODO: Azure AI Foundry integration points:
 // - Replace mockGenerateExplanation with Azure AI Foundry model endpoint call
@@ -70,13 +71,8 @@ Thanks,
 Group Finance`;
 }
 
-export async function regenerateDraftEmail(anomaly: Anomaly, _previousDraft: string): Promise<string> {
+export async function regenerateDraftEmail(anomaly: Anomaly): Promise<string> {
   // TODO: Azure AI Foundry - regenerate with different tone/emphasis
   await new Promise(resolve => setTimeout(resolve, 600));
   return generateDraftEmail(anomaly);
-}
-
-function formatCurrency(amount: number, currency: string): string {
-  const symbol = currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : currency === 'USD' ? '$' : currency + ' ';
-  return `${symbol}${(amount / 1000).toFixed(0)}k`;
 }

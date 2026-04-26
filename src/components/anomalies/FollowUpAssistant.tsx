@@ -26,7 +26,7 @@ const FollowUpAssistant: React.FC<FollowUpAssistantProps> = ({ anomaly, initialD
 
   const handleRegenerate = async () => {
     setRegenerating(true);
-    const newDraft = await regenerateDraftEmail(anomaly, draft);
+    const newDraft = await regenerateDraftEmail(anomaly);
     setDraft(newDraft);
     setRegenerating(false);
   };
