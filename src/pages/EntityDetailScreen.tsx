@@ -28,7 +28,7 @@ const EntityDetailScreen: React.FC = () => {
     return (
       <div className="entity-not-found">
         <p>Entity not found.</p>
-        <button onClick={() => navigate('/dashboard')}>Back to Dashboard</button>
+    <button className="btn-secondary" onClick={() => navigate('/dashboard')}>Back to Dashboard</button>
       </div>
     );
   }

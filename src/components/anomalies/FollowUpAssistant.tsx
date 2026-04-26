@@ -20,7 +20,7 @@ const FollowUpAssistant: React.FC<FollowUpAssistantProps> = ({ anomaly, initialD
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // fallback: select text
+      // Clipboard API not available; user can manually select and copy the text
     }
   };
 

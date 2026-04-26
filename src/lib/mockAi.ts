@@ -17,9 +17,18 @@ export async function generateAnomalyExplanation(anomaly: Anomaly): Promise<AiRe
     possibleCauses: anomaly.possibleCauses,
     recommendedFollowUp: anomaly.recommendedFollowUp,
     draftEmail: generateDraftEmail(anomaly),
-    confidenceLevel: 0.87,
+    confidenceLevel: deriveConfidenceLevel(anomaly),
     evidenceList: buildEvidenceList(anomaly),
   };
+}
+
+function deriveConfidenceLevel(anomaly: Anomaly): number {
+  let base = 0.9;
+  if (anomaly.commentaryQuality === 'Missing') base -= 0.05;
+  if (anomaly.commentaryQuality === 'Weak') base -= 0.02;
+  if (anomaly.severity === 'Low') base -= 0.03;
+  if (anomaly.category === 'Commentary Anomaly') base -= 0.05;
+  return Math.max(0.65, Math.min(0.97, base));
 }
 
 function buildEvidenceList(anomaly: Anomaly): string[] {

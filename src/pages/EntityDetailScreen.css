@@ -877,6 +877,22 @@
   gap: 16px;
 }
 
+.entity-not-found .btn-secondary {
+  background: #ffffff;
+  color: #111111;
+  border: 1.5px solid #222222;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.entity-not-found .btn-secondary:hover {
+  background: #f0f0f0;
+}
+
 /* No anomaly selected */
 .no-anomaly-selected {
   background: #ffffff;
