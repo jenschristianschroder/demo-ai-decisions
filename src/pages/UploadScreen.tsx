@@ -82,6 +82,56 @@ const UploadScreen: React.FC = () => {
             </div>
           </div>
 
+          <div className="template-section">
+            <div className="template-header">
+              <span className="template-icon">📄</span>
+              <div>
+                <div className="template-title">Submission Template</div>
+                <div className="template-desc">Download the CSV template to see the required column format for uploading data.</div>
+              </div>
+            </div>
+            <a
+              className="btn-download"
+              href="/submission-template.csv"
+              download="submission-template.csv"
+            >
+              ⬇ Download Template
+            </a>
+          </div>
+
+          <div className="template-section">
+            <div className="template-header">
+              <span className="template-icon">📊</span>
+              <div>
+                <div className="template-title">Sample Datasets</div>
+                <div className="template-desc">View or download sample submission files to understand the expected data format.</div>
+              </div>
+            </div>
+            <div className="sample-list">
+              <div className="sample-item">
+                <span className="sample-name">DE01 — Germany Operations GmbH</span>
+                <span className="sample-actions">
+                  <a className="sample-link" href="/sample-submission-DE01.csv" target="_blank" rel="noopener noreferrer">View</a>
+                  <a className="sample-link" href="/sample-submission-DE01.csv" download="sample-submission-DE01.csv">Download</a>
+                </span>
+              </div>
+              <div className="sample-item">
+                <span className="sample-name">FR01 — France Operations SAS</span>
+                <span className="sample-actions">
+                  <a className="sample-link" href="/sample-submission-FR01.csv" target="_blank" rel="noopener noreferrer">View</a>
+                  <a className="sample-link" href="/sample-submission-FR01.csv" download="sample-submission-FR01.csv">Download</a>
+                </span>
+              </div>
+              <div className="sample-item">
+                <span className="sample-name">UK01 — UK Operations Ltd</span>
+                <span className="sample-actions">
+                  <a className="sample-link" href="/sample-submission-UK01.csv" target="_blank" rel="noopener noreferrer">View</a>
+                  <a className="sample-link" href="/sample-submission-UK01.csv" download="sample-submission-UK01.csv">Download</a>
+                </span>
+              </div>
+            </div>
+          </div>
+
           {!result && (
             <button
               className="btn-process"
