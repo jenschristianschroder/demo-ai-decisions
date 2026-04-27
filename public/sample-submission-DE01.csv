@@ -1,0 +1,11 @@
+period,entityId,accountId,accountName,reportingLine,actual,budget,priorMonth,priorYear,forecast,currency,commentary
+March 2026,DE01,400100,Revenue,Income Statement,1800000,1750000,1720000,1650000,1780000,EUR,Revenue slightly above budget driven by new client wins in DACH region.
+March 2026,DE01,500100,Cost of Sales,Income Statement,1231200,1044000,1050000,990000,1070000,EUR,Higher input costs in Q1.
+March 2026,DE01,620500,Marketing Expense,Operating Expenses,184000,121000,133000,95000,125000,EUR,Campaign timing.
+March 2026,DE01,630200,Travel & Entertainment,Operating Expenses,54000,40000,48000,35000,42000,EUR,Q1 customer visits.
+March 2026,DE01,610100,Personnel Costs,Operating Expenses,420000,415000,418000,395000,415000,EUR,Headcount in line with plan.
+March 2026,DE01,640100,Office & Facilities,Operating Expenses,62000,60000,61000,58000,60000,EUR,Stable occupancy costs.
+March 2026,DE01,650100,Depreciation & Amortisation,Operating Expenses,85000,85000,85000,80000,85000,EUR,No change in asset base.
+March 2026,DE01,180200,Intercompany Receivable – FR01,Balance Sheet,0,0,0,0,0,EUR,
+March 2026,DE01,700100,Interest Income,Financial Items,3200,3000,3100,2800,3000,EUR,Short-term deposit returns.
+March 2026,DE01,710100,Interest Expense,Financial Items,12000,12500,12000,13000,12500,EUR,In line with facility terms.

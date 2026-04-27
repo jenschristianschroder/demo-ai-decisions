@@ -1,0 +1,11 @@
+period,entityId,accountId,accountName,reportingLine,actual,budget,priorMonth,priorYear,forecast,currency,commentary
+March 2026,FR01,400100,Revenue,Income Statement,1620000,1880000,1700000,1590000,1880000,EUR,Delays in customer sign-off.
+March 2026,FR01,500100,Cost of Sales,Income Statement,980000,1050000,1020000,940000,1050000,EUR,In line with lower volumes.
+March 2026,FR01,620500,Marketing Expense,Operating Expenses,95000,100000,92000,88000,100000,EUR,Stable spend vs prior month.
+March 2026,FR01,610100,Personnel Costs,Operating Expenses,380000,385000,378000,360000,385000,EUR,Headcount stable.
+March 2026,FR01,640100,Office & Facilities,Operating Expenses,55000,54000,54000,52000,54000,EUR,Minor maintenance uplift.
+March 2026,FR01,650100,Depreciation & Amortisation,Operating Expenses,72000,72000,72000,68000,72000,EUR,No change.
+March 2026,FR01,280100,Intercompany Payable – NL01,Balance Sheet,0,0,0,0,0,EUR,
+March 2026,FR01,180200,Intercompany Receivable – NL01,Balance Sheet,86000,0,0,0,0,EUR,Management services charged to NL01.
+March 2026,FR01,700100,Interest Income,Financial Items,1800,2000,1900,1500,2000,EUR,Slightly below plan.
+March 2026,FR01,710100,Interest Expense,Financial Items,8500,9000,8500,9200,9000,EUR,In line with prior month.
