@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { UploadResult } from '../types/finance';
+import SampleDataModal from '../components/SampleDataModal';
 import './UploadScreen.css';
 
 const mockResult: UploadResult = {
@@ -17,6 +18,7 @@ const UploadScreen: React.FC = () => {
   const [dragging, setDragging] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState<UploadResult | null>(null);
+  const [previewFile, setPreviewFile] = useState<{ fileName: string; label: string } | null>(null);
 
   const handleProcess = () => {
     setProcessing(true);
@@ -111,21 +113,21 @@ const UploadScreen: React.FC = () => {
               <div className="sample-item">
                 <span className="sample-name">DE01 — Germany Operations GmbH</span>
                 <span className="sample-actions">
-                  <a className="sample-link" href="/sample-submission-DE01.csv" target="_blank" rel="noopener noreferrer">View</a>
+                  <button className="sample-link" onClick={() => setPreviewFile({ fileName: 'sample-submission-DE01.csv', label: 'DE01 — Germany Operations GmbH' })}>View</button>
                   <a className="sample-link" href="/sample-submission-DE01.csv" download="sample-submission-DE01.csv">Download</a>
                 </span>
               </div>
               <div className="sample-item">
                 <span className="sample-name">FR01 — France Operations SAS</span>
                 <span className="sample-actions">
-                  <a className="sample-link" href="/sample-submission-FR01.csv" target="_blank" rel="noopener noreferrer">View</a>
+                  <button className="sample-link" onClick={() => setPreviewFile({ fileName: 'sample-submission-FR01.csv', label: 'FR01 — France Operations SAS' })}>View</button>
                   <a className="sample-link" href="/sample-submission-FR01.csv" download="sample-submission-FR01.csv">Download</a>
                 </span>
               </div>
               <div className="sample-item">
                 <span className="sample-name">UK01 — UK Operations Ltd</span>
                 <span className="sample-actions">
-                  <a className="sample-link" href="/sample-submission-UK01.csv" target="_blank" rel="noopener noreferrer">View</a>
+                  <button className="sample-link" onClick={() => setPreviewFile({ fileName: 'sample-submission-UK01.csv', label: 'UK01 — UK Operations Ltd' })}>View</button>
                   <a className="sample-link" href="/sample-submission-UK01.csv" download="sample-submission-UK01.csv">Download</a>
                 </span>
               </div>
@@ -187,6 +189,14 @@ const UploadScreen: React.FC = () => {
           )}
         </div>
       </main>
+
+      {previewFile && (
+        <SampleDataModal
+          fileName={previewFile.fileName}
+          label={previewFile.label}
+          onClose={() => setPreviewFile(null)}
+        />
+      )}
     </div>
   );
 };
