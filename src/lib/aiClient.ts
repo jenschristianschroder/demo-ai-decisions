@@ -1,56 +1,28 @@
 /**
- * Thin wrapper around the Azure AI Foundry chat completions REST API.
+ * Frontend API client.
  *
- * This avoids pulling in a heavy SDK and keeps the bundle lean — all we need
- * is a single POST to the `/chat/completions` endpoint with JSON mode enabled.
+ * All AI calls are proxied through the Express backend which authenticates
+ * with Azure AI Foundry via System Assigned Managed Identity.  The frontend
+ * never handles credentials.
  */
-
-import { getAiConfig } from './aiConfig';
-
-export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
 
 /**
- * Send a chat completion request to Azure AI Foundry and return the parsed
- * JSON body from the first choice.
- *
- * The caller is responsible for providing a system prompt that instructs the
- * model to respond with valid JSON matching the expected schema.
+ * POST to a backend `/api/ai/*` endpoint and return the parsed JSON response.
  */
-export async function chatCompletion<T>(
-  messages: ChatMessage[],
-  temperature = 0.3,
+export async function apiPost<T>(
+  path: string,
+  body: Record<string, unknown>,
 ): Promise<T> {
-  const config = getAiConfig();
-
-  // Build the URL – support both bare endpoints and full URLs
-  const baseUrl = config.endpoint.replace(/\/+$/, '');
-  const url = `${baseUrl}/openai/deployments/${encodeURIComponent(config.deploymentName)}/chat/completions?api-version=${config.apiVersion}`;
-
-  const response = await fetch(url, {
+  const response = await fetch(path, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'api-key': config.apiKey,
-    },
-    body: JSON.stringify({
-      messages,
-      temperature,
-      response_format: { type: 'json_object' },
-    }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
     const errorBody = await response.text();
-    throw new Error(
-      `Azure AI Foundry request failed (${response.status}): ${errorBody}`,
-    );
+    throw new Error(`API request failed (${response.status}): ${errorBody}`);
   }
 
-  const data = await response.json();
-  const content: string = data.choices?.[0]?.message?.content ?? '{}';
-
-  return JSON.parse(content) as T;
+  return (await response.json()) as T;
 }

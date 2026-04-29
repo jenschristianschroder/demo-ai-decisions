@@ -1,10 +1,10 @@
 import type { ExtractionResult, Signal } from '../types/adp';
-import { chatCompletion } from './aiClient';
+import { apiPost } from './aiClient';
 import { isAiConfigured } from './aiConfig';
 
 // ---------------------------------------------------------------------------
-// Fallback mock data – used when Azure AI Foundry is not configured so the
-// demo still works without credentials.
+// Fallback mock data – used when the backend API is not available so the
+// demo still works without Azure credentials.
 // ---------------------------------------------------------------------------
 
 function mockExtractionResult(): ExtractionResult {
@@ -72,55 +72,13 @@ function mockExtractionResult(): ExtractionResult {
 // extractSignals
 // ---------------------------------------------------------------------------
 
-const EXTRACT_SYSTEM_PROMPT = `You are an AI assistant for key account managers. Analyze the raw interaction notes provided by the user and extract structured data.
-
-Respond with a JSON object matching this schema:
-{
-  "signals": [
-    {
-      "id": "<unique string e.g. SIG-NEW-001>",
-      "accountId": "contoso-mfg",
-      "category": "risk" | "opportunity" | "gap" | "sentiment-shift",
-      "severity": "high" | "medium" | "low",
-      "sourceInteractionId": "INT-005",
-      "description": "<concise description>",
-      "status": "new",
-      "createdAt": "<ISO 8601 timestamp>"
-    }
-  ],
-  "stakeholderUpdates": [
-    {
-      "stakeholderId": "<string>",
-      "field": "<field that changed>",
-      "oldValue": "<previous value>",
-      "newValue": "<new value>"
-    }
-  ],
-  "suggestedActions": [
-    {
-      "description": "<action description>",
-      "owner": "<suggested owner>"
-    }
-  ]
-}
-
-Guidelines:
-- Extract ALL meaningful signals from the text.
-- Classify each signal into exactly one category.
-- Severity should reflect business impact: high = revenue/relationship at risk, medium = notable change, low = informational.
-- Suggest concrete, actionable next steps.
-- Use the current timestamp for createdAt.`;
-
 export async function extractSignals(rawText: string): Promise<ExtractionResult> {
   if (!isAiConfigured()) {
     await new Promise(resolve => setTimeout(resolve, 1200));
     return mockExtractionResult();
   }
 
-  return chatCompletion<ExtractionResult>([
-    { role: 'system', content: EXTRACT_SYSTEM_PROMPT },
-    { role: 'user', content: rawText },
-  ]);
+  return apiPost<ExtractionResult>('/api/ai/extract-signals', { rawText });
 }
 
 // ---------------------------------------------------------------------------
@@ -137,24 +95,6 @@ interface InsightsResponse {
     suggestedAction: string;
   }>;
 }
-
-const INSIGHTS_SYSTEM_PROMPT = `You are an AI assistant for key account managers. Given an account ID and its context, generate cross-signal insights.
-
-Respond with a JSON object:
-{
-  "insights": [
-    {
-      "id": "<unique string e.g. INS-001>",
-      "title": "<short title>",
-      "description": "<detailed analysis>",
-      "severity": "high" | "medium" | "low",
-      "linkedSignalIds": ["<signal ids>"],
-      "suggestedAction": "<recommended action>"
-    }
-  ]
-}
-
-Generate 2-4 insights that connect multiple signals to reveal patterns and recommend actions.`;
 
 export async function generateInsights(
   accountId: string,
@@ -201,31 +141,12 @@ export async function generateInsights(
     };
   }
 
-  return chatCompletion<InsightsResponse>([
-    { role: 'system', content: INSIGHTS_SYSTEM_PROMPT },
-    { role: 'user', content: `Generate insights for account: ${accountId}` },
-  ]);
+  return apiPost<InsightsResponse>('/api/ai/generate-insights', { accountId });
 }
 
 // ---------------------------------------------------------------------------
 // suggestActions
 // ---------------------------------------------------------------------------
-
-const ACTIONS_SYSTEM_PROMPT = `You are an AI assistant for key account managers. Given a signal ID, suggest concrete actions.
-
-Respond with a JSON object:
-{
-  "actions": [
-    {
-      "description": "<action description>",
-      "owner": "<suggested owner>",
-      "priority": "high" | "medium" | "low",
-      "dueDate": "<YYYY-MM-DD>"
-    }
-  ]
-}
-
-Generate 2-4 specific, actionable recommendations with realistic due dates within the next 30 days.`;
 
 export async function suggestActions(
   signalId: string,
@@ -270,12 +191,9 @@ export async function suggestActions(
     ];
   }
 
-  const result = await chatCompletion<{
+  const result = await apiPost<{
     actions: Array<{ description: string; owner: string; priority: string; dueDate: string }>;
-  }>([
-    { role: 'system', content: ACTIONS_SYSTEM_PROMPT },
-    { role: 'user', content: `Suggest actions for signal: ${signalId}` },
-  ]);
+  }>('/api/ai/suggest-actions', { signalId });
 
   return result.actions;
 }
@@ -289,23 +207,6 @@ interface PlanCompletenessResponse {
   sections: Array<{ name: string; status: string; guidance: string }>;
   recommendations: string[];
 }
-
-const PLAN_SYSTEM_PROMPT = `You are an AI assistant for key account managers. Assess the completeness of an account plan.
-
-Respond with a JSON object:
-{
-  "overallPercent": <number 0-100>,
-  "sections": [
-    {
-      "name": "<section name>",
-      "status": "complete" | "partial" | "missing" | "stale",
-      "guidance": "<specific guidance>"
-    }
-  ],
-  "recommendations": ["<recommendation>"]
-}
-
-Evaluate these standard sections: Executive Summary, Stakeholder Map, Competitive Landscape, Financial Projections, SWOT Analysis, Initiative Roadmap.`;
 
 export async function assessPlanCompleteness(
   accountId: string,
@@ -344,30 +245,12 @@ export async function assessPlanCompleteness(
     };
   }
 
-  return chatCompletion<PlanCompletenessResponse>([
-    { role: 'system', content: PLAN_SYSTEM_PROMPT },
-    { role: 'user', content: `Assess plan completeness for account: ${accountId}` },
-  ]);
+  return apiPost<PlanCompletenessResponse>('/api/ai/assess-plan', { accountId });
 }
 
 // ---------------------------------------------------------------------------
 // generateNudges
 // ---------------------------------------------------------------------------
-
-const NUDGES_SYSTEM_PROMPT = `You are an AI assistant for key account managers. Generate context-aware nudges for an account.
-
-Respond with a JSON object:
-{
-  "nudges": [
-    {
-      "message": "<actionable nudge message>",
-      "type": "reminder" | "stale-data" | "follow-up" | "missing-info",
-      "priority": "high" | "medium" | "low"
-    }
-  ]
-}
-
-Generate 2-4 nudges that help the account manager stay proactive. Focus on time-sensitive items first.`;
 
 export async function generateNudges(
   accountId: string,
@@ -407,12 +290,9 @@ export async function generateNudges(
     ];
   }
 
-  const result = await chatCompletion<{
+  const result = await apiPost<{
     nudges: Array<{ message: string; type: string; priority: string }>;
-  }>([
-    { role: 'system', content: NUDGES_SYSTEM_PROMPT },
-    { role: 'user', content: `Generate nudges for account: ${accountId}` },
-  ]);
+  }>('/api/ai/generate-nudges', { accountId });
 
   return result.nudges;
 }
@@ -426,21 +306,6 @@ interface FollowUpResponse {
   body: string;
   recipients: string[];
 }
-
-const FOLLOWUP_SYSTEM_PROMPT = `You are an AI assistant for key account managers. Draft a professional follow-up email based on a past interaction.
-
-Respond with a JSON object:
-{
-  "subject": "<email subject>",
-  "body": "<full email body with proper formatting>",
-  "recipients": ["<email addresses>"]
-}
-
-Guidelines:
-- Use a professional but warm tone.
-- Reference specific topics discussed.
-- Include clear next steps or asks.
-- Keep the email concise (under 200 words).`;
 
 export async function draftFollowUp(
   interactionId: string,
@@ -484,8 +349,5 @@ Account Team`,
     };
   }
 
-  return chatCompletion<FollowUpResponse>([
-    { role: 'system', content: FOLLOWUP_SYSTEM_PROMPT },
-    { role: 'user', content: `Draft a follow-up email for interaction: ${interactionId}` },
-  ]);
+  return apiPost<FollowUpResponse>('/api/ai/draft-followup', { interactionId });
 }
