@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Anomaly, AnomalyStatus } from '../../types/finance';
-import { regenerateDraftEmail } from '../../lib/mockAi';
+import { regenerateDraftEmail } from '../../lib/financeAi';
 
 interface FollowUpAssistantProps {
   anomaly: Anomaly;

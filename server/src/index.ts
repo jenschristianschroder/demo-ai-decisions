@@ -9,6 +9,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { aiRouter } from './routes/ai.js';
+import { financeAiRouter } from './routes/financeAi.js';
 import { DEFAULT_DEPLOYMENT } from './aiClient.js';
 
 const app = express();
@@ -27,6 +28,7 @@ const apiLimiter = rateLimit({
 
 // ── API routes ──────────────────────────────────────────────────────────────
 app.use('/api/ai', apiLimiter, aiRouter);
+app.use('/api/ai/finance', apiLimiter, financeAiRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {
