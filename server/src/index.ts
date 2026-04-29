@@ -37,7 +37,7 @@ app.get('/api/health', (_req, res) => {
 
 // ── Static SPA ──────────────────────────────────────────────────────────────
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const staticDir = path.resolve(__dirname, '../../public');
+const staticDir = path.resolve(__dirname, '../public');
 
 app.use(express.static(staticDir));
 
