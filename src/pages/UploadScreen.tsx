@@ -99,7 +99,7 @@ const UploadScreen: React.FC = () => {
             onClick={handleClick}
             role="button"
             tabIndex={0}
-            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); }}
+            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(); } }}
           >
             <input
               ref={fileInputRef}
