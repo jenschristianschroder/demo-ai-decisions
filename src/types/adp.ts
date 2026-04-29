@@ -103,7 +103,7 @@ export interface AccountPlan {
   accountId: string;
   vision: string;
   objectives: string[];
-  swpiSummary: {
+  swotSummary: {
     strengths: string[];
     weaknesses: string[];
     opportunities: string[];
