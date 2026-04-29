@@ -57,7 +57,13 @@ export async function chatCompletion<T>(
     );
   }
 
-  const baseUrl = endpoint.replace(/\/+$/, '');
+  // Normalise: add https:// if no scheme is present
+  const normalisedEndpoint =
+    endpoint.startsWith('https://') || endpoint.startsWith('http://')
+      ? endpoint
+      : `https://${endpoint}`;
+
+  const baseUrl = normalisedEndpoint.replace(/\/+$/, '');
   const url = `${baseUrl}/openai/deployments/${encodeURIComponent(deploymentName)}/chat/completions?api-version=${apiVersion}`;
 
   const token = await getAccessToken();
