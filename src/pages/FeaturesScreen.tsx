@@ -46,7 +46,10 @@ const FeaturesScreen: React.FC = () => {
           <div
             key={demo.id}
             className="feature-card"
+            role="button"
+            tabIndex={0}
             onClick={() => navigate(demo.route)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(demo.route); } }}
           >
             <span className="feature-card-icon">
               <DemoIcon id={demo.id} />
