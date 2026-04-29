@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { InteractionType, ExtractionResult } from '../types/adp';
 import { getAdpAccount } from '../data/mockAdpData';
-import { extractSignals } from '../lib/mockAdpAi';
+import { extractSignals } from '../lib/adpAi';
 import InteractionInput from '../components/adp/capture/InteractionInput';
 import ExtractionPreview from '../components/adp/capture/ExtractionPreview';
 import './AdpCaptureScreen.css';

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Signal, SignalCategory, SignalStatus } from '../../../types/adp';
-import { suggestActions } from '../../../lib/mockAdpAi';
+import { suggestActions } from '../../../lib/adpAi';
 
 interface SignalFeedProps {
   signals: Signal[];
