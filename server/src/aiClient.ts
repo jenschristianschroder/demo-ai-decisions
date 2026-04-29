@@ -57,12 +57,9 @@ export async function chatCompletion<T>(
     );
   }
 
-  // Normalise: add https:// if no scheme is present
+  // Normalise: ensure the endpoint has a scheme so fetch can parse it.
   const normalisedEndpoint =
-    endpoint.startsWith('https://') || endpoint.startsWith('http://')
-      ? endpoint
-      : `https://${endpoint}`;
-
+    /^https?:\/\//i.test(endpoint) ? endpoint : `https://${endpoint}`;
   const baseUrl = normalisedEndpoint.replace(/\/+$/, '');
   const url = `${baseUrl}/openai/deployments/${encodeURIComponent(deploymentName)}/chat/completions?api-version=${apiVersion}`;
 
