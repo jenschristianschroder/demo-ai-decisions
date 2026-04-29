@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { generateDemoData } from '../lib/adpAi';
+import { generateDemoDataPhased, type ProgressStep } from '../lib/adpAi';
 import { setAdpData, resetAdpData } from '../data/mockAdpData';
 import './AdpLandingScreen.css';
 
@@ -10,19 +10,42 @@ const AdpLandingScreen: React.FC = () => {
   const [generating, setGenerating] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [progressSteps, setProgressSteps] = useState<ProgressStep[]>([]);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
     setGenerating(true);
     setSuccessMsg('');
     setErrorMsg('');
+    setProgressSteps([]);
     try {
-      const result = await generateDemoData(prompt.trim());
+      const result = await generateDemoDataPhased(prompt.trim(), (step) => {
+        setProgressSteps(prev => {
+          // Replace the last step if it's the same phase/account (running→done)
+          const updated = [...prev];
+          if (step.phase === 'plan') {
+            const idx = updated.findIndex(s => s.phase === 'plan');
+            if (idx >= 0) {
+              updated[idx] = step;
+              return updated;
+            }
+          } else if (step.phase === 'account') {
+            const idx = updated.findIndex(
+              s => s.phase === 'account' && s.accountName === step.accountName
+            );
+            if (idx >= 0) {
+              updated[idx] = step;
+              return updated;
+            }
+          }
+          return [...updated, step];
+        });
+      });
       if (result.valid) {
         setAdpData(result.data);
         const count = result.data.accounts.length;
         setSuccessMsg(`Demo data generated — ${count} account${count !== 1 ? 's' : ''} loaded`);
-        setTimeout(() => navigate('/adp/dashboard'), 1000);
+        setTimeout(() => navigate('/adp/dashboard'), 1500);
       } else {
         setErrorMsg(result.message);
       }
@@ -42,6 +65,7 @@ const AdpLandingScreen: React.FC = () => {
     setSuccessMsg('');
     setErrorMsg('');
     setPrompt('');
+    setProgressSteps([]);
   };
 
   return (
@@ -149,10 +173,27 @@ const AdpLandingScreen: React.FC = () => {
             )}
           </div>
 
-          {generating && (
+          {generating && progressSteps.length === 0 && (
             <div className="adp-landing-generate-status adp-landing-generate-loading">
               <span className="adp-landing-spinner" />
-              Generating your demo scenario…
+              Starting generation…
+            </div>
+          )}
+          {progressSteps.length > 0 && (
+            <div className="adp-landing-progress-list">
+              {progressSteps.map((step, i) => (
+                <div
+                  key={i}
+                  className={`adp-landing-progress-step adp-landing-progress-${step.status}`}
+                >
+                  <span className="adp-landing-progress-icon">
+                    {step.status === 'running' && <span className="adp-landing-spinner-sm" />}
+                    {step.status === 'done' && '✓'}
+                    {step.status === 'error' && '✗'}
+                  </span>
+                  <span className="adp-landing-progress-msg">{step.message}</span>
+                </div>
+              ))}
             </div>
           )}
           {successMsg && (
