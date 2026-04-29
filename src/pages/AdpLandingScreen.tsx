@@ -26,8 +26,12 @@ const AdpLandingScreen: React.FC = () => {
       } else {
         setErrorMsg(result.message);
       }
-    } catch {
-      setErrorMsg('Something went wrong while generating demo data. Please try again.');
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : 'Something went wrong while generating demo data. Please try again.';
+      setErrorMsg(message);
     } finally {
       setGenerating(false);
     }
