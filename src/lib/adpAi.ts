@@ -1,4 +1,5 @@
 import type { ExtractionResult, Signal } from '../types/adp';
+import type { GeneratedDemoData } from '../data/mockAdpData';
 import { apiPost } from './aiClient';
 import { isAiConfigured } from './aiConfig';
 
@@ -350,4 +351,26 @@ Account Team`,
   }
 
   return apiPost<FollowUpResponse>('/api/ai/draft-followup', { interactionId });
+}
+
+// ---------------------------------------------------------------------------
+// generateDemoData
+// ---------------------------------------------------------------------------
+
+export type GenerateDemoDataResult =
+  | { valid: true; data: GeneratedDemoData }
+  | { valid: false; message: string };
+
+export async function generateDemoData(
+  prompt: string,
+): Promise<GenerateDemoDataResult> {
+  if (!isAiConfigured()) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return {
+      valid: false,
+      message: 'AI backend is not configured — live generation is unavailable in mock mode.',
+    };
+  }
+
+  return apiPost<GenerateDemoDataResult>('/api/ai/generate-demo-data', { prompt });
 }

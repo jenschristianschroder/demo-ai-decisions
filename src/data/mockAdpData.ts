@@ -13,7 +13,22 @@ import type {
 // Accounts
 // ---------------------------------------------------------------------------
 
-const accounts: AdpAccount[] = [
+// ---------------------------------------------------------------------------
+// GeneratedDemoData type — used by setAdpData / resetAdpData
+// ---------------------------------------------------------------------------
+
+export interface GeneratedDemoData {
+  accounts: AdpAccount[];
+  stakeholders: Stakeholder[];
+  interactions: Interaction[];
+  signals: Signal[];
+  initiatives: Initiative[];
+  nudges: Nudge[];
+  accountPlans: AccountPlan[];
+}
+
+// Keep immutable copies of the originals so we can reset.
+const ORIGINAL_ACCOUNTS: AdpAccount[] = [
   {
     id: 'contoso-mfg',
     name: 'Contoso Manufacturing',
@@ -94,11 +109,14 @@ const accounts: AdpAccount[] = [
   },
 ];
 
+// Mutable data — replaced by setAdpData()
+let accounts: AdpAccount[] = [...ORIGINAL_ACCOUNTS];
+
 // ---------------------------------------------------------------------------
 // Stakeholders
 // ---------------------------------------------------------------------------
 
-const stakeholders: Stakeholder[] = [
+const ORIGINAL_STAKEHOLDERS: Stakeholder[] = [
   // Contoso Manufacturing (4)
   {
     id: 'STK-001', accountId: 'contoso-mfg', name: 'Marcus Weber', role: 'CTO',
@@ -182,6 +200,8 @@ const stakeholders: Stakeholder[] = [
   },
 ];
 
+let stakeholders: Stakeholder[] = [...ORIGINAL_STAKEHOLDERS];
+
 // ---------------------------------------------------------------------------
 // Pre-loaded sample meeting notes (for the demo capture walkthrough)
 // ---------------------------------------------------------------------------
@@ -192,7 +212,7 @@ const SAMPLE_MEETING_NOTES = `QBR with Contoso leadership. Marcus (CTO) confirme
 // Interactions
 // ---------------------------------------------------------------------------
 
-const interactions: Interaction[] = [
+const ORIGINAL_INTERACTIONS: Interaction[] = [
   // Contoso Manufacturing (5)
   {
     id: 'INT-001', accountId: 'contoso-mfg', type: 'meeting', date: '2026-03-15',
@@ -313,11 +333,13 @@ const interactions: Interaction[] = [
   },
 ];
 
+let interactions: Interaction[] = [...ORIGINAL_INTERACTIONS];
+
 // ---------------------------------------------------------------------------
 // Signals
 // ---------------------------------------------------------------------------
 
-const signals: Signal[] = [
+const ORIGINAL_SIGNALS: Signal[] = [
   // Contoso Manufacturing (5)
   {
     id: 'SIG-001', accountId: 'contoso-mfg', category: 'risk', severity: 'high',
@@ -398,11 +420,13 @@ const signals: Signal[] = [
   },
 ];
 
+let signals: Signal[] = [...ORIGINAL_SIGNALS];
+
 // ---------------------------------------------------------------------------
 // Initiatives
 // ---------------------------------------------------------------------------
 
-const initiatives: Initiative[] = [
+const ORIGINAL_INITIATIVES: Initiative[] = [
   // Contoso Manufacturing (3)
   {
     id: 'INIT-001', accountId: 'contoso-mfg',
@@ -591,11 +615,13 @@ const initiatives: Initiative[] = [
   },
 ];
 
+let initiatives: Initiative[] = [...ORIGINAL_INITIATIVES];
+
 // ---------------------------------------------------------------------------
 // Nudges
 // ---------------------------------------------------------------------------
 
-const nudges: Nudge[] = [
+const ORIGINAL_NUDGES: Nudge[] = [
   {
     id: 'NDG-001', accountId: 'contoso-mfg',
     message: 'Phase 1 deliverable review overdue by 7 days',
@@ -658,11 +684,13 @@ const nudges: Nudge[] = [
   },
 ];
 
+let nudges: Nudge[] = [...ORIGINAL_NUDGES];
+
 // ---------------------------------------------------------------------------
 // Account Plans
 // ---------------------------------------------------------------------------
 
-const accountPlans: AccountPlan[] = [
+const ORIGINAL_ACCOUNT_PLANS: AccountPlan[] = [
   {
     id: 'PLAN-001', accountId: 'contoso-mfg',
     vision: 'Establish a strategic partnership with Contoso Manufacturing as their primary digital transformation partner, expanding from factory floor optimization into enterprise-wide operational intelligence.',
@@ -864,6 +892,32 @@ const accountPlans: AccountPlan[] = [
     ],
   },
 ];
+
+let accountPlans: AccountPlan[] = [...ORIGINAL_ACCOUNT_PLANS];
+
+// ---------------------------------------------------------------------------
+// Set / Reset helpers
+// ---------------------------------------------------------------------------
+
+export function setAdpData(data: GeneratedDemoData): void {
+  accounts = data.accounts;
+  stakeholders = data.stakeholders;
+  interactions = data.interactions;
+  signals = data.signals;
+  initiatives = data.initiatives;
+  nudges = data.nudges;
+  accountPlans = data.accountPlans;
+}
+
+export function resetAdpData(): void {
+  accounts = [...ORIGINAL_ACCOUNTS];
+  stakeholders = [...ORIGINAL_STAKEHOLDERS];
+  interactions = [...ORIGINAL_INTERACTIONS];
+  signals = [...ORIGINAL_SIGNALS];
+  initiatives = [...ORIGINAL_INITIATIVES];
+  nudges = [...ORIGINAL_NUDGES];
+  accountPlans = [...ORIGINAL_ACCOUNT_PLANS];
+}
 
 // ---------------------------------------------------------------------------
 // Getter functions
