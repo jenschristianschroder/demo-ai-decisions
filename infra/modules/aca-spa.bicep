@@ -13,14 +13,20 @@ param containerImage string
 @description('ACR login server')
 param acrLoginServer string
 
-@description('Managed Identity resource ID')
+@description('Managed Identity resource ID (used for ACR pull)')
 param identityId string
+
+@description('Azure AI Foundry endpoint URL')
+param azureAiEndpoint string = ''
+
+@description('Azure AI Foundry model deployment name')
+param azureAiDeployment string = 'gpt-4o'
 
 resource spaApp 'Microsoft.App/containerApps@2023-05-01' = {
   name: name
   location: location
   identity: {
-    type: 'UserAssigned'
+    type: 'SystemAssigned,UserAssigned'
     userAssignedIdentities: {
       '${identityId}': {}
     }
@@ -30,7 +36,7 @@ resource spaApp 'Microsoft.App/containerApps@2023-05-01' = {
     configuration: {
       ingress: {
         external: true
-        targetPort: 80
+        targetPort: 3000
         transport: 'http'
       }
       registries: [
@@ -49,6 +55,20 @@ resource spaApp 'Microsoft.App/containerApps@2023-05-01' = {
             cpu: json('0.25')
             memory: '0.5Gi'
           }
+          env: [
+            {
+              name: 'AZURE_AI_ENDPOINT'
+              value: azureAiEndpoint
+            }
+            {
+              name: 'AZURE_AI_DEPLOYMENT'
+              value: azureAiDeployment
+            }
+            {
+              name: 'PORT'
+              value: '3000'
+            }
+          ]
         }
       ]
       scale: {
@@ -60,3 +80,4 @@ resource spaApp 'Microsoft.App/containerApps@2023-05-01' = {
 }
 
 output fqdn string = spaApp.properties.configuration.ingress.fqdn
+output principalId string = spaApp.identity.principalId

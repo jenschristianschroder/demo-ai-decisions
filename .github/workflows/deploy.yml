@@ -54,6 +54,9 @@ jobs:
           template: infra/main.bicep
           parameters: >-
             imageTag=${{ github.sha }}
+            azureAiEndpoint=${{ secrets.AZURE_AI_ENDPOINT }}
+            azureAiDeployment=${{ secrets.AZURE_AI_DEPLOYMENT }}
+            cognitiveServicesAccountId=${{ secrets.COGNITIVE_SERVICES_ACCOUNT_ID }}
           failOnStdErr: false
 
       - name: Validate infra deployment failure reason
