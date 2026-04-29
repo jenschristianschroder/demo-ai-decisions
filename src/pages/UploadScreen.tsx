@@ -45,7 +45,7 @@ const UploadScreen: React.FC = () => {
       <header className="upload-header">
         <div className="upload-header-inner">
           <div className="breadcrumb">
-            <button className="breadcrumb-link" onClick={() => navigate('/')}>Home</button>
+            <button className="breadcrumb-link" onClick={() => navigate('/finance-anomaly-demo')}>Home</button>
             <span className="breadcrumb-sep">›</span>
             <button className="breadcrumb-link" onClick={() => navigate('/dashboard')}>Dashboard</button>
             <span className="breadcrumb-sep">›</span>

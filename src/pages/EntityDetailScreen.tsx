@@ -65,7 +65,7 @@ const EntityDetailScreen: React.FC = () => {
       <header className="entity-header-bar">
         <div className="entity-header-inner">
           <div className="breadcrumb">
-            <button className="breadcrumb-link" onClick={() => navigate('/')}>Home</button>
+            <button className="breadcrumb-link" onClick={() => navigate('/finance-anomaly-demo')}>Home</button>
             <span className="breadcrumb-sep">›</span>
             <button className="breadcrumb-link" onClick={() => navigate('/dashboard')}>Dashboard</button>
             <span className="breadcrumb-sep">›</span>

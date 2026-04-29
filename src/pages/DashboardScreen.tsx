@@ -17,7 +17,7 @@ const DashboardScreen: React.FC = () => {
       <header className="dashboard-header">
         <div className="dashboard-header-inner">
           <div className="breadcrumb">
-            <button className="breadcrumb-link" onClick={() => navigate('/')}>Home</button>
+            <button className="breadcrumb-link" onClick={() => navigate('/finance-anomaly-demo')}>Home</button>
             <span className="breadcrumb-sep">›</span>
             <span className="breadcrumb-current">Group Dashboard</span>
           </div>
