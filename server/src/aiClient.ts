@@ -57,7 +57,10 @@ export async function chatCompletion<T>(
     );
   }
 
-  const baseUrl = endpoint.replace(/\/+$/, '');
+  // Normalise: ensure the endpoint has a scheme so fetch can parse it.
+  const normalisedEndpoint =
+    /^https?:\/\//i.test(endpoint) ? endpoint : `https://${endpoint}`;
+  const baseUrl = normalisedEndpoint.replace(/\/+$/, '');
   const url = `${baseUrl}/openai/deployments/${encodeURIComponent(deploymentName)}/chat/completions?api-version=${apiVersion}`;
 
   const token = await getAccessToken();
