@@ -46,6 +46,7 @@ export const DEFAULT_DEPLOYMENT = 'gpt-4o';
 export async function chatCompletion<T>(
   messages: ChatMessage[],
   temperature = 0.3,
+  maxTokens?: number,
 ): Promise<T> {
   const endpoint = process.env.AZURE_AI_ENDPOINT;
   const deploymentName = process.env.AZURE_AI_DEPLOYMENT || DEFAULT_DEPLOYMENT;
@@ -75,6 +76,7 @@ export async function chatCompletion<T>(
       messages,
       temperature,
       response_format: { type: 'json_object' },
+      ...(maxTokens != null && { max_tokens: maxTokens }),
     }),
   });
 
@@ -86,9 +88,20 @@ export async function chatCompletion<T>(
   }
 
   const data = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
+    choices?: Array<{
+      message?: { content?: string };
+      finish_reason?: string;
+    }>;
   };
-  const content: string = data.choices?.[0]?.message?.content ?? '{}';
+
+  const choice = data.choices?.[0];
+  if (choice?.finish_reason === 'length') {
+    throw new Error(
+      'AI response was truncated due to token limits. Try a simpler prompt.',
+    );
+  }
+
+  const content: string = choice?.message?.content ?? '{}';
 
   return JSON.parse(content) as T;
 }

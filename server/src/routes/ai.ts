@@ -346,6 +346,7 @@ aiRouter.post('/generate-demo-data', async (req, res) => {
         { role: 'user', content: prompt },
       ],
       0.7,
+      16384,
     );
 
     res.json(result);
