@@ -1,0 +1,292 @@
+.adp-landing-root {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  padding: 24px;
+}
+
+.adp-landing-card {
+  background: #ffffff;
+  border: 1.5px solid #222222;
+  border-radius: 12px;
+  padding: 48px;
+  max-width: 640px;
+  width: 100%;
+}
+
+.adp-landing-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #111111;
+  background: #f0f0f0;
+  border: 1px solid #222222;
+  border-radius: 4px;
+  padding: 3px 10px;
+  margin-bottom: 32px;
+}
+
+.adp-landing-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.adp-landing-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.adp-landing-title-block {
+  flex: 1;
+}
+
+.adp-landing-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #111111;
+  line-height: 1.2;
+  margin-bottom: 10px;
+}
+
+.adp-landing-subtitle {
+  font-size: 15px;
+  color: #444444;
+  line-height: 1.6;
+}
+
+.adp-landing-features {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.adp-landing-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+}
+
+.adp-landing-feature-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.adp-landing-feature-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111111;
+  margin-bottom: 2px;
+}
+
+.adp-landing-feature-desc {
+  font-size: 13px;
+  color: #666666;
+  line-height: 1.4;
+}
+
+.adp-landing-scenario {
+  background: #0f766e;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 28px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.adp-landing-scenario-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #99d4cf;
+  white-space: nowrap;
+}
+
+.adp-landing-scenario-text {
+  font-size: 14px;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+/* Value shift section */
+.adp-landing-value-shift {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 28px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.adp-landing-shift-from {
+  flex: 1;
+  padding: 14px 16px;
+  background: #fef2f2;
+}
+
+.adp-landing-shift-to {
+  flex: 1;
+  padding: 14px 16px;
+  background: #f0fdfa;
+}
+
+.adp-landing-shift-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f766e;
+  background: #ffffff;
+  border-left: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
+}
+
+.adp-landing-shift-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #999999;
+  margin-bottom: 8px;
+}
+
+.adp-landing-shift-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.adp-landing-shift-items span {
+  font-size: 12px;
+  font-weight: 500;
+  color: #333333;
+}
+
+.adp-landing-shift-from .adp-landing-shift-items span {
+  color: #991b1b;
+}
+
+.adp-landing-shift-to .adp-landing-shift-items span {
+  color: #065f46;
+}
+
+/* Business value outcomes */
+.adp-landing-outcomes {
+  margin-bottom: 24px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.adp-landing-outcomes-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #666666;
+  margin-bottom: 12px;
+}
+
+.adp-landing-outcomes-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.adp-landing-outcome {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.adp-landing-outcome-metric {
+  font-size: 14px;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+
+.adp-landing-outcome-text {
+  font-size: 12px;
+  color: #333333;
+  line-height: 1.4;
+}
+
+.adp-landing-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.adp-landing-btn-primary {
+  background: #111111;
+  color: #ffffff;
+  border: 1.5px solid #111111;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.adp-landing-btn-primary:hover {
+  background: #333333;
+  border-color: #333333;
+}
+
+.adp-landing-btn-launch {
+  flex: 1;
+  font-size: 15px;
+}
+
+.adp-landing-btn-secondary {
+  background: #ffffff;
+  color: #111111;
+  border: 1.5px solid #222222;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.adp-landing-btn-secondary:hover {
+  background: #f0f0f0;
+}
+
+.adp-landing-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.adp-landing-footer-tag {
+  font-size: 12px;
+  color: #999999;
+}
+
+.adp-landing-footer-sep {
+  font-size: 12px;
+  color: #cccccc;
+}
