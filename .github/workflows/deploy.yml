@@ -115,6 +115,9 @@ jobs:
             --name ${{ env.APP_NAME }}-spa \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --image ${{ steps.acr.outputs.acrLoginServer }}/${{ env.APP_NAME }}-spa:${{ github.sha }} \
+            --set-env-vars \
+              AZURE_AI_ENDPOINT=${{ secrets.AZURE_AI_ENDPOINT }} \
+              AZURE_AI_DEPLOYMENT=${{ secrets.AZURE_AI_DEPLOYMENT }} \
             --min-replicas 1
 
       - name: Output SPA URL
