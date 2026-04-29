@@ -9,6 +9,7 @@ import UploadScreen from './pages/UploadScreen';
 import AdpDashboardScreen from './pages/AdpDashboardScreen';
 import AdpAccountDetailScreen from './pages/AdpAccountDetailScreen';
 import AdpCaptureScreen from './pages/AdpCaptureScreen';
+import AdpNudgeCentreScreen from './pages/AdpNudgeCentreScreen';
 
 const App: React.FC = () => {
   return (
@@ -22,6 +23,7 @@ const App: React.FC = () => {
       <Route path="/adp/dashboard" element={<AdpDashboardScreen />} />
       <Route path="/adp/account/:accountId" element={<AdpAccountDetailScreen />} />
       <Route path="/adp/account/:accountId/capture" element={<AdpCaptureScreen />} />
+      <Route path="/adp/nudges" element={<AdpNudgeCentreScreen />} />
     </Routes>
   );
 };
