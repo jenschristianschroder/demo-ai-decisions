@@ -1,26 +1,29 @@
 import type { Anomaly, AiResponse } from '../types/finance';
+import { apiPost } from './aiClient';
+import { isAiConfigured } from './aiConfig';
 import { formatCurrency } from './formatters';
 
-// TODO: Azure AI Foundry integration points:
-// - Replace mockGenerateExplanation with Azure AI Foundry model endpoint call
-// - Replace mockGenerateDraftEmail with Foundry Agent Service
-// - Add Azure AI Search for group accounting policy grounding
-// - Add Azure AI Content Safety for user-generated commentary review
-// - Add Application Insights tracing for all AI calls
-// - Connect to Azure SQL or Fabric Lakehouse for live financial data
+// ---------------------------------------------------------------------------
+// Fallback mock helpers – used when the backend API is not available so the
+// demo still works without Azure credentials.
+// ---------------------------------------------------------------------------
 
 export async function generateAnomalyExplanation(anomaly: Anomaly): Promise<AiResponse> {
-  // Simulate async AI call
-  await new Promise(resolve => setTimeout(resolve, 800));
+  if (!isAiConfigured()) {
+    // Simulate async AI call
+    await new Promise(resolve => setTimeout(resolve, 800));
 
-  return {
-    explanation: anomaly.explanation,
-    possibleCauses: anomaly.possibleCauses,
-    recommendedFollowUp: anomaly.recommendedFollowUp,
-    draftEmail: generateDraftEmail(anomaly),
-    confidenceLevel: deriveConfidenceLevel(anomaly),
-    evidenceList: buildEvidenceList(anomaly),
-  };
+    return {
+      explanation: anomaly.explanation,
+      possibleCauses: anomaly.possibleCauses,
+      recommendedFollowUp: anomaly.recommendedFollowUp,
+      draftEmail: generateDraftEmail(anomaly),
+      confidenceLevel: deriveConfidenceLevel(anomaly),
+      evidenceList: buildEvidenceList(anomaly),
+    };
+  }
+
+  return apiPost<AiResponse>('/api/ai/finance/generate-explanation', { anomaly });
 }
 
 function deriveConfidenceLevel(anomaly: Anomaly): number {
@@ -72,7 +75,11 @@ Group Finance`;
 }
 
 export async function regenerateDraftEmail(anomaly: Anomaly): Promise<string> {
-  // TODO: Azure AI Foundry - regenerate with different tone/emphasis
-  await new Promise(resolve => setTimeout(resolve, 600));
-  return generateDraftEmail(anomaly);
+  if (!isAiConfigured()) {
+    await new Promise(resolve => setTimeout(resolve, 600));
+    return generateDraftEmail(anomaly);
+  }
+
+  const result = await apiPost<{ draftEmail: string }>('/api/ai/finance/regenerate-email', { anomaly });
+  return result.draftEmail;
 }

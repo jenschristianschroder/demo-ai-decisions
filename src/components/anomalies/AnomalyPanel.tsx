@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { Anomaly, AnomalyStatus, AiResponse } from '../../types/finance';
-import { generateAnomalyExplanation } from '../../lib/mockAi';
+import { generateAnomalyExplanation } from '../../lib/financeAi';
 import { formatCurrency } from '../../lib/formatters';
 import FollowUpAssistant from './FollowUpAssistant';
 import AuditTrail from '../audit/AuditTrail';
