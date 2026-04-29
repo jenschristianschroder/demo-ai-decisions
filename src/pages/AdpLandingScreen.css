@@ -290,3 +290,126 @@
   font-size: 12px;
   color: #cccccc;
 }
+
+/* Generate Demo Data panel */
+.adp-landing-generate {
+  margin-bottom: 28px;
+  padding: 20px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.adp-landing-generate-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111111;
+  margin-bottom: 6px;
+}
+
+.adp-landing-generate-hint {
+  font-size: 13px;
+  color: #666666;
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+
+.adp-landing-generate-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 60px;
+  background: #ffffff;
+  color: #111111;
+  box-sizing: border-box;
+}
+
+.adp-landing-generate-textarea:focus {
+  outline: none;
+  border-color: #0f766e;
+}
+
+.adp-landing-generate-textarea:disabled {
+  background: #f3f4f6;
+  color: #999999;
+}
+
+.adp-landing-generate-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.adp-landing-generate-btn {
+  font-size: 13px;
+  padding: 9px 18px;
+}
+
+.adp-landing-generate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.adp-landing-generate-reset {
+  background: none;
+  border: none;
+  color: #0f766e;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.adp-landing-generate-reset:hover {
+  color: #065f46;
+}
+
+.adp-landing-generate-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.adp-landing-generate-loading {
+  background: #f0f9ff;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.adp-landing-generate-success {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.adp-landing-generate-error {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+@keyframes adp-spin {
+  to { transform: rotate(360deg); }
+}
+
+.adp-landing-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #bae6fd;
+  border-top-color: #0369a1;
+  border-radius: 50%;
+  animation: adp-spin 0.6s linear infinite;
+  flex-shrink: 0;
+}

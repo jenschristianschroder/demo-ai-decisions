@@ -1,9 +1,44 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { generateDemoData } from '../lib/adpAi';
+import { setAdpData, resetAdpData } from '../data/mockAdpData';
 import './AdpLandingScreen.css';
 
 const AdpLandingScreen: React.FC = () => {
   const navigate = useNavigate();
+  const [prompt, setPrompt] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handleGenerate = async () => {
+    if (!prompt.trim()) return;
+    setGenerating(true);
+    setSuccessMsg('');
+    setErrorMsg('');
+    try {
+      const result = await generateDemoData(prompt.trim());
+      if (result.valid) {
+        setAdpData(result.data);
+        const count = result.data.accounts.length;
+        setSuccessMsg(`Demo data generated — ${count} account${count !== 1 ? 's' : ''} loaded`);
+        setTimeout(() => navigate('/adp/dashboard'), 1000);
+      } else {
+        setErrorMsg(result.message);
+      }
+    } catch {
+      setErrorMsg('Something went wrong while generating demo data. Please try again.');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleReset = () => {
+    resetAdpData();
+    setSuccessMsg('');
+    setErrorMsg('');
+    setPrompt('');
+  };
 
   return (
     <div className="adp-landing-root">
@@ -80,6 +115,52 @@ const AdpLandingScreen: React.FC = () => {
               <div className="adp-landing-feature-desc">Sustain follow-through with smart nudges — the KAM supervises execution, not manual data entry, ensuring ideas drive outcomes</div>
             </div>
           </div>
+        </div>
+
+        <div className="adp-landing-generate">
+          <div className="adp-landing-generate-label">Generate Custom Demo Data</div>
+          <p className="adp-landing-generate-hint">
+            Describe a business or industry and AI will generate a complete set of sample data tailored to your scenario.
+          </p>
+          <textarea
+            className="adp-landing-generate-textarea"
+            placeholder="e.g. A software vendor managing 5 enterprise healthcare accounts across EMEA…"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            disabled={generating}
+            rows={3}
+          />
+          <div className="adp-landing-generate-actions">
+            <button
+              className="adp-landing-btn-primary adp-landing-generate-btn"
+              onClick={handleGenerate}
+              disabled={generating || !prompt.trim()}
+            >
+              {generating ? 'Generating…' : 'Generate Demo Data'}
+            </button>
+            {successMsg && (
+              <button className="adp-landing-generate-reset" onClick={handleReset}>
+                Reset to Default
+              </button>
+            )}
+          </div>
+
+          {generating && (
+            <div className="adp-landing-generate-status adp-landing-generate-loading">
+              <span className="adp-landing-spinner" />
+              Generating your demo scenario…
+            </div>
+          )}
+          {successMsg && (
+            <div className="adp-landing-generate-status adp-landing-generate-success">
+              ✓ {successMsg}
+            </div>
+          )}
+          {errorMsg && (
+            <div className="adp-landing-generate-status adp-landing-generate-error">
+              {errorMsg}
+            </div>
+          )}
         </div>
 
         <div className="adp-landing-scenario">
