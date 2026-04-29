@@ -9,6 +9,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { aiRouter } from './routes/ai.js';
+import { DEFAULT_DEPLOYMENT } from './aiClient.js';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -54,5 +55,5 @@ app.get('/{*splat}', spaLimiter, (_req, res) => {
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
   console.log(`  AZURE_AI_ENDPOINT: ${process.env.AZURE_AI_ENDPOINT ? '✓ configured' : '✗ not set'}`);
-  console.log(`  AZURE_AI_DEPLOYMENT: ${process.env.AZURE_AI_DEPLOYMENT || 'gpt-4o (default)'}`);
+  console.log(`  AZURE_AI_DEPLOYMENT: ${process.env.AZURE_AI_DEPLOYMENT || DEFAULT_DEPLOYMENT + ' (default)'}`);
 });

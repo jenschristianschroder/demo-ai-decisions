@@ -36,6 +36,8 @@ async function getAccessToken(): Promise<string> {
   return tokenResponse.token;
 }
 
+export const DEFAULT_DEPLOYMENT = 'gpt-4o';
+
 /**
  * Send a chat completion request to Azure AI Foundry using bearer token
  * authentication (Managed Identity) and return the parsed JSON from the
@@ -46,7 +48,7 @@ export async function chatCompletion<T>(
   temperature = 0.3,
 ): Promise<T> {
   const endpoint = process.env.AZURE_AI_ENDPOINT;
-  const deploymentName = process.env.AZURE_AI_DEPLOYMENT || 'gpt-4o';
+  const deploymentName = process.env.AZURE_AI_DEPLOYMENT || DEFAULT_DEPLOYMENT;
   const apiVersion = process.env.AZURE_AI_API_VERSION || '2024-12-01-preview';
 
   if (!endpoint) {
