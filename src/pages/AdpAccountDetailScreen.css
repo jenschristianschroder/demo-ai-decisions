@@ -1,0 +1,930 @@
+/* ==========================================================================
+   ADP Account Detail — Page & Sub-components
+   ========================================================================== */
+
+/* --- Root & Layout --- */
+.adp-detail-root {
+  min-height: 100vh;
+  background: #f8f9fa;
+  display: flex;
+  flex-direction: column;
+}
+
+.adp-detail-not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 80vh;
+  gap: 16px;
+  color: #333;
+  font-size: 15px;
+}
+
+.adp-detail-btn-secondary {
+  font-size: 13px;
+  padding: 8px 18px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  color: #333;
+  transition: background 0.15s;
+}
+.adp-detail-btn-secondary:hover {
+  background: #f3f4f6;
+}
+
+.adp-detail-empty {
+  text-align: center;
+  color: #888;
+  font-size: 14px;
+  padding: 48px 0;
+}
+
+/* --- Sticky Header --- */
+.adp-detail-header-bar {
+  background: #ffffff;
+  border-bottom: 1.5px solid #222222;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.adp-detail-header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 14px 0 10px;
+}
+
+/* Breadcrumb */
+.adp-detail-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.adp-detail-breadcrumb-link {
+  font-size: 13px;
+  color: #666666;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.adp-detail-breadcrumb-link:hover {
+  color: #111111;
+}
+
+.adp-detail-breadcrumb-sep {
+  font-size: 13px;
+  color: #cccccc;
+}
+
+.adp-detail-breadcrumb-current {
+  font-size: 13px;
+  color: #111111;
+  font-weight: 600;
+}
+
+/* Title row */
+.adp-detail-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.adp-detail-account-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.adp-detail-subtitle {
+  font-size: 13px;
+  color: #666;
+}
+
+.adp-detail-capture-btn {
+  font-size: 13px;
+  padding: 8px 20px;
+  border: none;
+  border-radius: 8px;
+  background: #0f766e;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.adp-detail-capture-btn:hover {
+  background: #0d6d64;
+}
+
+/* --- Nudge Banner --- */
+.adp-detail-nudge-banner {
+  background: #fef3c7;
+  border-bottom: 1px solid #fde68a;
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #92400e;
+  font-weight: 500;
+}
+
+.adp-detail-nudge-icon {
+  font-size: 16px;
+}
+
+/* --- Tab Bar --- */
+.adp-detail-tab-bar {
+  background: #fff;
+  border-bottom: 1.5px solid #e5e7eb;
+  padding: 0 24px;
+  position: sticky;
+  top: 57px; /* below header */
+  z-index: 9;
+}
+
+.adp-detail-tab-bar-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  gap: 0;
+}
+
+.adp-detail-tab {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 12px 20px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #666;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+.adp-detail-tab:hover {
+  color: #111;
+}
+.adp-detail-tab-active {
+  color: #0f766e;
+  border-bottom-color: #0f766e;
+  font-weight: 600;
+}
+
+/* --- Body --- */
+.adp-detail-body {
+  flex: 1;
+  padding: 24px;
+}
+
+.adp-detail-body-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ==========================================================================
+   Overview Tab
+   ========================================================================== */
+
+.adp-detail-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Health card */
+.adp-detail-health-card {
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px 24px;
+}
+
+.adp-detail-health-top {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.adp-detail-health-number {
+  font-size: 42px;
+  font-weight: 700;
+  color: #111;
+  line-height: 1;
+}
+
+.adp-detail-health-trend {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.adp-detail-trend-improving {
+  background: #dcfce7;
+  color: #15803d;
+}
+.adp-detail-trend-stable {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.adp-detail-trend-declining {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.adp-detail-health-bar-bg {
+  width: 100%;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.adp-detail-health-bar-fill {
+  height: 100%;
+  background: #0f766e;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.adp-detail-health-label {
+  display: block;
+  font-size: 11px;
+  color: #888;
+  margin-top: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Key metrics */
+.adp-detail-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.adp-detail-metric-card {
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.adp-detail-metric-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: #111;
+}
+
+.adp-detail-metric-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* SWOT grid */
+.adp-detail-swot-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.adp-detail-swot-cell {
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+.adp-detail-swot-cell h4 {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.adp-detail-swot-cell ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.adp-detail-swot-cell li {
+  font-size: 13px;
+  color: #333;
+  margin-bottom: 4px;
+  line-height: 1.45;
+}
+
+.adp-detail-swot-strengths {
+  background: #f0fdf4;
+}
+.adp-detail-swot-weaknesses {
+  background: #fef2f2;
+}
+.adp-detail-swot-opportunities {
+  background: #eff6ff;
+}
+.adp-detail-swot-threats {
+  background: #fefce8;
+}
+
+.adp-detail-swot-strengths h4 { color: #15803d; }
+.adp-detail-swot-weaknesses h4 { color: #b91c1c; }
+.adp-detail-swot-opportunities h4 { color: #2563eb; }
+.adp-detail-swot-threats h4 { color: #a16207; }
+
+/* Vision & Objectives */
+.adp-detail-vision-card,
+.adp-detail-objectives-card {
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px 22px;
+}
+
+.adp-detail-vision-card h4,
+.adp-detail-objectives-card h4 {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.adp-detail-vision-card p {
+  font-size: 14px;
+  color: #333;
+  margin: 0;
+  line-height: 1.55;
+}
+
+.adp-detail-objectives-card ol {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.adp-detail-objectives-card li {
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   Stakeholders Tab
+   ========================================================================== */
+
+.adp-detail-stakeholders {
+  overflow-x: auto;
+}
+
+.adp-detail-stakeholder-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.adp-detail-stakeholder-table th,
+.adp-detail-stakeholder-table td {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 13px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.adp-detail-stakeholder-table th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #888;
+  font-weight: 600;
+  background: #fafafa;
+}
+
+.adp-detail-stakeholder-name {
+  font-weight: 600;
+  color: #111;
+}
+
+.adp-detail-sentiment-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.adp-detail-dot-positive { background: #15803d; }
+.adp-detail-dot-neutral { background: #9ca3af; }
+.adp-detail-dot-negative { background: #b91c1c; }
+
+.adp-detail-sentiment-text {
+  font-size: 13px;
+  color: #333;
+  text-transform: capitalize;
+}
+
+.adp-detail-influence-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: capitalize;
+}
+
+.adp-detail-influence-high {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.adp-detail-influence-medium {
+  background: #fef3c7;
+  color: #92400e;
+}
+.adp-detail-influence-low {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.adp-detail-email-link {
+  font-size: 13px;
+  color: #0f766e;
+  text-decoration: none;
+}
+.adp-detail-email-link:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Signal Feed Tab
+   ========================================================================== */
+
+.adp-detail-signals {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.adp-detail-signal-filters {
+  display: flex;
+  gap: 10px;
+}
+
+.adp-detail-filter-select {
+  font-size: 13px;
+  padding: 7px 14px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+}
+
+.adp-detail-signal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.adp-detail-signal-card {
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+
+.adp-detail-signal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.adp-detail-category-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: capitalize;
+}
+
+.adp-detail-severity-badge {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.adp-detail-signal-status {
+  font-size: 11px;
+  color: #888;
+  margin-left: auto;
+  text-transform: capitalize;
+}
+
+.adp-detail-signal-desc {
+  font-size: 14px;
+  color: #333;
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+.adp-detail-signal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.adp-detail-signal-date {
+  font-size: 12px;
+  color: #999;
+}
+
+.adp-detail-suggest-btn {
+  font-size: 12px;
+  padding: 5px 14px;
+  border: 1.5px solid #0f766e;
+  border-radius: 6px;
+  background: #fff;
+  color: #0f766e;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.adp-detail-suggest-btn:hover:not(:disabled) {
+  background: #0f766e;
+  color: #fff;
+}
+.adp-detail-suggest-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.adp-detail-suggested-actions {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: #f0fdf4;
+  border-radius: 8px;
+  border: 1px solid #bbf7d0;
+}
+
+.adp-detail-suggested-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #15803d;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.adp-detail-suggested-actions ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.adp-detail-suggested-actions li {
+  font-size: 13px;
+  color: #333;
+  margin-bottom: 6px;
+  line-height: 1.45;
+}
+
+.adp-detail-suggested-meta {
+  display: block;
+  font-size: 11px;
+  color: #888;
+  font-weight: 400;
+  margin-top: 2px;
+}
+
+/* ==========================================================================
+   Initiative List Tab
+   ========================================================================== */
+
+.adp-detail-initiatives {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.adp-detail-initiative-card {
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.adp-detail-initiative-card.adp-detail-overdue {
+  border-color: #fca5a5;
+  background: #fff5f5;
+}
+
+.adp-detail-initiative-header {
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.adp-detail-initiative-header:hover {
+  background: #fafafa;
+}
+
+.adp-detail-initiative-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.adp-detail-expand-icon {
+  font-size: 12px;
+  color: #888;
+  width: 16px;
+}
+
+.adp-detail-initiative-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111;
+  flex: 1;
+}
+
+.adp-detail-status-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: capitalize;
+}
+
+.adp-detail-priority-badge {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.adp-detail-initiative-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 24px;
+}
+
+.adp-detail-progress-bar-bg {
+  flex: 1;
+  max-width: 200px;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.adp-detail-progress-bar-fill {
+  height: 100%;
+  background: #0f766e;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.adp-detail-progress-label {
+  font-size: 12px;
+  color: #555;
+  font-weight: 600;
+  min-width: 34px;
+}
+
+.adp-detail-initiative-owner,
+.adp-detail-initiative-due {
+  font-size: 12px;
+  color: #888;
+}
+
+.adp-detail-initiative-actions {
+  border-top: 1px solid #f0f0f0;
+  padding: 12px 20px 16px;
+  background: #fafafa;
+}
+
+/* ==========================================================================
+   Action Checklist (sub-component)
+   ========================================================================== */
+
+.adp-detail-action-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.adp-detail-action-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.adp-detail-action-item:last-child {
+  border-bottom: none;
+}
+
+.adp-detail-action-check {
+  font-size: 16px;
+  line-height: 1;
+  min-width: 20px;
+  text-align: center;
+}
+
+.adp-detail-action-done .adp-detail-action-check {
+  color: #15803d;
+}
+.adp-detail-action-overdue .adp-detail-action-check {
+  color: #b91c1c;
+}
+.adp-detail-action-pending .adp-detail-action-check {
+  color: #666666;
+}
+
+.adp-detail-action-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.adp-detail-action-desc {
+  font-size: 13px;
+  color: #333;
+}
+
+.adp-detail-action-done .adp-detail-action-desc {
+  text-decoration: line-through;
+  color: #999;
+}
+
+.adp-detail-action-meta {
+  font-size: 11px;
+  color: #999;
+}
+
+.adp-detail-action-overdue .adp-detail-action-meta {
+  color: #b91c1c;
+}
+
+/* ==========================================================================
+   Plan Completeness Tab
+   ========================================================================== */
+
+.adp-detail-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.adp-detail-plan-overview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 28px 0;
+}
+
+.adp-detail-plan-ring {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.adp-detail-plan-ring::after {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  background: #fff;
+  border-radius: 50%;
+}
+
+.adp-detail-plan-ring-value {
+  position: relative;
+  z-index: 1;
+  font-size: 28px;
+  font-weight: 700;
+  color: #111;
+}
+
+.adp-detail-plan-ring-label {
+  font-size: 13px;
+  color: #888;
+  font-weight: 500;
+}
+
+.adp-detail-plan-sections {
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px 22px;
+}
+
+.adp-detail-plan-sections h4 {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #111;
+  margin: 0 0 14px;
+}
+
+.adp-detail-plan-section-row {
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.adp-detail-plan-section-row:last-child {
+  border-bottom: none;
+}
+
+.adp-detail-plan-section-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.adp-detail-plan-section-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111;
+  flex: 1;
+}
+
+.adp-detail-section-status-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: capitalize;
+}
+
+.adp-detail-plan-section-date {
+  font-size: 11px;
+  color: #999;
+}
+
+.adp-detail-plan-section-guidance {
+  font-size: 13px;
+  color: #555;
+  margin: 4px 0 0;
+  line-height: 1.5;
+}
+
+.adp-detail-plan-recs {
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px 22px;
+}
+
+.adp-detail-plan-recs h4 {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #111;
+  margin: 0 0 10px;
+}
+
+.adp-detail-plan-recs ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.adp-detail-plan-recs li {
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
