@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { UploadResult } from '../types/finance';
 import SampleDataModal from '../components/SampleDataModal';
@@ -13,12 +13,34 @@ const mockResult: UploadResult = {
   intercompanyBreaks: 2,
 };
 
+const ACCEPTED_TYPES = [
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/csv',
+  'application/json',
+];
+const ACCEPTED_EXTENSIONS = ['.xlsx', '.csv', '.json'];
+
 const UploadScreen: React.FC = () => {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState<UploadResult | null>(null);
   const [previewFile, setPreviewFile] = useState<{ fileName: string; label: string } | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+
+  const isValidFile = (file: File): boolean => {
+    if (ACCEPTED_TYPES.includes(file.type)) return true;
+    return ACCEPTED_EXTENSIONS.some(ext => file.name.toLowerCase().endsWith(ext));
+  };
+
+  const handleFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const validFiles = Array.from(files).filter(isValidFile);
+    if (validFiles.length > 0) {
+      setSelectedFiles(validFiles);
+    }
+  };
 
   const handleProcess = () => {
     setProcessing(true);
@@ -38,6 +60,18 @@ const UploadScreen: React.FC = () => {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragging(false);
+    handleFiles(e.dataTransfer.files);
+  };
+
+  const handleClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleFiles(e.target.files);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   return (
@@ -62,11 +96,36 @@ const UploadScreen: React.FC = () => {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
+            onClick={handleClick}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); }}
           >
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="drop-zone-input"
+              accept=".xlsx,.csv,.json"
+              multiple
+              onChange={handleFileInputChange}
+            />
             <div className="drop-icon">📁</div>
-            <div className="drop-title">Drag & drop submission files here</div>
-            <div className="drop-subtitle">Supports Excel (.xlsx), CSV, or JSON — up to 50MB per file</div>
-            <div className="drop-hint">Or use the demo data already loaded for March 2026</div>
+            {selectedFiles.length > 0 ? (
+              <>
+                <div className="drop-title">
+                  {selectedFiles.length === 1
+                    ? selectedFiles[0].name
+                    : `${selectedFiles.length} files selected`}
+                </div>
+                <div className="drop-subtitle">Click or drop to replace</div>
+              </>
+            ) : (
+              <>
+                <div className="drop-title">Drag & drop submission files here</div>
+                <div className="drop-subtitle">Supports Excel (.xlsx), CSV, or JSON — up to 50MB per file</div>
+                <div className="drop-hint">Or use the demo data already loaded for March 2026</div>
+              </>
+            )}
           </div>
 
           <div className="upload-info">
