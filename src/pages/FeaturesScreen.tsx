@@ -17,6 +17,13 @@ const DEMOS: DemoInfo[] = [
       'Detect unusual subsidiary reporting patterns, explain the risk, and accelerate close review with AI-assisted decisions',
     route: '/finance-anomaly-demo',
   },
+  {
+    id: 'account-development-planning',
+    label: 'Account Development Planning',
+    description:
+      'Transform account planning from static documentation into a living execution engine — capture insights, drive initiatives, and sustain follow-through',
+    route: '/adp',
+  },
 ];
 
 const DemoIcon: React.FC<{ id: string }> = ({ id }) => {
@@ -27,6 +34,17 @@ const DemoIcon: React.FC<{ id: string }> = ({ id }) => {
           <rect width="32" height="32" rx="8" fill="#111111" />
           <path d="M8 22L14 10L18 18L21 14L24 22H8Z" fill="white" opacity="0.9" />
           <circle cx="24" cy="11" r="2.5" fill="white" />
+        </svg>
+      );
+    case 'account-development-planning':
+      return (
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" rx="8" fill="#111111" />
+          <circle cx="16" cy="10" r="3" fill="white" opacity="0.9" />
+          <circle cx="9" cy="22" r="2.5" fill="white" opacity="0.9" />
+          <circle cx="23" cy="22" r="2.5" fill="white" opacity="0.9" />
+          <line x1="14" y1="12.5" x2="10.5" y2="19.5" stroke="white" strokeWidth="1.2" opacity="0.7" />
+          <line x1="18" y1="12.5" x2="21.5" y2="19.5" stroke="white" strokeWidth="1.2" opacity="0.7" />
         </svg>
       );
     default:

@@ -122,6 +122,114 @@
   font-weight: 500;
 }
 
+/* Value shift section */
+.adp-landing-value-shift {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 28px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.adp-landing-shift-from {
+  flex: 1;
+  padding: 14px 16px;
+  background: #fef2f2;
+}
+
+.adp-landing-shift-to {
+  flex: 1;
+  padding: 14px 16px;
+  background: #f0fdfa;
+}
+
+.adp-landing-shift-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f766e;
+  background: #ffffff;
+  border-left: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
+}
+
+.adp-landing-shift-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #999999;
+  margin-bottom: 8px;
+}
+
+.adp-landing-shift-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.adp-landing-shift-items span {
+  font-size: 12px;
+  font-weight: 500;
+  color: #333333;
+}
+
+.adp-landing-shift-from .adp-landing-shift-items span {
+  color: #991b1b;
+}
+
+.adp-landing-shift-to .adp-landing-shift-items span {
+  color: #065f46;
+}
+
+/* Business value outcomes */
+.adp-landing-outcomes {
+  margin-bottom: 24px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.adp-landing-outcomes-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #666666;
+  margin-bottom: 12px;
+}
+
+.adp-landing-outcomes-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.adp-landing-outcome {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.adp-landing-outcome-metric {
+  font-size: 14px;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+
+.adp-landing-outcome-text {
+  font-size: 12px;
+  color: #333333;
+  line-height: 1.4;
+}
+
 .adp-landing-actions {
   display: flex;
   gap: 12px;

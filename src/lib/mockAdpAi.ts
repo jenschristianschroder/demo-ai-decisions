@@ -15,6 +15,8 @@ import type { ExtractionResult, Signal } from '../types/adp';
  * TODO: Replace with Azure AI Foundry model endpoint for NLP extraction.
  */
 export async function extractSignals(rawText: string): Promise<ExtractionResult> {
+  // TODO: In production, rawText is sent to the Azure AI Foundry model endpoint for NLP extraction.
+  void rawText;
   await new Promise(resolve => setTimeout(resolve, 1200));
 
   const now = new Date().toISOString();

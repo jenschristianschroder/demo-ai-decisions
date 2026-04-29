@@ -24,8 +24,30 @@ const AdpLandingScreen: React.FC = () => {
           <div className="adp-landing-title-block">
             <h1 className="adp-landing-title">Account Development Planning Assistant</h1>
             <p className="adp-landing-subtitle">
-              Transform account planning from static documentation into a living execution engine powered by AI insights.
+              Transform account planning from static documentation into a living, data-driven execution system — one that supports daily account management and enables sustained follow-through on strategic priorities.
             </p>
+          </div>
+        </div>
+
+        <div className="adp-landing-value-shift">
+          <div className="adp-landing-shift-from">
+            <div className="adp-landing-shift-label">From</div>
+            <div className="adp-landing-shift-items">
+              <span>Static documentation</span>
+              <span>Annual workshops</span>
+              <span>Fragmented data</span>
+              <span>Low adoption</span>
+            </div>
+          </div>
+          <div className="adp-landing-shift-arrow">→</div>
+          <div className="adp-landing-shift-to">
+            <div className="adp-landing-shift-label">To</div>
+            <div className="adp-landing-shift-items">
+              <span>Living execution engine</span>
+              <span>Continuous planning</span>
+              <span>Single source of truth</span>
+              <span>Daily engagement</span>
+            </div>
           </div>
         </div>
 
@@ -34,28 +56,28 @@ const AdpLandingScreen: React.FC = () => {
             <span className="adp-landing-feature-icon">📝</span>
             <div>
               <div className="adp-landing-feature-title">Low-Friction Capture</div>
-              <div className="adp-landing-feature-desc">Capture account intelligence from meetings, emails, and customer interactions with minimal effort</div>
+              <div className="adp-landing-feature-desc">Remove adoption barriers — capture intelligence from meetings, emails, and customer interactions with minimal effort, improving data quality over time</div>
             </div>
           </div>
           <div className="adp-landing-feature">
             <span className="adp-landing-feature-icon">💡</span>
             <div>
               <div className="adp-landing-feature-title">AI-Powered Insights</div>
-              <div className="adp-landing-feature-desc">Identify risks, opportunities, and gaps across your account portfolio automatically</div>
+              <div className="adp-landing-feature-desc">Move from subjective judgement to data-driven decision support — automatically identify risks, opportunities, and gaps across your account portfolio</div>
             </div>
           </div>
           <div className="adp-landing-feature">
             <span className="adp-landing-feature-icon">🎯</span>
             <div>
-              <div className="adp-landing-feature-title">Execution Engine</div>
-              <div className="adp-landing-feature-desc">Turn insights into tracked initiatives with clear ownership, deadlines, and progress</div>
+              <div className="adp-landing-feature-title">Insight-to-Execution Linkage</div>
+              <div className="adp-landing-feature-desc">Close the gap between insight and outcome — translate signals into tracked initiatives with clear ownership, deadlines, and measurable progress</div>
             </div>
           </div>
           <div className="adp-landing-feature">
             <span className="adp-landing-feature-icon">🔔</span>
             <div>
-              <div className="adp-landing-feature-title">Continuous Nudges</div>
-              <div className="adp-landing-feature-desc">Stay on top of stale data, overdue actions, and missing information with smart reminders</div>
+              <div className="adp-landing-feature-title">Continuous Execution Discipline</div>
+              <div className="adp-landing-feature-desc">Sustain follow-through with smart nudges — the KAM supervises execution, not manual data entry, ensuring ideas drive outcomes</div>
             </div>
           </div>
         </div>
@@ -63,6 +85,28 @@ const AdpLandingScreen: React.FC = () => {
         <div className="adp-landing-scenario">
           <div className="adp-landing-scenario-label">Demo Scenario</div>
           <div className="adp-landing-scenario-text">6 accounts · 12 signals · 8 initiatives · Continuous execution model</div>
+        </div>
+
+        <div className="adp-landing-outcomes">
+          <div className="adp-landing-outcomes-title">Business Value</div>
+          <div className="adp-landing-outcomes-grid">
+            <div className="adp-landing-outcome">
+              <span className="adp-landing-outcome-metric">↑</span>
+              <span className="adp-landing-outcome-text">ADP adoption through friction removal</span>
+            </div>
+            <div className="adp-landing-outcome">
+              <span className="adp-landing-outcome-metric">↑</span>
+              <span className="adp-landing-outcome-text">Data quality and relevance over time</span>
+            </div>
+            <div className="adp-landing-outcome">
+              <span className="adp-landing-outcome-metric">🔗</span>
+              <span className="adp-landing-outcome-text">Insights → Initiatives → Actions → Outcomes</span>
+            </div>
+            <div className="adp-landing-outcome">
+              <span className="adp-landing-outcome-metric">⟳</span>
+              <span className="adp-landing-outcome-text">Documentation → Decision Support → Execution</span>
+            </div>
+          </div>
         </div>
 
         <div className="adp-landing-actions">
