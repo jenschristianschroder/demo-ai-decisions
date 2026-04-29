@@ -5,6 +5,7 @@
  */
 
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { aiRouter } from './routes/ai.js';
@@ -15,8 +16,16 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 // Body parsing
 app.use(express.json());
 
+// Rate limiting for API routes
+const apiLimiter = rateLimit({
+  windowMs: 60_000, // 1 minute
+  limit: 30,        // 30 requests per minute per IP
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+});
+
 // ── API routes ──────────────────────────────────────────────────────────────
-app.use('/api/ai', aiRouter);
+app.use('/api/ai', apiLimiter, aiRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -30,7 +39,14 @@ const staticDir = path.resolve(__dirname, '../../public');
 app.use(express.static(staticDir));
 
 // SPA fallback — serve index.html for any route not matched above
-app.get('/{*splat}', (_req, res) => {
+const spaLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 120,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+});
+
+app.get('/{*splat}', spaLimiter, (_req, res) => {
   res.sendFile(path.join(staticDir, 'index.html'));
 });
 
