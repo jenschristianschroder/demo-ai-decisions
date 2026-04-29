@@ -6,6 +6,7 @@ import LandingScreen from './pages/LandingScreen';
 import DashboardScreen from './pages/DashboardScreen';
 import EntityDetailScreen from './pages/EntityDetailScreen';
 import UploadScreen from './pages/UploadScreen';
+import AdpDashboardScreen from './pages/AdpDashboardScreen';
 
 const App: React.FC = () => {
   return (
@@ -16,6 +17,7 @@ const App: React.FC = () => {
       <Route path="/dashboard" element={<DashboardScreen />} />
       <Route path="/entity/:entityId" element={<EntityDetailScreen />} />
       <Route path="/upload" element={<UploadScreen />} />
+      <Route path="/adp/dashboard" element={<AdpDashboardScreen />} />
     </Routes>
   );
 };
