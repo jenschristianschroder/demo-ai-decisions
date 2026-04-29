@@ -52,7 +52,8 @@ financeAiRouter.post('/generate-explanation', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('generate-explanation error:', err);
-    res.status(502).json({ error: 'AI request failed' });
+    const message = err instanceof Error ? err.message : 'AI request failed';
+    res.status(502).json({ error: 'AI request failed', details: message });
   }
 });
 
@@ -93,6 +94,7 @@ financeAiRouter.post('/regenerate-email', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('regenerate-email error:', err);
-    res.status(502).json({ error: 'AI request failed' });
+    const message = err instanceof Error ? err.message : 'AI request failed';
+    res.status(502).json({ error: 'AI request failed', details: message });
   }
 });

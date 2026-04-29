@@ -7,7 +7,7 @@ import InteractionInput from '../components/adp/capture/InteractionInput';
 import ExtractionPreview from '../components/adp/capture/ExtractionPreview';
 import './AdpCaptureScreen.css';
 
-type Phase = 'input' | 'loading' | 'preview' | 'saved';
+type Phase = 'input' | 'loading' | 'preview' | 'saved' | 'error';
 
 const AdpCaptureScreen: React.FC = () => {
   const { accountId } = useParams<{ accountId: string }>();
@@ -16,12 +16,20 @@ const AdpCaptureScreen: React.FC = () => {
 
   const [phase, setPhase] = useState<Phase>('input');
   const [result, setResult] = useState<ExtractionResult | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   const handleExtract = async (_type: InteractionType, rawText: string) => {
     setPhase('loading');
-    const extraction = await extractSignals(rawText);
-    setResult(extraction);
-    setPhase('preview');
+    setErrorMessage('');
+    try {
+      const extraction = await extractSignals(rawText);
+      setResult(extraction);
+      setPhase('preview');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setErrorMessage(message);
+      setPhase('error');
+    }
   };
 
   const handleSave = () => {
@@ -34,6 +42,7 @@ const AdpCaptureScreen: React.FC = () => {
   const handleBack = () => {
     setPhase('input');
     setResult(null);
+    setErrorMessage('');
   };
 
   if (!account) {
@@ -96,6 +105,18 @@ const AdpCaptureScreen: React.FC = () => {
             <div className="adp-capture-success">
               <span className="adp-capture-success-icon">✓</span>
               <span>Saved successfully — redirecting to account…</span>
+            </div>
+          )}
+
+          {phase === 'error' && (
+            <div className="adp-capture-input-card">
+              <div className="adp-capture-error">
+                <p className="adp-capture-error-title">⚠ Failed to extract insights</p>
+                <p className="adp-capture-error-details">{errorMessage}</p>
+                <button className="adp-capture-btn-secondary" onClick={handleBack}>
+                  Try Again
+                </button>
+              </div>
             </div>
           )}
         </div>
