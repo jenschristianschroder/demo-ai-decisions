@@ -1,0 +1,184 @@
+.adp-landing-root {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  padding: 24px;
+}
+
+.adp-landing-card {
+  background: #ffffff;
+  border: 1.5px solid #222222;
+  border-radius: 12px;
+  padding: 48px;
+  max-width: 640px;
+  width: 100%;
+}
+
+.adp-landing-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #111111;
+  background: #f0f0f0;
+  border: 1px solid #222222;
+  border-radius: 4px;
+  padding: 3px 10px;
+  margin-bottom: 32px;
+}
+
+.adp-landing-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.adp-landing-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.adp-landing-title-block {
+  flex: 1;
+}
+
+.adp-landing-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #111111;
+  line-height: 1.2;
+  margin-bottom: 10px;
+}
+
+.adp-landing-subtitle {
+  font-size: 15px;
+  color: #444444;
+  line-height: 1.6;
+}
+
+.adp-landing-features {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.adp-landing-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+}
+
+.adp-landing-feature-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.adp-landing-feature-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111111;
+  margin-bottom: 2px;
+}
+
+.adp-landing-feature-desc {
+  font-size: 13px;
+  color: #666666;
+  line-height: 1.4;
+}
+
+.adp-landing-scenario {
+  background: #0f766e;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 28px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.adp-landing-scenario-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #99d4cf;
+  white-space: nowrap;
+}
+
+.adp-landing-scenario-text {
+  font-size: 14px;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.adp-landing-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.adp-landing-btn-primary {
+  background: #111111;
+  color: #ffffff;
+  border: 1.5px solid #111111;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.adp-landing-btn-primary:hover {
+  background: #333333;
+  border-color: #333333;
+}
+
+.adp-landing-btn-launch {
+  flex: 1;
+  font-size: 15px;
+}
+
+.adp-landing-btn-secondary {
+  background: #ffffff;
+  color: #111111;
+  border: 1.5px solid #222222;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.adp-landing-btn-secondary:hover {
+  background: #f0f0f0;
+}
+
+.adp-landing-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.adp-landing-footer-tag {
+  font-size: 12px;
+  color: #999999;
+}
+
+.adp-landing-footer-sep {
+  font-size: 12px;
+  color: #cccccc;
+}
