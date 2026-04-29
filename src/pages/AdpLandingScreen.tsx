@@ -44,7 +44,9 @@ const AdpLandingScreen: React.FC = () => {
       if (result.valid) {
         setAdpData(result.data);
         const count = result.data.accounts.length;
-        setSuccessMsg(`Demo data generated — ${count} account${count !== 1 ? 's' : ''} loaded`);
+        const planCount = result.data.accountPlans.length;
+        const warning = planCount < count ? ` (${count - planCount} account(s) may have partial data)` : '';
+        setSuccessMsg(`Demo data generated — ${count} account${count !== 1 ? 's' : ''} loaded${warning}`);
         setTimeout(() => navigate('/adp/dashboard'), 1500);
       } else {
         setErrorMsg(result.message);
@@ -181,9 +183,11 @@ const AdpLandingScreen: React.FC = () => {
           )}
           {progressSteps.length > 0 && (
             <div className="adp-landing-progress-list">
-              {progressSteps.map((step, i) => (
+              {progressSteps.map((step) => {
+                const key = step.phase === 'account' ? `account-${step.accountName}` : step.phase;
+                return (
                 <div
-                  key={i}
+                  key={key}
                   className={`adp-landing-progress-step adp-landing-progress-${step.status}`}
                 >
                   <span className="adp-landing-progress-icon">
@@ -193,7 +197,8 @@ const AdpLandingScreen: React.FC = () => {
                   </span>
                   <span className="adp-landing-progress-msg">{step.message}</span>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
           {successMsg && (

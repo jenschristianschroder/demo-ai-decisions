@@ -492,12 +492,14 @@ aiRouter.post('/generate-account-data', async (req, res) => {
       return;
     }
 
+    const idx = typeof accountIndex === 'number' ? accountIndex : 1;
+
     const userMessage = `Original business context: ${prompt}
 
-Account to generate data for (index ${accountIndex ?? 0}):
+Account to generate data for (index ${idx}):
 ${JSON.stringify(account, null, 2)}
 
-Generate a complete dataset for this account. Use ID prefix number ${accountIndex ?? 0} to avoid collisions (e.g. STK-${accountIndex ?? 0}-001).`;
+Generate a complete dataset for this account. Use ID prefix number ${idx} to avoid collisions (e.g. STK-${idx}-001).`;
 
     const result = await chatCompletion(
       [
