@@ -69,7 +69,8 @@ aiRouter.post('/extract-signals', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('extract-signals error:', err);
-    res.status(502).json({ error: 'AI request failed' });
+    const message = err instanceof Error ? err.message : 'AI request failed';
+    res.status(502).json({ error: 'AI request failed', details: message });
   }
 });
 
@@ -111,7 +112,8 @@ aiRouter.post('/generate-insights', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('generate-insights error:', err);
-    res.status(502).json({ error: 'AI request failed' });
+    const message = err instanceof Error ? err.message : 'AI request failed';
+    res.status(502).json({ error: 'AI request failed', details: message });
   }
 });
 
@@ -153,7 +155,8 @@ aiRouter.post('/suggest-actions', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('suggest-actions error:', err);
-    res.status(502).json({ error: 'AI request failed' });
+    const message = err instanceof Error ? err.message : 'AI request failed';
+    res.status(502).json({ error: 'AI request failed', details: message });
   }
 });
 
@@ -194,7 +197,8 @@ aiRouter.post('/assess-plan', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('assess-plan error:', err);
-    res.status(502).json({ error: 'AI request failed' });
+    const message = err instanceof Error ? err.message : 'AI request failed';
+    res.status(502).json({ error: 'AI request failed', details: message });
   }
 });
 
@@ -235,7 +239,8 @@ aiRouter.post('/generate-nudges', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('generate-nudges error:', err);
-    res.status(502).json({ error: 'AI request failed' });
+    const message = err instanceof Error ? err.message : 'AI request failed';
+    res.status(502).json({ error: 'AI request failed', details: message });
   }
 });
 
@@ -274,6 +279,7 @@ aiRouter.post('/draft-followup', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('draft-followup error:', err);
-    res.status(502).json({ error: 'AI request failed' });
+    const message = err instanceof Error ? err.message : 'AI request failed';
+    res.status(502).json({ error: 'AI request failed', details: message });
   }
 });
