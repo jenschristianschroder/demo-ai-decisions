@@ -1,4 +1,13 @@
-import type { ExtractionResult, Signal } from '../types/adp';
+import type {
+  ExtractionResult,
+  Signal,
+  AdpAccount,
+  Stakeholder,
+  Interaction,
+  Initiative,
+  Nudge,
+  AccountPlan,
+} from '../types/adp';
 import type { GeneratedDemoData } from '../data/mockAdpData';
 import { apiPost } from './aiClient';
 import { isAiConfigured } from './aiConfig';
@@ -354,7 +363,7 @@ Account Team`,
 }
 
 // ---------------------------------------------------------------------------
-// generateDemoData
+// generateDemoData  (legacy single-call — kept for backward compatibility)
 // ---------------------------------------------------------------------------
 
 export type GenerateDemoDataResult =
@@ -373,4 +382,154 @@ export async function generateDemoData(
   }
 
   return apiPost<GenerateDemoDataResult>('/api/ai/generate-demo-data', { prompt });
+}
+
+// ---------------------------------------------------------------------------
+// Phased generation: plan → per-account data
+// ---------------------------------------------------------------------------
+
+/** The plan returned by generate-demo-plan */
+export interface DemoPlan {
+  accounts: AdpAccount[];
+}
+
+export type GenerateDemoPlanResult =
+  | { valid: true; plan: DemoPlan }
+  | { valid: false; message: string };
+
+/** Data generated for a single account */
+export interface AccountData {
+  stakeholders: Stakeholder[];
+  interactions: Interaction[];
+  signals: Signal[];
+  initiatives: Initiative[];
+  nudges: Nudge[];
+  accountPlan: AccountPlan;
+}
+
+export type ProgressStep =
+  | { phase: 'plan'; status: 'running' | 'done' | 'error'; message: string }
+  | { phase: 'account'; accountName: string; index: number; total: number; status: 'running' | 'done' | 'error'; message: string }
+  | { phase: 'complete'; status: 'done'; message: string };
+
+/**
+ * Generate demo data in phases:
+ *   1. Generate a plan (list of accounts)
+ *   2. For each account, generate full data
+ *
+ * Calls `onProgress` at each step so the UI can show live updates.
+ */
+export async function generateDemoDataPhased(
+  prompt: string,
+  onProgress: (step: ProgressStep) => void,
+): Promise<GenerateDemoDataResult> {
+  if (!isAiConfigured()) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return {
+      valid: false,
+      message: 'AI backend is not configured — live generation is unavailable in mock mode.',
+    };
+  }
+
+  // --- Step 1: generate the plan ---
+  onProgress({ phase: 'plan', status: 'running', message: 'Creating account plan…' });
+
+  let planResult: GenerateDemoPlanResult;
+  try {
+    planResult = await apiPost<GenerateDemoPlanResult>('/api/ai/generate-demo-plan', { prompt });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Failed to generate plan';
+    onProgress({ phase: 'plan', status: 'error', message: msg });
+    return { valid: false, message: msg };
+  }
+
+  if (!planResult.valid) {
+    onProgress({ phase: 'plan', status: 'error', message: planResult.message });
+    return { valid: false, message: planResult.message };
+  }
+
+  const accounts = planResult.plan.accounts.map(a => ({
+    ...a,
+    lastUpdated: a.lastUpdated || new Date().toISOString(),
+  }));
+
+  onProgress({ phase: 'plan', status: 'done', message: `Plan ready — ${accounts.length} accounts` });
+
+  // --- Step 2: generate data for each account ---
+  const allStakeholders: Stakeholder[] = [];
+  const allInteractions: Interaction[] = [];
+  const allSignals: Signal[] = [];
+  const allInitiatives: Initiative[] = [];
+  const allNudges: Nudge[] = [];
+  const allAccountPlans: AccountPlan[] = [];
+
+  for (let i = 0; i < accounts.length; i++) {
+    const account = accounts[i];
+    onProgress({
+      phase: 'account',
+      accountName: account.name,
+      index: i + 1,
+      total: accounts.length,
+      status: 'running',
+      message: `Generating data for ${account.name}…`,
+    });
+
+    try {
+      const accountData = await apiPost<AccountData>('/api/ai/generate-account-data', {
+        prompt,
+        account,
+        accountIndex: i + 1,
+      });
+
+      allStakeholders.push(...(accountData.stakeholders || []));
+      allInteractions.push(...(accountData.interactions || []));
+      allSignals.push(...(accountData.signals || []));
+      allInitiatives.push(...(accountData.initiatives || []));
+      allNudges.push(...(accountData.nudges || []));
+      if (accountData.accountPlan) {
+        allAccountPlans.push(accountData.accountPlan);
+      }
+
+      // Update account signalCount to match actual generated signals
+      accounts[i] = {
+        ...account,
+        signalCount: (accountData.signals || []).length,
+      };
+
+      onProgress({
+        phase: 'account',
+        accountName: account.name,
+        index: i + 1,
+        total: accounts.length,
+        status: 'done',
+        message: `${account.name} complete`,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to generate account data';
+      onProgress({
+        phase: 'account',
+        accountName: account.name,
+        index: i + 1,
+        total: accounts.length,
+        status: 'error',
+        message: `${account.name}: ${msg}`,
+      });
+      // Continue with remaining accounts rather than aborting
+    }
+  }
+
+  onProgress({ phase: 'complete', status: 'done', message: `All ${accounts.length} accounts generated` });
+
+  return {
+    valid: true,
+    data: {
+      accounts,
+      stakeholders: allStakeholders,
+      interactions: allInteractions,
+      signals: allSignals,
+      initiatives: allInitiatives,
+      nudges: allNudges,
+      accountPlans: allAccountPlans,
+    },
+  };
 }
