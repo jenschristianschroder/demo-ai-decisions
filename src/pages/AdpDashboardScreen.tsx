@@ -7,14 +7,14 @@ import './AdpDashboardScreen.css';
 
 const AdpDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
-  const [, setRefresh] = React.useState(0);
+  const [, forceRender] = React.useState(0);
   const accounts = getAdpAccounts();
   const summary = getAdpDashboardSummary();
   const usingGenerated = isUsingGeneratedData();
 
   const handleResetData = () => {
     resetAdpData();
-    setRefresh(n => n + 1);
+    forceRender(n => n + 1);
   };
 
   const sorted = [...accounts].sort((a, b) => a.healthScore - b.healthScore);
