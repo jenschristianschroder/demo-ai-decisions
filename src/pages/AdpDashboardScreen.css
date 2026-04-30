@@ -76,6 +76,25 @@
   color: #666666;
 }
 
+/* Reset to default data button */
+.adp-dash-reset-btn {
+  background: none;
+  border: 1.5px solid #d1d5db;
+  border-radius: 6px;
+  color: #0f766e;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 7px 14px;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.adp-dash-reset-btn:hover {
+  background: #f0fdfa;
+  border-color: #0f766e;
+}
+
 /* Main content */
 .adp-dash-main {
   max-width: 1400px;

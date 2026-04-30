@@ -2,13 +2,20 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import PortfolioSummary from '../components/adp/dashboard/PortfolioSummary';
 import AccountCard from '../components/adp/dashboard/AccountCard';
-import { getAdpAccounts, getAdpDashboardSummary } from '../data/mockAdpData';
+import { getAdpAccounts, getAdpDashboardSummary, isUsingGeneratedData, resetAdpData } from '../data/mockAdpData';
 import './AdpDashboardScreen.css';
 
 const AdpDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
+  const [, setRefresh] = React.useState(0);
   const accounts = getAdpAccounts();
   const summary = getAdpDashboardSummary();
+  const usingGenerated = isUsingGeneratedData();
+
+  const handleResetData = () => {
+    resetAdpData();
+    setRefresh(n => n + 1);
+  };
 
   const sorted = [...accounts].sort((a, b) => a.healthScore - b.healthScore);
 
@@ -30,6 +37,11 @@ const AdpDashboardScreen: React.FC = () => {
                 {accounts.length} accounts · KAM overview
               </div>
             </div>
+            {usingGenerated && (
+              <button className="adp-dash-reset-btn" onClick={handleResetData}>
+                ↩ Reset to Default Data
+              </button>
+            )}
           </div>
         </div>
       </header>
