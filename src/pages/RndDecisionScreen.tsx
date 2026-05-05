@@ -7,8 +7,6 @@ const RndDecisionScreen: React.FC = () => {
   const navigate = useNavigate();
   const scenario = getRndScenario();
   const { concepts, agentOutputs, finalDecision } = scenario;
-
-  const recommended = concepts.find((c) => c.id === finalDecision.recommendedConceptId);
   const pkg = finalDecision.decisionPackage;
 
   return (
@@ -178,28 +176,6 @@ const RndDecisionScreen: React.FC = () => {
                 </tr>
               </tbody>
             </table>
-          </div>
-        </div>
-
-        {/* Presentation story */}
-        <div className="rnd-decision-section rnd-decision-section--story">
-          <h2 className="rnd-decision-section-title">How to Present This Decision</h2>
-          <blockquote className="rnd-decision-story">
-            "The R&amp;D team has {concepts.length} possible product concepts. Instead of relying only on expert judgment or isolated datasets, a network of specialized agents gathers evidence, challenges assumptions, scores each option, and recommends the best path forward. The human R&amp;D team remains accountable for the decision, but the agents make the trade-offs visible and evidence-based."
-          </blockquote>
-          <div className="rnd-decision-slide-info">
-            <div className="rnd-decision-slide-label">Slide Title</div>
-            <div className="rnd-decision-slide-value">Agentic AI for Data-Driven R&amp;D Decisions</div>
-          </div>
-          <div className="rnd-decision-slide-info">
-            <div className="rnd-decision-slide-label">Decision to Make</div>
-            <div className="rnd-decision-slide-value">{scenario.businessQuestion}</div>
-          </div>
-          <div className="rnd-decision-slide-info">
-            <div className="rnd-decision-slide-label">Recommended</div>
-            <div className="rnd-decision-slide-value">
-              {recommended ? `${recommended.label}: ${recommended.name}` : 'N/A'} — advance to next development phase
-            </div>
           </div>
         </div>
 
