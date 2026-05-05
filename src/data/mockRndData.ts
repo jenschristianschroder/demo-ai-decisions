@@ -110,8 +110,8 @@ const ORIGINAL_SCENARIO: RndScenario = {
       agentName: 'Regulatory & Risk Agent',
       entries: [
         { conceptId: 'concept-a', safetyRisk: 'Medium', claimsRisk: 'Medium', documentationBurden: 'Medium' },
-        { conceptId: 'concept-b', safetyRisk: 'Low-medium' as 'Medium', claimsRisk: 'Medium', documentationBurden: 'Medium' },
-        { conceptId: 'concept-c', safetyRisk: 'Medium-high' as 'Medium', claimsRisk: 'High', documentationBurden: 'High' },
+        { conceptId: 'concept-b', safetyRisk: 'Medium-low', claimsRisk: 'Medium', documentationBurden: 'Medium' },
+        { conceptId: 'concept-c', safetyRisk: 'Medium-high', claimsRisk: 'High', documentationBurden: 'High' },
       ],
       keyInsight: 'Concept C may require more training, clearer instructions, and stronger evidence before making leakage-reduction claims.',
     },
@@ -120,7 +120,7 @@ const ORIGINAL_SCENARIO: RndScenario = {
       agentName: 'Manufacturing & Cost Agent',
       entries: [
         { conceptId: 'concept-a', manufacturability: 'Medium', estimatedCostImpact: 'Medium', scaleUpRisk: 'Medium' },
-        { conceptId: 'concept-b', manufacturability: 'Medium-high', estimatedCostImpact: 'Low-medium' as 'Medium', scaleUpRisk: 'Low-medium' as 'Medium' },
+        { conceptId: 'concept-b', manufacturability: 'Medium-high', estimatedCostImpact: 'Medium-low', scaleUpRisk: 'Medium-low' },
         { conceptId: 'concept-c', manufacturability: 'High', estimatedCostImpact: 'Low', scaleUpRisk: 'Low' },
       ],
       keyInsight: 'Concept B is not the cheapest, but it has a good balance between performance and scalability.',
@@ -130,8 +130,8 @@ const ORIGINAL_SCENARIO: RndScenario = {
       agentName: 'Sustainability Agent',
       entries: [
         { conceptId: 'concept-a', materialFootprint: 'Medium', packagingImpact: 'Low', sustainabilityRisk: 'Medium' },
-        { conceptId: 'concept-b', materialFootprint: 'Low-medium' as 'Medium', packagingImpact: 'Low', sustainabilityRisk: 'Low' },
-        { conceptId: 'concept-c', materialFootprint: 'Medium-high' as 'Medium', packagingImpact: 'Medium', sustainabilityRisk: 'Medium-high' as 'Medium' },
+        { conceptId: 'concept-b', materialFootprint: 'Medium-low', packagingImpact: 'Low', sustainabilityRisk: 'Low' },
+        { conceptId: 'concept-c', materialFootprint: 'Medium-high', packagingImpact: 'Medium', sustainabilityRisk: 'Medium-high' },
       ],
     },
   },
