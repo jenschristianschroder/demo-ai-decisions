@@ -568,3 +568,39 @@
   border: 1px solid #fecaca;
   font-size: 13px;
 }
+
+/* Agents list (pre-run state) */
+.rnd-dash-agents-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.rnd-dash-agent-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.rnd-dash-agent-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.rnd-dash-agent-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111111;
+  margin-bottom: 2px;
+}
+
+.rnd-dash-agent-desc {
+  font-size: 12px;
+  color: #666666;
+  line-height: 1.4;
+}

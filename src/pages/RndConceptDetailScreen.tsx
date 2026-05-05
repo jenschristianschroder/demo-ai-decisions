@@ -45,19 +45,20 @@ const RndConceptDetailScreen: React.FC = () => {
   }
 
   const { agentOutputs, finalDecision } = scenario;
-  const score = finalDecision.scores.find((s) => s.conceptId === conceptId);
-  const action = finalDecision.conceptActions.find((a) => a.conceptId === conceptId);
-  const isRecommended = conceptId === finalDecision.recommendedConceptId;
+  const hasResults = !!agentOutputs && !!finalDecision;
+  const score = finalDecision?.scores.find((s) => s.conceptId === conceptId);
+  const action = finalDecision?.conceptActions.find((a) => a.conceptId === conceptId);
+  const isRecommended = finalDecision ? conceptId === finalDecision.recommendedConceptId : false;
 
-  // Agent entries for this concept
-  const simEntry = agentOutputs.simulation.entries.find((e) => e.conceptId === conceptId);
-  const labEntry = agentOutputs.labTest.entries.find((e) => e.conceptId === conceptId);
-  const failureMode = agentOutputs.labTest.failureModes.find((f) => f.conceptId === conceptId);
-  const hfEntry = agentOutputs.humanFactors.entries.find((e) => e.conceptId === conceptId);
-  const regEntry = agentOutputs.regulatoryRisk.entries.find((e) => e.conceptId === conceptId);
-  const mfgEntry = agentOutputs.manufacturingCost.entries.find((e) => e.conceptId === conceptId);
-  const susEntry = agentOutputs.sustainability.entries.find((e) => e.conceptId === conceptId);
-  const designEntry = agentOutputs.designConcept.entries.find((e) => e.conceptId === conceptId);
+  // Agent entries for this concept (only available after running chain)
+  const simEntry = agentOutputs?.simulation.entries.find((e) => e.conceptId === conceptId);
+  const labEntry = agentOutputs?.labTest.entries.find((e) => e.conceptId === conceptId);
+  const failureMode = agentOutputs?.labTest.failureModes.find((f) => f.conceptId === conceptId);
+  const hfEntry = agentOutputs?.humanFactors.entries.find((e) => e.conceptId === conceptId);
+  const regEntry = agentOutputs?.regulatoryRisk.entries.find((e) => e.conceptId === conceptId);
+  const mfgEntry = agentOutputs?.manufacturingCost.entries.find((e) => e.conceptId === conceptId);
+  const susEntry = agentOutputs?.sustainability.entries.find((e) => e.conceptId === conceptId);
+  const designEntry = agentOutputs?.designConcept.entries.find((e) => e.conceptId === conceptId);
 
   const Badge: React.FC<{ level: string }> = ({ level }) => (
     <span className="rnd-detail-rating-badge" style={{ background: ratingBg(level), color: ratingColor(level) }}>
@@ -123,7 +124,7 @@ const RndConceptDetailScreen: React.FC = () => {
         </div>
 
         {/* Scoring breakdown */}
-        {score && (
+        {score && finalDecision && (
           <div className="rnd-detail-section">
             <h2 className="rnd-detail-section-title">Scoring Breakdown</h2>
             <div className="rnd-detail-score-grid">
@@ -286,7 +287,7 @@ const RndConceptDetailScreen: React.FC = () => {
         )}
 
         {/* Agent Reasoning Traces */}
-        {(() => {
+        {agentOutputs && (() => {
           const reasoningTraces: Array<{ title: string; icon: string; reasoning: string | undefined }> = [
             { title: 'User Insights', icon: '👤', reasoning: agentOutputs.userInsights.reasoning },
             { title: 'Clinical Evidence', icon: '📋', reasoning: agentOutputs.clinicalEvidence.reasoning },
@@ -314,10 +315,19 @@ const RndConceptDetailScreen: React.FC = () => {
           );
         })()}
 
+        {!hasResults && (
+          <div className="rnd-detail-section">
+            <h2 className="rnd-detail-section-title">No Agent Results Yet</h2>
+            <p className="rnd-detail-overview-label">Run the AI Agent Chain from the dashboard to generate analysis for this concept.</p>
+          </div>
+        )}
+
         <div className="rnd-detail-actions-bar">
-          <button className="rnd-detail-btn-primary" onClick={() => navigate('/rnd/decision')}>
-            View Decision Package
-          </button>
+          {hasResults && (
+            <button className="rnd-detail-btn-primary" onClick={() => navigate('/rnd/decision')}>
+              View Decision Package
+            </button>
+          )}
           <button className="rnd-detail-btn-secondary" onClick={() => navigate('/rnd/dashboard')}>
             ← Back to Dashboard
           </button>

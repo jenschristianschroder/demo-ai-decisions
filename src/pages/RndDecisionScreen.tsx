@@ -7,6 +7,38 @@ const RndDecisionScreen: React.FC = () => {
   const navigate = useNavigate();
   const scenario = getRndScenario();
   const { concepts, agentOutputs, finalDecision } = scenario;
+
+  if (!finalDecision || !agentOutputs) {
+    return (
+      <div className="rnd-decision-root">
+        <header className="rnd-decision-header">
+          <div className="rnd-decision-header-inner">
+            <div className="rnd-decision-breadcrumb">
+              <button className="rnd-decision-breadcrumb-link" onClick={() => navigate('/rnd')}>Home</button>
+              <span className="rnd-decision-breadcrumb-sep">›</span>
+              <button className="rnd-decision-breadcrumb-link" onClick={() => navigate('/rnd/dashboard')}>Dashboard</button>
+              <span className="rnd-decision-breadcrumb-sep">›</span>
+              <span className="rnd-decision-breadcrumb-current">Decision Package</span>
+            </div>
+            <h1 className="rnd-decision-title">Decision Package</h1>
+            <div className="rnd-decision-subtitle">{scenario.title}</div>
+          </div>
+        </header>
+        <main className="rnd-decision-main">
+          <div className="rnd-decision-section">
+            <h2 className="rnd-decision-section-title">No Decision Available</h2>
+            <p className="rnd-decision-text">Run the AI Agent Chain from the dashboard to generate the decision package.</p>
+          </div>
+          <div className="rnd-decision-actions-bar">
+            <button className="rnd-decision-btn-secondary" onClick={() => navigate('/rnd/dashboard')}>
+              ← Back to Dashboard
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   const pkg = finalDecision.decisionPackage;
 
   return (

@@ -367,13 +367,12 @@
 
 .rnd-decision-table-total-row td {
   border-bottom: none;
+  text-align: center;
 }
 
 .rnd-decision-table-total {
   color: #0f766e;
   font-size: 15px;
-  text-align: center;
-  display: block;
 }
 
 /* Story */
