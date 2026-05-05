@@ -30,7 +30,7 @@ const RndLandingScreen: React.FC = () => {
               s => s.phase === 'agent' && s.agentName === step.agentName
             );
             if (idx >= 0) { updated[idx] = step; return updated; }
-          if (step.phase === 'decision') {
+          } else if (step.phase === 'decision') {
             const idx = updated.findIndex(s => s.phase === 'decision' && (!('step' in step) || !('step' in s) || s.step === step.step));
             if (idx >= 0) { updated[idx] = step; return updated; }
           }
