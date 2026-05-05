@@ -11,6 +11,10 @@ import AdpDashboardScreen from './pages/AdpDashboardScreen';
 import AdpAccountDetailScreen from './pages/AdpAccountDetailScreen';
 import AdpCaptureScreen from './pages/AdpCaptureScreen';
 import AdpNudgeCentreScreen from './pages/AdpNudgeCentreScreen';
+import RndLandingScreen from './pages/RndLandingScreen';
+import RndDashboardScreen from './pages/RndDashboardScreen';
+import RndConceptDetailScreen from './pages/RndConceptDetailScreen';
+import RndDecisionScreen from './pages/RndDecisionScreen';
 
 const App: React.FC = () => {
   return (
@@ -26,6 +30,10 @@ const App: React.FC = () => {
       <Route path="/adp/account/:accountId" element={<AdpAccountDetailScreen />} />
       <Route path="/adp/account/:accountId/capture" element={<AdpCaptureScreen />} />
       <Route path="/adp/nudges" element={<AdpNudgeCentreScreen />} />
+      <Route path="/rnd" element={<RndLandingScreen />} />
+      <Route path="/rnd/dashboard" element={<RndDashboardScreen />} />
+      <Route path="/rnd/concept/:conceptId" element={<RndConceptDetailScreen />} />
+      <Route path="/rnd/decision" element={<RndDecisionScreen />} />
     </Routes>
   );
 };

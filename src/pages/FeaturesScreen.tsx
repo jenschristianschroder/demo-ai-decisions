@@ -24,6 +24,13 @@ const DEMOS: DemoInfo[] = [
       'Transform account planning from static documentation into a living execution engine — capture insights, drive initiatives, and sustain follow-through',
     route: '/adp',
   },
+  {
+    id: 'research-and-development',
+    label: 'Research & Development',
+    description:
+      'Select the best product concept to advance using a network of specialized AI agents that evaluate user value, clinical evidence, simulation, lab data, usability, regulatory risk, and more',
+    route: '/rnd',
+  },
 ];
 
 const DemoIcon: React.FC<{ id: string }> = ({ id }) => {
@@ -45,6 +52,17 @@ const DemoIcon: React.FC<{ id: string }> = ({ id }) => {
           <circle cx="23" cy="22" r="2.5" fill="white" opacity="0.9" />
           <line x1="14" y1="12.5" x2="10.5" y2="19.5" stroke="white" strokeWidth="1.2" opacity="0.7" />
           <line x1="18" y1="12.5" x2="21.5" y2="19.5" stroke="white" strokeWidth="1.2" opacity="0.7" />
+        </svg>
+      );
+    case 'research-and-development':
+      return (
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" rx="8" fill="#111111" />
+          <path d="M16 6L20 12H12L16 6Z" fill="white" opacity="0.9" />
+          <path d="M8 18L12 24H4L8 18Z" fill="white" opacity="0.7" />
+          <path d="M24 18L28 24H20L24 18Z" fill="white" opacity="0.7" />
+          <line x1="14" y1="13" x2="10" y2="17" stroke="white" strokeWidth="1.2" opacity="0.5" />
+          <line x1="18" y1="13" x2="22" y2="17" stroke="white" strokeWidth="1.2" opacity="0.5" />
         </svg>
       );
     default:

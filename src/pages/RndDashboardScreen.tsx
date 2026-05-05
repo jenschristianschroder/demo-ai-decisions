@@ -1,0 +1,273 @@
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getRndScenario, getRndDashboardSummary } from '../data/mockRndData';
+import './RndDashboardScreen.css';
+
+const ratingColor = (level: string): string => {
+  switch (level) {
+    case 'High': return '#166534';
+    case 'Medium-high': return '#15803d';
+    case 'Medium': return '#a16207';
+    case 'Medium-low': return '#c2410c';
+    case 'Low': return '#b91c1c';
+    default: return '#666666';
+  }
+};
+
+const ratingBg = (level: string): string => {
+  switch (level) {
+    case 'High': return '#f0fdf4';
+    case 'Medium-high': return '#f0fdf4';
+    case 'Medium': return '#fffbeb';
+    case 'Medium-low': return '#fff7ed';
+    case 'Low': return '#fef2f2';
+    default: return '#f8f9fa';
+  }
+};
+
+const RndDashboardScreen: React.FC = () => {
+  const navigate = useNavigate();
+  const scenario = getRndScenario();
+  const summary = getRndDashboardSummary();
+  const { concepts, agentOutputs, finalDecision } = scenario;
+
+  // Sort concepts by weighted score descending
+  const sortedScores = [...finalDecision.scores].sort(
+    (a, b) => b.weightedScore - a.weightedScore,
+  );
+
+  return (
+    <div className="rnd-dash-root">
+      <header className="rnd-dash-header">
+        <div className="rnd-dash-header-inner">
+          <div className="rnd-dash-breadcrumb">
+            <button className="rnd-dash-breadcrumb-link" onClick={() => navigate('/rnd')}>
+              Home
+            </button>
+            <span className="rnd-dash-breadcrumb-sep">›</span>
+            <span className="rnd-dash-breadcrumb-current">R&amp;D Decision Dashboard</span>
+          </div>
+          <div className="rnd-dash-title-row">
+            <div>
+              <h1 className="rnd-dash-title">{scenario.title}</h1>
+              <div className="rnd-dash-subtitle">{scenario.businessQuestion}</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="rnd-dash-main">
+        {/* Summary cards */}
+        <div className="rnd-dash-summary-cards">
+          <div className="rnd-dash-summary-card">
+            <div className="rnd-dash-summary-card-value">{summary.totalConcepts}</div>
+            <div className="rnd-dash-summary-card-label">Concepts</div>
+            <div className="rnd-dash-summary-card-sub">Under evaluation</div>
+          </div>
+          <div className="rnd-dash-summary-card">
+            <div className="rnd-dash-summary-card-value">{summary.agentsCompleted}/{summary.totalAgents}</div>
+            <div className="rnd-dash-summary-card-label">Agents</div>
+            <div className="rnd-dash-summary-card-sub">Completed</div>
+          </div>
+          <div className="rnd-dash-summary-card rnd-dash-summary-card--highlight">
+            <div className="rnd-dash-summary-card-value">{summary.recommendedConcept}</div>
+            <div className="rnd-dash-summary-card-label">Recommended</div>
+            <div className="rnd-dash-summary-card-sub">Highest weighted score</div>
+          </div>
+          <div className="rnd-dash-summary-card">
+            <div className="rnd-dash-summary-card-value">{summary.weightedScoreRange.min.toFixed(1)}–{summary.weightedScoreRange.max.toFixed(1)}</div>
+            <div className="rnd-dash-summary-card-label">Score Range</div>
+            <div className="rnd-dash-summary-card-sub">Weighted (1–10)</div>
+          </div>
+        </div>
+
+        {/* Context */}
+        <div className="rnd-dash-context">
+          <div className="rnd-dash-context-label">Context</div>
+          <div className="rnd-dash-context-text">{scenario.context}</div>
+        </div>
+
+        {/* Concept cards */}
+        <div className="rnd-dash-section-header">
+          <h2 className="rnd-dash-section-title">Concepts</h2>
+          <span className="rnd-dash-section-subtitle">Ranked by weighted score</span>
+        </div>
+
+        <div className="rnd-dash-concept-grid">
+          {sortedScores.map((score, idx) => {
+            const concept = concepts.find((c) => c.id === score.conceptId);
+            if (!concept) return null;
+            const action = finalDecision.conceptActions.find((a) => a.conceptId === concept.id);
+            const isRecommended = concept.id === finalDecision.recommendedConceptId;
+            return (
+              <div
+                key={concept.id}
+                className={`rnd-dash-concept-card ${isRecommended ? 'rnd-dash-concept-card--recommended' : ''}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(`/rnd/concept/${concept.id}`)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/rnd/concept/${concept.id}`); } }}
+              >
+                <div className="rnd-dash-concept-card-top">
+                  <div className="rnd-dash-concept-rank">#{idx + 1}</div>
+                  <div>
+                    <div className="rnd-dash-concept-name">{concept.label}: {concept.name}</div>
+                    <div className="rnd-dash-concept-desc">{concept.description}</div>
+                  </div>
+                </div>
+
+                <div className="rnd-dash-concept-score-row">
+                  <span className="rnd-dash-concept-score">{score.weightedScore.toFixed(1)}</span>
+                  <span className="rnd-dash-concept-score-label">Weighted Score</span>
+                </div>
+
+                {action && (
+                  <div className="rnd-dash-concept-badges">
+                    <span className={`rnd-dash-badge rnd-dash-badge-${action.action}`}>
+                      {action.action === 'advance' ? '✓ Advance' : action.action === 'backup' ? '↻ Backup' : '↓ Deprioritize'}
+                    </span>
+                    {isRecommended && <span className="rnd-dash-badge rnd-dash-badge-recommended">★ Recommended</span>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Agent overview table */}
+        <div className="rnd-dash-section-header">
+          <h2 className="rnd-dash-section-title">Agent Analysis Summary</h2>
+        </div>
+
+        <div className="rnd-dash-table-wrap">
+          <table className="rnd-dash-table">
+            <thead>
+              <tr>
+                <th>Agent</th>
+                {concepts.map((c) => (
+                  <th key={c.id}>{c.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="rnd-dash-table-agent">🧪 Simulation</td>
+                {agentOutputs.simulation.entries.map((e) => (
+                  <td key={e.conceptId}>
+                    <span className="rnd-dash-table-value">{e.predictedLeakageReduction}</span>
+                    <span className="rnd-dash-table-sub" style={{ color: ratingColor(e.confidence) }}>
+                      {e.confidence}
+                    </span>
+                  </td>
+                ))}
+              </tr>
+              <tr>
+                <td className="rnd-dash-table-agent">🔬 Lab Test — Leakage</td>
+                {agentOutputs.labTest.entries.map((e) => (
+                  <td key={e.conceptId}>
+                    <span className="rnd-dash-table-badge" style={{ background: ratingBg(e.leakageResistance), color: ratingColor(e.leakageResistance) }}>
+                      {e.leakageResistance}
+                    </span>
+                  </td>
+                ))}
+              </tr>
+              <tr>
+                <td className="rnd-dash-table-agent">👤 Usability</td>
+                {agentOutputs.humanFactors.entries.map((e) => (
+                  <td key={e.conceptId}>
+                    <span className="rnd-dash-table-badge" style={{ background: ratingBg(e.easeOfUse), color: ratingColor(e.easeOfUse) }}>
+                      {e.easeOfUse}
+                    </span>
+                  </td>
+                ))}
+              </tr>
+              <tr>
+                <td className="rnd-dash-table-agent">⚠️ Regulatory Risk</td>
+                {agentOutputs.regulatoryRisk.entries.map((e) => (
+                  <td key={e.conceptId}>
+                    <span className="rnd-dash-table-badge" style={{ background: ratingBg(e.safetyRisk), color: ratingColor(e.safetyRisk) }}>
+                      {e.safetyRisk}
+                    </span>
+                  </td>
+                ))}
+              </tr>
+              <tr>
+                <td className="rnd-dash-table-agent">🏭 Manufacturing</td>
+                {agentOutputs.manufacturingCost.entries.map((e) => (
+                  <td key={e.conceptId}>
+                    <span className="rnd-dash-table-badge" style={{ background: ratingBg(e.manufacturability), color: ratingColor(e.manufacturability) }}>
+                      {e.manufacturability}
+                    </span>
+                  </td>
+                ))}
+              </tr>
+              <tr>
+                <td className="rnd-dash-table-agent">🌿 Sustainability</td>
+                {agentOutputs.sustainability.entries.map((e) => (
+                  <td key={e.conceptId}>
+                    <span className="rnd-dash-table-badge" style={{ background: ratingBg(e.sustainabilityRisk), color: ratingColor(e.sustainabilityRisk) }}>
+                      {e.sustainabilityRisk}
+                    </span>
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Scoring table */}
+        <div className="rnd-dash-section-header">
+          <h2 className="rnd-dash-section-title">Weighted Scoring</h2>
+        </div>
+
+        <div className="rnd-dash-table-wrap">
+          <table className="rnd-dash-table">
+            <thead>
+              <tr>
+                <th>Criterion</th>
+                <th>Weight</th>
+                {concepts.map((c) => (
+                  <th key={c.id}>{c.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {finalDecision.criteria.map((cr) => (
+                <tr key={cr.name}>
+                  <td className="rnd-dash-table-agent">{cr.name}</td>
+                  <td><span className="rnd-dash-table-weight">{cr.weight}%</span></td>
+                  {finalDecision.scores.map((s) => (
+                    <td key={s.conceptId}>
+                      <span className="rnd-dash-table-score">{s.scores[cr.name]}</span>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+              <tr className="rnd-dash-table-total-row">
+                <td className="rnd-dash-table-agent"><strong>Weighted Total</strong></td>
+                <td></td>
+                {finalDecision.scores.map((s) => (
+                  <td key={s.conceptId}>
+                    <strong className="rnd-dash-table-total">{s.weightedScore.toFixed(1)}</strong>
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Actions */}
+        <div className="rnd-dash-actions-bar">
+          <button className="rnd-dash-btn-primary" onClick={() => navigate('/rnd/decision')}>
+            View Decision Package
+          </button>
+          <button className="rnd-dash-btn-secondary" onClick={() => navigate('/rnd')}>
+            ← Back to Overview
+          </button>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default RndDashboardScreen;
