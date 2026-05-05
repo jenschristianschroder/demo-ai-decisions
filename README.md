@@ -266,6 +266,72 @@ docker push $ACR/ai-decisions-spa:latest
 
 ---
 
+## RFP Response Automation Demo
+
+> **Route:** `/rfp` → `/rfp/dashboard`
+
+The **RFP Response Automation Demo** shows how multiple AI agents can analyze an incoming RFP and internal knowledge to produce a complete proposal response.
+
+### How to Run
+
+1. Start the app: `npm run dev` and open [http://localhost:5173](http://localhost:5173)
+2. Navigate to **Demos** → **RFP Response Automation** (or go directly to `/rfp`)
+3. Click **Run Analysis** to process the sample RFP
+4. View the results on the dashboard at `/rfp/dashboard`
+
+### Demo Scenario
+
+- **Buyer:** Acme Public Services (fictional government agency)
+- **Vendor:** Northstar Analytics (fictional B2B SaaS analytics company)
+- **RFP:** Enterprise Analytics and Reporting Platform procurement
+
+### Sample Data
+
+All sample data lives in `sample-data/` at the repo root:
+
+| Directory | Contents |
+|-----------|----------|
+| `sample-data/rfp/` | Incoming RFP package (markdown versions of PDF/DOCX/XLSX) |
+| `sample-data/knowledge/` | 11 internal knowledge files (product, security, legal, etc.) |
+| `sample-data/historical-rfps/` | 3 past RFP responses |
+| `sample-data/data/` | 6 CSV files (approved answers, SME directory, risk rules, etc.) |
+
+### How to Replace the Sample RFP
+
+Replace the files in `sample-data/rfp/` with your own RFP content in markdown format. The demo parses markdown text — the agents extract requirements using `REQ-` prefixed patterns.
+
+### Agent Workflow (8 Stages)
+
+| # | Agent | What It Does |
+|---|-------|-------------|
+| 1 | Intake Agent | Extracts buyer info, deadline, submission instructions, evaluation criteria |
+| 2 | Requirement Extraction | Identifies and categorizes all RFP requirements |
+| 3 | Knowledge Retrieval | Searches approved answers and knowledge base for each requirement |
+| 4 | Drafting Agent | Produces draft answers grounded in internal knowledge |
+| 5 | SME Routing | Assigns unanswered or risky items to subject matter experts |
+| 6 | Risk Review | Checks requirements against risk rules for legal/commercial flags |
+| 7 | Compliance Agent | Builds the compliance matrix with response status |
+| 8 | Response Assembly | Generates the final response preview with checklist |
+
+### Outputs Produced
+
+- **Intake Summary** — Buyer, deadline, evaluation criteria, required attachments
+- **Compliance Matrix** — Filterable table of all requirements with status/risk/owner
+- **Draft Answers** — Answers grounded in sample data with source citations
+- **SME Questions** — Questions routed to experts for gaps or risky items
+- **Risk Register** — Flagged risks with severity, reason, and required approvers
+- **Final Response Preview** — Assembled markdown response with executive summary
+
+### Known Limitations
+
+- Uses deterministic mock agent logic (no real AI calls) — works without Azure backend
+- RFP files are markdown (not actual PDF/DOCX/XLSX) for demo simplicity
+- Agent reasoning is simulated, not from a real LLM
+- No persistence — state resets on page refresh
+- CSV parsing is simple (no quoted fields with commas)
+
+---
+
 ## Suggested Future Enhancements
 
 - Live integration with Azure AI Foundry for real explanation generation
