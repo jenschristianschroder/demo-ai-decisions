@@ -1,4 +1,4 @@
-import type { RndScenario } from '../types/rnd';
+import type { RndScenario, RndAgentOutputs } from '../types/rnd';
 import type { GeneratedRndData } from '../data/mockRndData';
 import { apiPost } from './aiClient';
 
@@ -277,7 +277,7 @@ export async function generateRndDataPhased(
     data: {
       scenario: {
         ...scenario,
-        agentOutputs: agentOutputs as RndScenario['agentOutputs'],
+        agentOutputs: agentOutputs as unknown as RndAgentOutputs,
         finalDecision,
       },
     },
@@ -416,7 +416,7 @@ export async function runRndAgentChain(
     data: {
       scenario: {
         ...scenario,
-        agentOutputs: agentOutputs as RndScenario['agentOutputs'],
+        agentOutputs: agentOutputs as unknown as RndAgentOutputs,
         finalDecision,
       },
     },

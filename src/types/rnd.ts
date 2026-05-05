@@ -201,24 +201,26 @@ export interface FinalDecisionOutput {
 // Scenario (top-level container)
 // ---------------------------------------------------------------------------
 
+export interface RndAgentOutputs {
+  userInsights: UserInsightsOutput;
+  clinicalEvidence: ClinicalEvidenceOutput;
+  designConcept: DesignConceptOutput;
+  simulation: SimulationOutput;
+  labTest: LabTestOutput;
+  humanFactors: HumanFactorsOutput;
+  regulatoryRisk: RegulatoryRiskOutput;
+  manufacturingCost: ManufacturingCostOutput;
+  sustainability: SustainabilityOutput;
+}
+
 export interface RndScenario {
   id: string;
   title: string;
   businessQuestion: string;
   context: string;
   concepts: RndConcept[];
-  agentOutputs: {
-    userInsights: UserInsightsOutput;
-    clinicalEvidence: ClinicalEvidenceOutput;
-    designConcept: DesignConceptOutput;
-    simulation: SimulationOutput;
-    labTest: LabTestOutput;
-    humanFactors: HumanFactorsOutput;
-    regulatoryRisk: RegulatoryRiskOutput;
-    manufacturingCost: ManufacturingCostOutput;
-    sustainability: SustainabilityOutput;
-  };
-  finalDecision: FinalDecisionOutput;
+  agentOutputs?: RndAgentOutputs;
+  finalDecision?: FinalDecisionOutput;
 }
 
 // ---------------------------------------------------------------------------
