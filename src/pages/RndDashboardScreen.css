@@ -434,3 +434,137 @@
 .rnd-dash-btn-secondary:hover {
   background: #f0f0f0;
 }
+
+/* Run AI Agent Chain button */
+.rnd-dash-btn-run-chain {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #0f766e;
+  color: #ffffff;
+  border: 1.5px solid #0f766e;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.rnd-dash-btn-run-chain:hover:not(:disabled) {
+  background: #115e59;
+  border-color: #115e59;
+}
+
+.rnd-dash-btn-run-chain:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Spinners */
+.rnd-dash-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: rnd-dash-spin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+
+.rnd-dash-spinner-sm {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #bae6fd;
+  border-top-color: #0369a1;
+  border-radius: 50%;
+  animation: rnd-dash-spin 0.6s linear infinite;
+}
+
+@keyframes rnd-dash-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Progress panel */
+.rnd-dash-progress-panel {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0 24px;
+}
+
+.rnd-dash-progress-panel-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px 0;
+}
+
+.rnd-dash-progress-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #666666;
+  margin-bottom: 10px;
+}
+
+.rnd-dash-progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rnd-dash-progress-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.rnd-dash-progress-running {
+  background: #f0f9ff;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.rnd-dash-progress-done {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.rnd-dash-progress-error {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.rnd-dash-progress-icon {
+  flex-shrink: 0;
+  width: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.rnd-dash-progress-msg {
+  flex: 1;
+}
+
+.rnd-dash-progress-error-msg {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  font-size: 13px;
+}

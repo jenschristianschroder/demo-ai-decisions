@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getRndScenario, getRndDashboardSummary } from '../data/mockRndData';
+import { getRndScenario, getRndDashboardSummary, setRndData } from '../data/mockRndData';
+import { runRndAgentChain, type RndProgressStep } from '../lib/rndAi';
 import './RndDashboardScreen.css';
 
 const ratingColor = (level: string): string => {
@@ -27,9 +28,55 @@ const ratingBg = (level: string): string => {
 
 const RndDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
-  const scenario = getRndScenario();
+  const [scenario, setScenario] = useState(getRndScenario());
   const summary = getRndDashboardSummary();
   const { concepts, agentOutputs, finalDecision } = scenario;
+
+  const [running, setRunning] = useState(false);
+  const [progressSteps, setProgressSteps] = useState<RndProgressStep[]>([]);
+  const [runError, setRunError] = useState('');
+
+  const handleRunChain = async () => {
+    setRunning(true);
+    setRunError('');
+    setProgressSteps([]);
+    try {
+      const result = await runRndAgentChain(
+        { id: scenario.id, title: scenario.title, businessQuestion: scenario.businessQuestion, context: scenario.context, concepts: scenario.concepts },
+        (step) => {
+          setProgressSteps(prev => {
+            const updated = [...prev];
+            if (step.phase === 'plan') {
+              const idx = updated.findIndex(s => s.phase === 'plan');
+              if (idx >= 0) { updated[idx] = step; return updated; }
+            } else if (step.phase === 'agent') {
+              const idx = updated.findIndex(
+                s => s.phase === 'agent' && s.agentName === step.agentName
+              );
+              if (idx >= 0) { updated[idx] = step; return updated; }
+            } else if (step.phase === 'decision') {
+              const idx = updated.findIndex(s => s.phase === 'decision' && (!('step' in step) || !('step' in s) || s.step === step.step));
+              if (idx >= 0) { updated[idx] = step; return updated; }
+            }
+            return [...updated, step];
+          });
+        }
+      );
+      if (result.valid) {
+        setRndData(result.data);
+        setScenario(getRndScenario());
+      } else {
+        setRunError(result.message);
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error && err.message
+        ? err.message
+        : 'Something went wrong while running the agent chain.';
+      setRunError(message);
+    } finally {
+      setRunning(false);
+    }
+  };
 
   // Sort concepts by weighted score descending
   const sortedScores = [...finalDecision.scores].sort(
@@ -52,9 +99,55 @@ const RndDashboardScreen: React.FC = () => {
               <h1 className="rnd-dash-title">{scenario.title}</h1>
               <div className="rnd-dash-subtitle">{scenario.businessQuestion}</div>
             </div>
+            <button
+              className="rnd-dash-btn-run-chain"
+              onClick={handleRunChain}
+              disabled={running}
+            >
+              {running ? (
+                <>
+                  <span className="rnd-dash-spinner" />
+                  Running Agents…
+                </>
+              ) : (
+                '🚀 Run AI Agent Chain'
+              )}
+            </button>
           </div>
         </div>
       </header>
+
+      {/* Agent chain progress panel */}
+      {(progressSteps.length > 0 || runError) && (
+        <div className="rnd-dash-progress-panel">
+          <div className="rnd-dash-progress-panel-inner">
+            <div className="rnd-dash-progress-title">Agent Reasoning Chain</div>
+            {progressSteps.length > 0 && (
+              <div className="rnd-dash-progress-list">
+                {progressSteps.map((step) => {
+                  const key = step.phase === 'agent' ? `agent-${step.agentName}` : step.phase === 'decision' && 'step' in step && step.step ? `decision-${step.step}` : step.phase;
+                  return (
+                    <div
+                      key={key}
+                      className={`rnd-dash-progress-step rnd-dash-progress-${step.status}`}
+                    >
+                      <span className="rnd-dash-progress-icon">
+                        {step.status === 'running' && <span className="rnd-dash-spinner-sm" />}
+                        {step.status === 'done' && '✓'}
+                        {step.status === 'error' && '✗'}
+                      </span>
+                      <span className="rnd-dash-progress-msg">{step.message}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {runError && (
+              <div className="rnd-dash-progress-error-msg">{runError}</div>
+            )}
+          </div>
+        </div>
+      )}
 
       <main className="rnd-dash-main">
         {/* Summary cards */}

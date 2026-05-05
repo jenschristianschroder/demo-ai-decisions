@@ -283,3 +283,142 @@ export async function generateRndDataPhased(
     },
   };
 }
+
+// ---------------------------------------------------------------------------
+// Run agent chain on existing scenario (skip plan generation)
+// ---------------------------------------------------------------------------
+
+/**
+ * Run the full reasoning chain of agents on an existing scenario.
+ * Uses the scenario's concepts as-is and runs:
+ *   1. All agent outputs — SSE with wave-based progress
+ *   2. Final decision — SSE with multi-step progress
+ *
+ * Calls `onProgress` at each step so the UI can show live updates.
+ */
+export async function runRndAgentChain(
+  scenario: Omit<RndScenario, 'agentOutputs' | 'finalDecision'>,
+  onProgress: (step: RndProgressStep) => void,
+): Promise<GenerateRndDataResult> {
+  const prompt = `${scenario.title}: ${scenario.businessQuestion} — ${scenario.context}`;
+
+  onProgress({
+    phase: 'plan',
+    status: 'done',
+    message: `Using existing scenario — ${scenario.concepts.length} concepts`,
+  });
+
+  // --- Step 1: generate agent outputs via SSE ---
+  let agentOutputs: Record<string, unknown> = {};
+  let agentError: string | null = null;
+
+  try {
+    await consumeSSE<SSEAgentEvent>(
+      '/api/ai/rnd/generate-agents-sse',
+      { prompt, scenario },
+      (event) => {
+        if (event.type === 'agent-start' && event.agentKey && event.agentName) {
+          const idx = ALL_AGENT_KEYS.indexOf(event.agentKey);
+          onProgress({
+            phase: 'agent',
+            agentName: event.agentName,
+            agentKey: event.agentKey,
+            wave: event.wave || 0,
+            index: idx + 1,
+            total: ALL_AGENT_KEYS.length,
+            status: 'running',
+            message: `Running ${event.agentName}…`,
+          });
+        } else if (event.type === 'agent-done' && event.agentKey && event.agentName) {
+          const idx = ALL_AGENT_KEYS.indexOf(event.agentKey);
+          onProgress({
+            phase: 'agent',
+            agentName: event.agentName,
+            agentKey: event.agentKey,
+            wave: event.wave || 0,
+            index: idx + 1,
+            total: ALL_AGENT_KEYS.length,
+            status: 'done',
+            message: `${event.agentName} complete`,
+          });
+        } else if (event.type === 'agent-error' && event.agentKey && event.agentName) {
+          const idx = ALL_AGENT_KEYS.indexOf(event.agentKey);
+          onProgress({
+            phase: 'agent',
+            agentName: event.agentName,
+            agentKey: event.agentKey,
+            wave: event.wave || 0,
+            index: idx + 1,
+            total: ALL_AGENT_KEYS.length,
+            status: 'error',
+            message: `${event.agentName}: ${event.error || 'failed'}`,
+          });
+        } else if (event.type === 'all-done' && event.data) {
+          agentOutputs = (event.data as { agentOutputs: Record<string, unknown> }).agentOutputs;
+        } else if (event.type === 'error') {
+          agentError = event.error || 'Agent orchestration failed';
+        }
+      },
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Failed to generate agent data';
+    agentError = msg;
+  }
+
+  if (agentError) {
+    return { valid: false, message: agentError };
+  }
+
+  // --- Step 2: generate final decision via SSE (multi-step) ---
+  onProgress({ phase: 'decision', status: 'running', message: 'Starting decision process…' });
+
+  let finalDecision: RndScenario['finalDecision'] | null = null;
+  let decisionError: string | null = null;
+
+  try {
+    await consumeSSE<SSEDecisionEvent>(
+      '/api/ai/rnd/generate-decision',
+      { prompt, scenario, agentOutputs },
+      (event) => {
+        if (event.type === 'decision-step' && event.data) {
+          const step = event.data.step || '';
+          const status = event.data.status || '';
+          const stepName = DECISION_STEP_NAMES[step] || step;
+          onProgress({
+            phase: 'decision',
+            step,
+            status: status as 'running' | 'done' | 'error',
+            message: status === 'done' ? `${stepName} ✓` : stepName,
+          });
+        } else if (event.type === 'decision-complete' && event.data?.finalDecision) {
+          finalDecision = event.data.finalDecision;
+          onProgress({ phase: 'decision', status: 'done', message: 'Decision complete' });
+        } else if (event.type === 'error') {
+          decisionError = event.error || 'Decision failed';
+        }
+      },
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Failed to generate decision';
+    decisionError = msg;
+  }
+
+  if (decisionError || !finalDecision) {
+    const msg = decisionError || 'Decision generation produced no result';
+    onProgress({ phase: 'decision', status: 'error', message: msg });
+    return { valid: false, message: msg };
+  }
+
+  onProgress({ phase: 'complete', status: 'done', message: 'All steps completed' });
+
+  return {
+    valid: true,
+    data: {
+      scenario: {
+        ...scenario,
+        agentOutputs: agentOutputs as RndScenario['agentOutputs'],
+        finalDecision,
+      },
+    },
+  };
+}
