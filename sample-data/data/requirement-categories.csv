@@ -1,0 +1,14 @@
+category,description,default_owner,default_risk_level
+Product,Requirements related to platform features | functionality | performance | and scalability,Raj Mehta,Medium
+Security,Requirements related to information security | certifications | vulnerability management | and access controls,David Okafor,High
+Privacy,Requirements related to data privacy | GDPR | CCPA | FERPA | and data subject rights,Emily Watson,High
+Implementation,Requirements related to deployment timeline | methodology | staffing | and project management,Lisa Fernandez,Medium
+Support,Requirements related to ongoing support | SLAs | maintenance | and customer success,Mike Patterson,Medium
+Legal,Requirements related to contract terms | liability | indemnification | insurance | and IP rights,Jennifer Liu,High
+Pricing,Requirements related to cost | payment terms | discounts | and pricing structure,Carlos Rivera,Medium
+Accessibility,Requirements related to WCAG compliance | Section 508 | and assistive technology support,Raj Mehta,Low
+Data Integration,Requirements related to system integrations | APIs | data migration | and ETL processes,Raj Mehta,Medium
+Reporting,Requirements related to dashboards | report generation | data visualization | and analytics capabilities,Raj Mehta,Low
+Data Residency,Requirements related to geographic data storage | sovereignty | and cross-border data transfer,David Okafor,High
+Vendor References,Requirements related to client references | case studies | and past performance documentation,Sarah Chen,Low
+Submission,Requirements related to proposal format | submission deadlines | and administrative compliance,Sarah Chen,Low

@@ -1,0 +1,13 @@
+name,function,email,expertise,approval_authority,response_sla_hours
+Raj Mehta,Product,raj.mehta@northstaranalytics.com,Platform architecture | integrations | API design | scalability,Technical design decisions,24
+David Okafor,Security,david.okafor@northstaranalytics.com,Information security | SOC 2 | HITRUST | penetration testing | incident response,Security commitments and certifications,12
+Emily Watson,Privacy,emily.watson@northstaranalytics.com,Data privacy | GDPR | CCPA | FERPA | HIPAA privacy rule,Privacy commitments and data handling terms,24
+Jennifer Liu,Legal,jennifer.liu@northstaranalytics.com,Contract negotiation | liability | indemnification | IP rights | insurance,Contract terms and legal commitments,48
+Carlos Rivera,Finance,carlos.rivera@northstaranalytics.com,Pricing strategy | deal structuring | discount approval | payment terms,Pricing and discount approvals above 10%,24
+Sarah Chen,Sales,sarah.chen@northstaranalytics.com,Account strategy | competitive positioning | executive relationships | deal qualification,Deal strategy and go/no-go decisions,8
+Lisa Fernandez,Implementation,lisa.fernandez@northstaranalytics.com,Project management | implementation methodology | timeline estimation | resource planning,Implementation timeline and staffing commitments,24
+Mike Patterson,Support,mike.patterson@northstaranalytics.com,Support operations | SLA design | escalation management | customer satisfaction,SLA commitments and support model changes,24
+Dr. Amanda Foster,Customer Success,amanda.foster@northstaranalytics.com,Healthcare analytics | clinical informatics | EHR integration | HIPAA compliance,Healthcare domain commitments,24
+Tom Bradley,Engineering,tom.bradley@northstaranalytics.com,Software development | DevOps | release management | performance engineering,Engineering feasibility and timeline estimates,24
+Maria Santos,Training,maria.santos@northstaranalytics.com,Training program design | curriculum development | change management,Training scope and delivery commitments,48
+James Kowalski,Sales,james.kowalski@northstaranalytics.com,Public sector sales | government procurement | contract vehicles | partner management,Public sector deal strategy and pricing,12

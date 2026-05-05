@@ -1,0 +1,19 @@
+item,description,required,owner,default_status
+Executive Summary,Two-page executive summary tailored to buyer priorities and strategic value proposition,Yes,Sarah Chen,Not Started
+Technical Response,Detailed responses to all technical and functional requirements in the RFP,Yes,Raj Mehta,Not Started
+Security Questionnaire,Completed security questionnaire or SIG/CAIQ responses as specified by the buyer,Yes,David Okafor,Not Started
+Privacy Impact Assessment,Privacy and data protection responses including GDPR/CCPA/FERPA compliance documentation,Conditional,Emily Watson,Not Started
+Pricing Proposal,Completed pricing template or pricing narrative per buyer-specified format,Yes,Carlos Rivera,Not Started
+Implementation Plan,Detailed project plan with timeline | milestones | staffing | and methodology,Yes,Lisa Fernandez,Not Started
+References,Three client references with contact information and relevance to the opportunity,Yes,Sarah Chen,Not Started
+SOC 2 Type II Report,Current SOC 2 Type II audit report (provided under NDA if required),Yes,David Okafor,Not Started
+Insurance Certificates,Certificates of insurance showing current coverage levels,Yes,Jennifer Liu,Not Started
+Non-Disclosure Agreement,Executed NDA if required by the buyer before proposal submission,Conditional,Jennifer Liu,Not Started
+VPAT / Accessibility Statement,Voluntary Product Accessibility Template documenting WCAG 2.1 AA conformance,Conditional,Raj Mehta,Not Started
+Company Overview,Corporate background | financials | leadership | and organizational structure,Yes,Sarah Chen,Not Started
+Subcontractor Information,Details of any subcontractors involved in delivery including qualifications and roles,Conditional,Lisa Fernandez,Not Started
+Sample Contract / Terms,Northstar standard terms and conditions or redlined buyer contract,Conditional,Jennifer Liu,Not Started
+Training Plan,Description of training approach | curriculum | delivery methods | and materials provided,Yes,Maria Santos,Not Started
+Data Migration Plan,Approach for migrating historical data from legacy systems to the Northstar platform,Conditional,Raj Mehta,Not Started
+Disaster Recovery Documentation,BC/DR plan summary including RTO | RPO | and failover procedures,Yes,David Okafor,Not Started
+Proposal Compliance Matrix,Cross-reference matrix mapping each RFP requirement to the corresponding proposal section,Yes,Sarah Chen,Not Started

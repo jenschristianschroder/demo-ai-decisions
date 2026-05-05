@@ -31,6 +31,13 @@ const DEMOS: DemoInfo[] = [
       'Select the best product concept to advance using a network of specialized AI agents that evaluate user value, clinical evidence, simulation, lab data, usability, regulatory risk, and more',
     route: '/rnd',
   },
+  {
+    id: 'rfp-response',
+    label: 'RFP Response Automation',
+    description:
+      'Analyze an incoming RFP with multiple AI agents to produce intake summaries, compliance matrices, draft answers, risk registers, and a complete response package',
+    route: '/rfp',
+  },
 ];
 
 const DemoIcon: React.FC<{ id: string }> = ({ id }) => {
@@ -63,6 +70,18 @@ const DemoIcon: React.FC<{ id: string }> = ({ id }) => {
           <path d="M24 18L28 24H20L24 18Z" fill="white" opacity="0.7" />
           <line x1="14" y1="13" x2="10" y2="17" stroke="white" strokeWidth="1.2" opacity="0.5" />
           <line x1="18" y1="13" x2="22" y2="17" stroke="white" strokeWidth="1.2" opacity="0.5" />
+        </svg>
+      );
+    case 'rfp-response':
+      return (
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" rx="8" fill="#111111" />
+          <rect x="9" y="6" width="14" height="20" rx="2" fill="white" opacity="0.9" />
+          <line x1="12" y1="11" x2="20" y2="11" stroke="#111111" strokeWidth="1.2" opacity="0.6" />
+          <line x1="12" y1="14.5" x2="20" y2="14.5" stroke="#111111" strokeWidth="1.2" opacity="0.6" />
+          <line x1="12" y1="18" x2="17" y2="18" stroke="#111111" strokeWidth="1.2" opacity="0.6" />
+          <circle cx="22" cy="22" r="5" fill="#0f766e" />
+          <path d="M20 22L21.5 23.5L24.5 20.5" stroke="white" strokeWidth="1.5" fill="none" />
         </svg>
       );
     default:
