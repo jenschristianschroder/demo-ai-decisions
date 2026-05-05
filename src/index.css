@@ -10,7 +10,7 @@
 html,
 body,
 #root {
-  height: 100%;
+  min-height: 100%;
   width: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background: #f8f9fa;
@@ -21,6 +21,13 @@ body,
   -webkit-user-select: none;
   user-select: none;
   overscroll-behavior: none;
+}
+
+/* Blank footer spacer — allows bottom content to scroll to mid-screen on portrait displays */
+#root::after {
+  content: '';
+  display: block;
+  height: 50vh;
 }
 
 a {
