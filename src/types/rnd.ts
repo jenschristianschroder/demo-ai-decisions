@@ -35,6 +35,7 @@ export interface UserInsightsOutput {
   agentName: 'User Insights Agent';
   findings: UserInsightsFinding[];
   implication: string;
+  reasoning?: string;
 }
 
 export interface ClinicalEvidenceFinding {
@@ -46,6 +47,7 @@ export interface ClinicalEvidenceOutput {
   agentName: 'Clinical Evidence Agent';
   findings: ClinicalEvidenceFinding[];
   implication: string;
+  reasoning?: string;
 }
 
 export interface DesignConceptEntry {
@@ -56,6 +58,7 @@ export interface DesignConceptEntry {
 export interface DesignConceptOutput {
   agentName: 'Design Concept Agent';
   entries: DesignConceptEntry[];
+  reasoning?: string;
 }
 
 export interface SimulationEntry {
@@ -68,6 +71,7 @@ export interface SimulationEntry {
 export interface SimulationOutput {
   agentName: 'Simulation Agent';
   entries: SimulationEntry[];
+  reasoning?: string;
 }
 
 export interface LabTestEntry {
@@ -87,6 +91,7 @@ export interface LabTestOutput {
   agentName: 'Lab Test Agent';
   entries: LabTestEntry[];
   failureModes: LabTestFailureMode[];
+  reasoning?: string;
 }
 
 export interface HumanFactorsEntry {
@@ -100,6 +105,7 @@ export interface HumanFactorsOutput {
   agentName: 'Human Factors Agent';
   entries: HumanFactorsEntry[];
   keyInsight: string;
+  reasoning?: string;
 }
 
 export interface RegulatoryRiskEntry {
@@ -113,6 +119,7 @@ export interface RegulatoryRiskOutput {
   agentName: 'Regulatory & Risk Agent';
   entries: RegulatoryRiskEntry[];
   keyInsight: string;
+  reasoning?: string;
 }
 
 export interface ManufacturingCostEntry {
@@ -126,6 +133,7 @@ export interface ManufacturingCostOutput {
   agentName: 'Manufacturing & Cost Agent';
   entries: ManufacturingCostEntry[];
   keyInsight: string;
+  reasoning?: string;
 }
 
 export interface SustainabilityEntry {
@@ -138,6 +146,7 @@ export interface SustainabilityEntry {
 export interface SustainabilityOutput {
   agentName: 'Sustainability Agent';
   entries: SustainabilityEntry[];
+  reasoning?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -168,6 +177,13 @@ export interface DecisionPackage {
   killCriteria: string[];
 }
 
+export interface DevilsAdvocateChallenge {
+  challengedConceptId: ConceptId;
+  challenge: string;
+  counterArguments: string[];
+  resolution: string;
+}
+
 export interface FinalDecisionOutput {
   agentName: 'Decision Agent';
   criteria: DecisionCriterion[];
@@ -177,6 +193,8 @@ export interface FinalDecisionOutput {
   rationale: string;
   decisionPackage: DecisionPackage;
   conceptActions: { conceptId: ConceptId; action: RecommendationAction; reason: string }[];
+  devilsAdvocateChallenge?: DevilsAdvocateChallenge;
+  reasoning?: string;
 }
 
 // ---------------------------------------------------------------------------

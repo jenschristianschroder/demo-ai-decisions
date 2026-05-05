@@ -61,6 +61,35 @@ const RndDecisionScreen: React.FC = () => {
           <p className="rnd-decision-text">{finalDecision.rationale}</p>
         </div>
 
+        {/* Devil's Advocate Challenge */}
+        {finalDecision.devilsAdvocateChallenge && (
+          <div className="rnd-decision-section rnd-decision-section--challenge">
+            <h2 className="rnd-decision-section-title">😈 Devil's Advocate Challenge</h2>
+            <div className="rnd-decision-challenge-box">
+              <div className="rnd-decision-challenge-label">Challenge to {concepts.find(c => c.id === finalDecision.devilsAdvocateChallenge!.challengedConceptId)?.label || 'recommendation'}:</div>
+              <p className="rnd-decision-challenge-text">{finalDecision.devilsAdvocateChallenge.challenge}</p>
+              <div className="rnd-decision-challenge-label">Counter-Arguments:</div>
+              <ul className="rnd-decision-list rnd-decision-list--challenge">
+                {finalDecision.devilsAdvocateChallenge.counterArguments.map((arg, i) => (
+                  <li key={i}>{arg}</li>
+                ))}
+              </ul>
+              <div className="rnd-decision-challenge-label">Resolution:</div>
+              <p className="rnd-decision-challenge-resolution">{finalDecision.devilsAdvocateChallenge.resolution}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Decision Reasoning */}
+        {finalDecision.reasoning && (
+          <div className="rnd-decision-section">
+            <h2 className="rnd-decision-section-title">🧠 Decision Reasoning</h2>
+            <div className="rnd-decision-reasoning-box">
+              <p className="rnd-decision-reasoning-text">{finalDecision.reasoning}</p>
+            </div>
+          </div>
+        )}
+
         {/* Evidence summary */}
         <div className="rnd-decision-section">
           <h2 className="rnd-decision-section-title">Evidence Summary</h2>
