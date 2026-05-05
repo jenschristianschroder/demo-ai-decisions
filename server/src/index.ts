@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { aiRouter } from './routes/ai.js';
 import { financeAiRouter } from './routes/financeAi.js';
 import { rndAiRouter } from './routes/rndAi.js';
+import { rndAgentsRouter } from './routes/rndAgents.js';
 import { DEFAULT_DEPLOYMENT } from './aiClient.js';
 
 const app = express();
@@ -31,6 +32,7 @@ const apiLimiter = rateLimit({
 app.use('/api/ai', apiLimiter, aiRouter);
 app.use('/api/ai/finance', apiLimiter, financeAiRouter);
 app.use('/api/ai/rnd', apiLimiter, rndAiRouter);
+app.use('/api/ai/rnd', apiLimiter, rndAgentsRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {

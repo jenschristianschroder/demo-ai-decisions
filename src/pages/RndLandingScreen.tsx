@@ -30,8 +30,8 @@ const RndLandingScreen: React.FC = () => {
               s => s.phase === 'agent' && s.agentName === step.agentName
             );
             if (idx >= 0) { updated[idx] = step; return updated; }
-          } else if (step.phase === 'decision') {
-            const idx = updated.findIndex(s => s.phase === 'decision');
+          if (step.phase === 'decision') {
+            const idx = updated.findIndex(s => s.phase === 'decision' && (!('step' in step) || !('step' in s) || s.step === step.step));
             if (idx >= 0) { updated[idx] = step; return updated; }
           }
           return [...updated, step];
@@ -177,7 +177,7 @@ const RndLandingScreen: React.FC = () => {
           {progressSteps.length > 0 && (
             <div className="rnd-landing-progress-list">
               {progressSteps.map((step) => {
-                const key = step.phase === 'agent' ? `agent-${step.agentName}` : step.phase;
+                const key = step.phase === 'agent' ? `agent-${step.agentName}` : step.phase === 'decision' && 'step' in step && step.step ? `decision-${step.step}` : step.phase;
                 return (
                   <div
                     key={key}

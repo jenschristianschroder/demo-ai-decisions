@@ -285,6 +285,35 @@ const RndConceptDetailScreen: React.FC = () => {
           </div>
         )}
 
+        {/* Agent Reasoning Traces */}
+        {(() => {
+          const reasoningTraces: Array<{ title: string; icon: string; reasoning: string | undefined }> = [
+            { title: 'User Insights', icon: '👤', reasoning: agentOutputs.userInsights.reasoning },
+            { title: 'Clinical Evidence', icon: '📋', reasoning: agentOutputs.clinicalEvidence.reasoning },
+            { title: 'Design Concept', icon: '✏️', reasoning: agentOutputs.designConcept.reasoning },
+            { title: 'Simulation', icon: '🧪', reasoning: agentOutputs.simulation.reasoning },
+            { title: 'Lab Test', icon: '🔬', reasoning: agentOutputs.labTest.reasoning },
+            { title: 'Human Factors', icon: '👤', reasoning: agentOutputs.humanFactors.reasoning },
+            { title: 'Regulatory & Risk', icon: '⚠️', reasoning: agentOutputs.regulatoryRisk.reasoning },
+            { title: 'Manufacturing & Cost', icon: '🏭', reasoning: agentOutputs.manufacturingCost.reasoning },
+            { title: 'Sustainability', icon: '🌿', reasoning: agentOutputs.sustainability.reasoning },
+          ];
+          const hasReasoning = reasoningTraces.some(t => t.reasoning);
+          if (!hasReasoning) return null;
+          return (
+            <div className="rnd-detail-section">
+              <h2 className="rnd-detail-section-title">🧠 Agent Reasoning</h2>
+              <p className="rnd-detail-reasoning-intro">Chain-of-thought reasoning from each specialist agent:</p>
+              {reasoningTraces.map(t => t.reasoning ? (
+                <div key={t.title} className="rnd-detail-reasoning-block">
+                  <div className="rnd-detail-reasoning-agent">{t.icon} {t.title}</div>
+                  <div className="rnd-detail-reasoning-text">{t.reasoning}</div>
+                </div>
+              ) : null)}
+            </div>
+          );
+        })()}
+
         <div className="rnd-detail-actions-bar">
           <button className="rnd-detail-btn-primary" onClick={() => navigate('/rnd/decision')}>
             View Decision Package
