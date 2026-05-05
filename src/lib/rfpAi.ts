@@ -14,7 +14,6 @@ import type {
   DraftAnswer,
   SmeQuestion,
   RiskItem,
-  RiskSeverity,
   ComplianceRow,
   ComplianceResponseStatus,
   ResponseAssembly,
