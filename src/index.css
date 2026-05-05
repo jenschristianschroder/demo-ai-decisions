@@ -21,6 +21,8 @@ body,
   -webkit-user-select: none;
   user-select: none;
   overscroll-behavior: none;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Blank footer spacer — allows bottom content to scroll to mid-screen on portrait displays */
