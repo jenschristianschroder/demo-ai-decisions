@@ -18,8 +18,8 @@ import { DEFAULT_DEPLOYMENT } from './aiClient.js';
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
-// Body parsing
-app.use(express.json());
+// Body parsing (increased limit for large RFP payloads)
+app.use(express.json({ limit: '10mb' }));
 
 // Rate limiting for API routes
 const apiLimiter = rateLimit({
