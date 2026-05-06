@@ -459,8 +459,8 @@ function mapAgentOutput(phase: string, raw: Record<string, unknown>): unknown {
       return (raw as { compliance?: unknown[] }).compliance ?? [];
     case 'assembly': {
       // Remove reasoning from the assembly output
-      const { reasoning: _r, ...assemblyData } = raw as Record<string, unknown>;
-      void _r;
+      const assemblyData = { ...raw } as Record<string, unknown>;
+      delete assemblyData.reasoning;
       return assemblyData;
     }
     default:
