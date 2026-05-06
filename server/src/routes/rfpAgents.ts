@@ -321,6 +321,7 @@ interface AgentDef {
   name: string;
   systemPrompt: () => string;
   buildUserContent: (context: OrchestrationContext) => string;
+  maxTokens?: number;
 }
 
 interface OrchestrationContext {
@@ -348,6 +349,7 @@ const AGENTS: AgentDef[] = [
     phase: 'requirements',
     name: 'Requirement Extraction Agent',
     systemPrompt: requirementExtractionSystemPrompt,
+    maxTokens: 16384,
     buildUserContent: (ctx) => {
       let content = `Extract all requirements from this RFP document:\n\n${ctx.rfpText}`;
       if (ctx.requirementCategories) {
@@ -360,6 +362,7 @@ const AGENTS: AgentDef[] = [
     phase: 'knowledge',
     name: 'Knowledge Retrieval Agent',
     systemPrompt: knowledgeRetrievalSystemPrompt,
+    maxTokens: 16384,
     buildUserContent: (ctx) => {
       const requirements = ctx.priorOutputs.requirements;
       let content = `Match the following requirements to our knowledge base:\n\nRequirements:\n${JSON.stringify(requirements, null, 2)}`;
@@ -376,6 +379,7 @@ const AGENTS: AgentDef[] = [
     phase: 'drafting',
     name: 'Drafting Agent',
     systemPrompt: draftingSystemPrompt,
+    maxTokens: 16384,
     buildUserContent: (ctx) => {
       const requirements = ctx.priorOutputs.requirements;
       const matches = ctx.priorOutputs.knowledgeMatches;
@@ -415,6 +419,7 @@ const AGENTS: AgentDef[] = [
     phase: 'compliance',
     name: 'Compliance Agent',
     systemPrompt: complianceSystemPrompt,
+    maxTokens: 16384,
     buildUserContent: (ctx) => {
       const requirements = ctx.priorOutputs.requirements;
       const drafts = ctx.priorOutputs.draftAnswers;
@@ -426,6 +431,7 @@ const AGENTS: AgentDef[] = [
     phase: 'assembly',
     name: 'Response Assembly Agent',
     systemPrompt: assemblySystemPrompt,
+    maxTokens: 16384,
     buildUserContent: (ctx) => {
       const { intake, requirements, draftAnswers, smeQuestions, risks, compliance } = ctx.priorOutputs;
       let content = `Assemble the final response package from all agent outputs:\n\nIntake:\n${JSON.stringify(intake, null, 2)}\n\nRequirements:\n${JSON.stringify(requirements, null, 2)}\n\nDraft Answers:\n${JSON.stringify(draftAnswers, null, 2)}\n\nSME Questions:\n${JSON.stringify(smeQuestions, null, 2)}\n\nRisks:\n${JSON.stringify(risks, null, 2)}\n\nCompliance:\n${JSON.stringify(compliance, null, 2)}`;
@@ -545,7 +551,7 @@ rfpAgentsRouter.post('/rfp/run-agents-sse', async (req: Request, res: Response) 
             { role: 'user', content: userContent },
           ],
           0.3,
-          4096,
+          agent.maxTokens ?? 4096,
         );
 
         // Extract reasoning before mapping
