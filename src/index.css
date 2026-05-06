@@ -30,7 +30,6 @@ body,
   content: '';
   display: block;
   height: 50vh;
-  pointer-events: none;
 }
 
 a {
