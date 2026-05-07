@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loadTemplateCatalog, loadTemplateById, loadNdaPlaybookData, loadCounterpartyRedline } from '../lib/ndaDataLoader';
-import { runNdaTemplateRecommendation, runNdaWorkflow } from '../lib/ndaAi';
+import { loadTemplateCatalog, loadTemplateById } from '../lib/ndaDataLoader';
+import { runNdaTemplateRecommendation, runNdaSingleStage } from '../lib/ndaAi';
 import { NDA_TEMPLATE_CATALOG, DEFAULT_INTAKE, setNdaData } from '../data/mockNdaData';
 import NdaTemplateRecommendationView from '../components/nda/NdaTemplateRecommendationView';
 import NdaTemplateCatalogView from '../components/nda/NdaTemplateCatalogView';
@@ -69,19 +69,16 @@ const NdaLandingScreen: React.FC = () => {
     setErrorMsg('');
     setProgressSteps([]);
     try {
-      const [templateText, { playbookText, escalationRulesText }, counterpartyRedlineText] = await Promise.all([
-        loadTemplateById(selectedTemplateId),
-        loadNdaPlaybookData(),
-        loadCounterpartyRedline(),
-      ]);
+      const templateText = await loadTemplateById(selectedTemplateId);
 
-      const outputs = await runNdaWorkflow(
-        intake,
-        selectedTemplateId,
-        templateText,
-        playbookText,
-        escalationRulesText,
-        counterpartyRedlineText,
+      // Stage 1: Template Selection
+      const selectionOutput = await runNdaSingleStage(
+        {
+          stage: 'template-selection',
+          intakeData: intake,
+          templateId: selectedTemplateId,
+          templateText,
+        },
         (step) => {
           setProgressSteps((prev) => {
             const updated = [...prev];
@@ -92,32 +89,40 @@ const NdaLandingScreen: React.FC = () => {
         },
       );
 
-      // Derive status from actual pipeline results
-      const playbookOk = outputs.playbookValidation?.compliant !== false;
-      const approvalDecision = outputs.approval?.decision;
-      let derivedStatus: import('../types/nda').NdaStatus = 'validated';
-      if (approvalDecision === 'approved') {
-        derivedStatus = playbookOk ? 'approved' : 'validated';
-      } else if (approvalDecision === 'conditionally-approved') {
-        derivedStatus = 'validated';
-      } else if (approvalDecision === 'escalated') {
-        derivedStatus = 'redline-reviewed';
-      } else if (approvalDecision === 'rejected') {
-        derivedStatus = 'redline-reviewed';
-      }
+      // Stage 2: Draft Generation
+      const draftOutput = await runNdaSingleStage(
+        {
+          stage: 'draft-generation',
+          intakeData: intake,
+          templateId: selectedTemplateId,
+          templateText,
+          priorOutputs: { templateSelection: selectionOutput.templateSelection },
+        },
+        (step) => {
+          setProgressSteps((prev) => {
+            const updated = [...prev];
+            const idx = updated.findIndex((s) => s.phase === step.phase);
+            if (idx >= 0) { updated[idx] = step; return updated; }
+            return [...updated, step];
+          });
+        },
+      );
 
       setNdaData({
         scenario: {
           id: 'nda-generated-2026',
           title: `NDA — ${intake.counterpartyName}`,
           description: `AI-generated NDA using ${selectedTemplateId} template.`,
-          status: derivedStatus,
+          status: 'draft-generated',
           intakeData: intake,
-          agentOutputs: { ...outputs, templateRecommendation: recommendation ?? undefined },
+          agentOutputs: {
+            templateRecommendation: recommendation ?? undefined,
+            draft: draftOutput.draft as import('../types/nda').NdaDraft,
+          },
           progressSteps: [],
         },
       });
-      setSuccessMsg('NDA workflow completed successfully');
+      setSuccessMsg('NDA draft generated — view and advance through pipeline stages on the dashboard.');
       setTimeout(() => navigate('/nda/dashboard'), 1500);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Workflow failed. Please try again.';
@@ -388,7 +393,7 @@ const NdaLandingScreen: React.FC = () => {
                 onClick={handleGenerate}
                 disabled={generating || recommending}
               >
-                {generating ? 'Generating…' : 'Generate NDA'}
+                {generating ? 'Generating Draft…' : 'Generate NDA Draft'}
               </button>
               <span className="nda-landing-selected-template">
                 Template: {NDA_TEMPLATE_CATALOG.find(t => t.id === selectedTemplateId)?.name ?? selectedTemplateId}

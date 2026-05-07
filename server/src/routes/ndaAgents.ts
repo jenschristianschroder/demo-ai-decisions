@@ -431,7 +431,122 @@ ndaAgentsRouter.post('/nda/recommend-template-sse', async (req: Request, res: Re
 });
 
 // ---------------------------------------------------------------------------
-// SSE Endpoint 2: Full Workflow (stages 2–7)
+// SSE Endpoint 2: Single Stage (run one pipeline stage at a time)
+// ---------------------------------------------------------------------------
+
+ndaAgentsRouter.post('/nda/run-single-stage-sse', async (req: Request, res: Response) => {
+  try {
+    const {
+      stage,
+      intakeData,
+      templateId,
+      templateText,
+      playbookText,
+      escalationRulesText,
+      counterpartyRedlineText,
+      priorOutputs,
+    } = req.body as {
+      stage: string;
+      intakeData: Record<string, unknown>;
+      templateId: string;
+      templateText?: string;
+      playbookText?: string;
+      escalationRulesText?: string;
+      counterpartyRedlineText?: string;
+      priorOutputs?: Record<string, unknown>;
+    };
+
+    if (!stage || !intakeData || !templateId) {
+      res.status(400).json({ error: 'stage, intakeData, and templateId are required' });
+      return;
+    }
+
+    const agent = WORKFLOW_AGENTS.find((a) => a.phase === stage);
+    if (!agent) {
+      res.status(400).json({ error: `Unknown stage: ${stage}` });
+      return;
+    }
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    const context: WorkflowContext = {
+      intakeData,
+      templateId,
+      templateText: templateText ?? '',
+      playbookText: playbookText ?? '',
+      escalationRulesText: escalationRulesText ?? '',
+      counterpartyRedlineText: counterpartyRedlineText ?? '',
+      priorOutputs: priorOutputs ?? {},
+    };
+
+    sendSSE(res, {
+      type: 'agent-start',
+      phase: agent.phase,
+      message: `Running ${agent.name}…`,
+    });
+
+    try {
+      const userContent = agent.buildUserContent(context);
+      const result = await chatCompletion<Record<string, unknown>>(
+        [
+          { role: 'system', content: agent.systemPrompt() },
+          { role: 'user', content: userContent },
+        ],
+        0.3,
+        agent.maxTokens ?? 4096,
+      );
+
+      const reasoning = (result as Record<string, unknown>).reasoning as string | undefined;
+      const mapped = mapAgentOutput(agent.phase, result);
+      const outputKey = PHASE_TO_KEY[agent.phase] ?? agent.phase;
+
+      // For signature-dispatch, flatten sub-keys
+      let outputData: Record<string, unknown>;
+      if (agent.phase === 'signature-dispatch') {
+        const sigOutput = mapped as Record<string, unknown>;
+        outputData = {};
+        if (sigOutput.signatureDispatch) outputData.signatureDispatch = sigOutput.signatureDispatch;
+        if (sigOutput.versionHistory) outputData.versionHistory = sigOutput.versionHistory;
+        if (sigOutput.auditTrail) outputData.auditTrail = sigOutput.auditTrail;
+      } else {
+        outputData = { [outputKey]: mapped };
+      }
+
+      sendSSE(res, {
+        type: 'agent-done',
+        phase: agent.phase,
+        message: `${agent.name} complete`,
+        reasoning,
+        data: outputData,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Agent failed';
+      sendSSE(res, {
+        type: 'agent-error',
+        phase: agent.phase,
+        message: `${agent.name} failed`,
+        error: message,
+      });
+    }
+
+    res.end();
+  } catch (err) {
+    console.error('nda/run-single-stage-sse error:', err);
+    const message = err instanceof Error ? err.message : 'Orchestrator failed';
+    if (res.headersSent) {
+      sendSSE(res, { type: 'error', error: message });
+      res.end();
+    } else {
+      res.status(502).json({ error: 'AI request failed', details: message });
+    }
+  }
+});
+
+// ---------------------------------------------------------------------------
+// SSE Endpoint 3: Full Workflow (stages 2–7) — runs all at once
 // ---------------------------------------------------------------------------
 
 ndaAgentsRouter.post('/nda/run-workflow-sse', async (req: Request, res: Response) => {
