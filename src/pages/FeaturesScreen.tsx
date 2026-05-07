@@ -38,6 +38,13 @@ const DEMOS: DemoInfo[] = [
       'Analyze an incoming RFP with multiple AI agents to produce intake summaries, compliance matrices, draft answers, risk registers, and a complete response package',
     route: '/rfp',
   },
+  {
+    id: 'contract-review',
+    label: 'AI Contract Review',
+    description:
+      'Enhance productivity and quality of legal contract review by automatically highlighting deviations from standards, identifying inconsistencies, suggesting edits from the legal playbook, and assessing risk levels',
+    route: '/contract',
+  },
 ];
 
 const DemoIcon: React.FC<{ id: string }> = ({ id }) => {
@@ -82,6 +89,18 @@ const DemoIcon: React.FC<{ id: string }> = ({ id }) => {
           <line x1="12" y1="18" x2="17" y2="18" stroke="#111111" strokeWidth="1.2" opacity="0.6" />
           <circle cx="22" cy="22" r="5" fill="#0f766e" />
           <path d="M20 22L21.5 23.5L24.5 20.5" stroke="white" strokeWidth="1.5" fill="none" />
+        </svg>
+      );
+    case 'contract-review':
+      return (
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" rx="8" fill="#111111" />
+          <rect x="8" y="5" width="12" height="18" rx="2" fill="white" opacity="0.9" />
+          <line x1="11" y1="10" x2="17" y2="10" stroke="#111111" strokeWidth="1.2" opacity="0.5" />
+          <line x1="11" y1="13" x2="17" y2="13" stroke="#111111" strokeWidth="1.2" opacity="0.5" />
+          <line x1="11" y1="16" x2="15" y2="16" stroke="#111111" strokeWidth="1.2" opacity="0.5" />
+          <path d="M22 14L25 11L27 13L24 16L22 14Z" fill="white" opacity="0.8" />
+          <line x1="21.5" y1="14.5" x2="24.5" y2="17.5" stroke="white" strokeWidth="1" opacity="0.6" />
         </svg>
       );
     default:
