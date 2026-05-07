@@ -22,6 +22,19 @@ param azureAiEndpoint string = ''
 @description('Azure AI Foundry model deployment name')
 param azureAiDeployment string = 'gpt-4o'
 
+@description('PostgreSQL server host')
+param pgHost string = ''
+
+@description('PostgreSQL database name')
+param pgDatabase string = ''
+
+@description('PostgreSQL user')
+param pgUser string = ''
+
+@description('PostgreSQL password')
+@secure()
+param pgPassword string = ''
+
 resource spaApp 'Microsoft.App/containerApps@2023-05-01' = {
   name: name
   location: location
@@ -67,6 +80,26 @@ resource spaApp 'Microsoft.App/containerApps@2023-05-01' = {
             {
               name: 'PORT'
               value: '3000'
+            }
+            {
+              name: 'PGHOST'
+              value: pgHost
+            }
+            {
+              name: 'PGDATABASE'
+              value: pgDatabase
+            }
+            {
+              name: 'PGUSER'
+              value: pgUser
+            }
+            {
+              name: 'PGPASSWORD'
+              value: pgPassword
+            }
+            {
+              name: 'PGSSLMODE'
+              value: 'require'
             }
           ]
         }

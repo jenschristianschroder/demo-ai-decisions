@@ -14,6 +14,16 @@
 
 import { Router, type Request, type Response } from 'express';
 import { chatCompletion } from '../aiClient.js';
+import {
+  isPgAvailable,
+  searchArtists,
+  getArtistRecordings,
+  getArtistReleases,
+  getAreaLabels,
+  findCollaborators,
+  query as pgQuery,
+  cypherQuery,
+} from '../db/pgClient.js';
 
 export const musicAgentsRouter = Router();
 
@@ -201,6 +211,269 @@ No markdown, no commentary outside the JSON.`;
 }
 
 // ---------------------------------------------------------------------------
+// PostgreSQL data fetching helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch real graph data from PostgreSQL + Apache AGE for a parsed query.
+ * Returns structured data matching the graph traversal agent output format.
+ */
+async function fetchGraphDataFromPg(
+  parsedQuery: Record<string, unknown>,
+): Promise<Record<string, unknown> | null> {
+  if (!isPgAvailable()) return null;
+
+  try {
+    const targetEntities = (parsedQuery.targetEntities as string[]) ?? [];
+    const allArtists: Record<string, unknown>[] = [];
+    const allRecordings: Record<string, unknown>[] = [];
+    const allReleases: Record<string, unknown>[] = [];
+    const allLabels: Record<string, unknown>[] = [];
+    const relationshipPaths: Record<string, unknown>[] = [];
+
+    for (const entity of targetEntities) {
+      // Search artists matching this entity name
+      const artists = await searchArtists(entity, 10);
+      for (const a of artists) {
+        allArtists.push({
+          id: a.gid,
+          name: a.name,
+          type: a.type ?? 'Group',
+          area: a.area,
+          genres: [],
+          description: a.comment ?? '',
+        });
+
+        // Fetch recordings and releases for each artist
+        const recordings = await getArtistRecordings(a.gid as string, 8);
+        for (const rec of recordings) {
+          allRecordings.push({
+            id: rec.gid,
+            title: rec.name,
+            artistCredits: [rec.artist_credit_name],
+            duration: rec.length,
+          });
+        }
+
+        const releases = await getArtistReleases(a.gid as string, 6);
+        for (const rel of releases) {
+          allReleases.push({
+            id: rel.gid,
+            title: rel.name,
+            type: mapReleaseType(rel.type as number),
+            date: rel.date_year ? `${rel.date_year}` : undefined,
+            label: rel.label_name,
+            country: rel.country_name,
+            artistCredits: [rel.artist_credit_name],
+          });
+        }
+      }
+    }
+
+    // Try to find collaborators via AGE graph
+    for (const entity of targetEntities) {
+      try {
+        const collabs = await findCollaborators(entity, 2);
+        if (collabs.length > 0) {
+          relationshipPaths.push({
+            nodes: [
+              { id: entity, label: entity, type: 'Artist' },
+              ...collabs.slice(0, 5).map((c) => ({
+                id: c.gid ?? c.name,
+                label: c.name,
+                type: 'Artist',
+              })),
+            ],
+            edges: collabs.slice(0, 5).map((c) => ({
+              type: 'COLLABORATED_WITH',
+              sourceId: entity,
+              sourceLabel: entity,
+              targetId: c.gid ?? c.name,
+              targetLabel: c.name,
+            })),
+            description: `Collaboration network from ${entity}`,
+          });
+        }
+      } catch {
+        // AGE graph might not be populated yet — continue
+      }
+    }
+
+    // Fetch labels if any area filters are present
+    const filters = parsedQuery.filters as Record<string, string> | undefined;
+    if (filters?.country) {
+      const labels = await getAreaLabels(filters.country, 5);
+      for (const l of labels) {
+        allLabels.push({
+          id: l.gid,
+          name: l.name,
+          type: l.type,
+          area: l.area,
+        });
+      }
+    }
+
+    // Fetch works (simple query)
+    const works = await pgQuery(
+      `SELECT w.gid, w.name
+       FROM musicbrainz.work w
+       ORDER BY w.name LIMIT 5`,
+    );
+
+    return {
+      artists: allArtists,
+      recordings: allRecordings,
+      releases: allReleases,
+      works: works.map((w) => ({ id: w.gid, title: w.name, composers: [] })),
+      labels: allLabels,
+      relationshipPaths,
+      reasoning: `Data fetched from PostgreSQL + Apache AGE graph. Found ${allArtists.length} artists, ${allRecordings.length} recordings, ${allReleases.length} releases across ${targetEntities.length} target entities.`,
+    };
+  } catch (err) {
+    console.error('PostgreSQL graph data fetch error:', err);
+    return null;
+  }
+}
+
+function mapReleaseType(type: number | null | undefined): string {
+  switch (type) {
+    case 1: return 'Album';
+    case 2: return 'Single';
+    case 3: return 'EP';
+    case 11: return 'Compilation';
+    default: return 'Album';
+  }
+}
+
+/**
+ * Fetch semantically similar entities from pgvector.
+ * Falls back to null when pgvector embeddings are not populated.
+ */
+async function fetchSemanticDataFromPg(
+  parsedQuery: Record<string, unknown>,
+  graphData: Record<string, unknown>,
+): Promise<Record<string, unknown> | null> {
+  if (!isPgAvailable()) return null;
+
+  try {
+    // Check if any embeddings exist
+    const embeddingCheck = await pgQuery(
+      'SELECT COUNT(*) AS cnt FROM musicbrainz.artist WHERE embedding IS NOT NULL',
+    );
+    const hasEmbeddings = embeddingCheck.length > 0 && Number(embeddingCheck[0].cnt) > 0;
+
+    if (!hasEmbeddings) {
+      // No embeddings populated — fall back to tag-based similarity
+      const targetEntities = (parsedQuery.targetEntities as string[]) ?? [];
+      const graphArtists = (graphData.artists as Array<Record<string, unknown>>) ?? [];
+      const graphArtistNames = new Set(graphArtists.map((a) => a.name as string));
+      const additionalArtists: Record<string, unknown>[] = [];
+
+      // Find artists that share tags with the target entities
+      for (const entity of targetEntities) {
+        const tagBased = await pgQuery(
+          `SELECT DISTINCT a2.gid, a2.name, at.name AS type, ar.name AS area
+           FROM musicbrainz.artist a1
+           JOIN musicbrainz.artist_tag atg1 ON atg1.artist = a1.id
+           JOIN musicbrainz.artist_tag atg2 ON atg2.tag = atg1.tag AND atg2.artist != a1.id
+           JOIN musicbrainz.artist a2 ON a2.id = atg2.artist
+           LEFT JOIN musicbrainz.artist_type at ON at.id = a2.type
+           LEFT JOIN musicbrainz.area ar ON ar.id = a2.area
+           WHERE a1.name ILIKE $1
+           ORDER BY a2.name
+           LIMIT 10`,
+          [`%${entity}%`],
+        );
+
+        for (const row of tagBased) {
+          if (!graphArtistNames.has(row.name as string)) {
+            additionalArtists.push({
+              id: row.gid,
+              name: row.name,
+              type: row.type ?? 'Group',
+              area: row.area,
+              genres: [],
+              similarityScore: 0.7,
+            });
+            graphArtistNames.add(row.name as string);
+          }
+        }
+      }
+
+      return {
+        additionalArtists,
+        additionalRelationshipPaths: [],
+        semanticClusters: [],
+        reasoning: `Tag-based similarity search from PostgreSQL (no vector embeddings populated yet). Found ${additionalArtists.length} additional artists sharing tags.`,
+      };
+    }
+
+    // Vector similarity search would go here when embeddings are populated
+    return null;
+  } catch (err) {
+    console.error('PostgreSQL semantic search error:', err);
+    return null;
+  }
+}
+
+/**
+ * Fetch graph statistics from PostgreSQL.
+ */
+async function fetchGraphStatsFromPg(): Promise<Record<string, unknown> | null> {
+  if (!isPgAvailable()) return null;
+
+  try {
+    const counts = await pgQuery(`
+      SELECT
+        (SELECT COUNT(*) FROM musicbrainz.artist) AS artist_count,
+        (SELECT COUNT(*) FROM musicbrainz.recording) AS recording_count,
+        (SELECT COUNT(*) FROM musicbrainz.release) AS release_count,
+        (SELECT COUNT(*) FROM musicbrainz.work) AS work_count,
+        (SELECT COUNT(*) FROM musicbrainz.label) AS label_count
+    `);
+
+    if (counts.length === 0) return null;
+    const c = counts[0];
+    const totalNodes = Number(c.artist_count) + Number(c.recording_count) +
+                       Number(c.release_count) + Number(c.work_count) + Number(c.label_count);
+
+    // Try to get edge count from AGE graph
+    let totalEdges = 0;
+    try {
+      const edgeResult = await cypherQuery(
+        "MATCH ()-[e]->() RETURN count(e) AS cnt",
+      );
+      if (edgeResult.length > 0) {
+        totalEdges = Number(edgeResult[0].cnt ?? 0);
+      }
+    } catch {
+      // AGE graph may not be populated
+      const relCounts = await pgQuery(`
+        SELECT
+          (SELECT COUNT(*) FROM musicbrainz.l_artist_artist) +
+          (SELECT COUNT(*) FROM musicbrainz.l_artist_recording) +
+          (SELECT COUNT(*) FROM musicbrainz.l_artist_release) +
+          (SELECT COUNT(*) FROM musicbrainz.l_artist_work) AS total
+      `);
+      totalEdges = Number(relCounts[0]?.total ?? 0);
+    }
+
+    return {
+      totalNodes,
+      totalEdges,
+      artistCount: Number(c.artist_count),
+      recordingCount: Number(c.recording_count),
+      releaseCount: Number(c.release_count),
+      workCount: Number(c.work_count),
+      labelCount: Number(c.label_count),
+    };
+  } catch (err) {
+    console.error('PostgreSQL graph stats error:', err);
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Agent definitions
 // ---------------------------------------------------------------------------
 
@@ -353,21 +626,49 @@ musicAgentsRouter.post('/music/run-agents-sse', async (req: Request, res: Respon
       });
 
       try {
-        const userContent = agent.buildUserContent(context);
-        const result = await chatCompletion<Record<string, unknown>>(
-          [
-            { role: 'system', content: agent.systemPrompt() },
-            { role: 'user', content: userContent },
-          ],
-          0.3,
-          agent.maxTokens ?? 4096,
-        );
+        let mapped: unknown;
+        let reasoning: string | undefined;
 
-        // Extract reasoning before mapping
-        const reasoning = (result as Record<string, unknown>).reasoning as string | undefined;
+        // ── PostgreSQL fast-path for graph-traversal and semantic-search ──
+        if (agent.phase === 'graph-traversal' && isPgAvailable()) {
+          const pgData = await fetchGraphDataFromPg(
+            context.priorOutputs.parsedQuery as Record<string, unknown> ?? {},
+          );
+          if (pgData) {
+            reasoning = pgData.reasoning as string;
+            delete pgData.reasoning;
+            mapped = pgData;
+          }
+        }
 
-        // Map and store the output
-        const mapped = mapAgentOutput(agent.phase, result);
+        if (agent.phase === 'semantic-search' && isPgAvailable()) {
+          const pgData = await fetchSemanticDataFromPg(
+            context.priorOutputs.parsedQuery as Record<string, unknown> ?? {},
+            context.priorOutputs.graphData as Record<string, unknown> ?? {},
+          );
+          if (pgData) {
+            reasoning = pgData.reasoning as string;
+            delete pgData.reasoning;
+            mapped = pgData;
+          }
+        }
+
+        // ── Fall back to AI agent if no PG data ──
+        if (mapped === undefined) {
+          const userContent = agent.buildUserContent(context);
+          const result = await chatCompletion<Record<string, unknown>>(
+            [
+              { role: 'system', content: agent.systemPrompt() },
+              { role: 'user', content: userContent },
+            ],
+            0.3,
+            agent.maxTokens ?? 4096,
+          );
+          reasoning = (result as Record<string, unknown>).reasoning as string | undefined;
+          mapped = mapAgentOutput(agent.phase, result);
+        }
+
+        // Store the output
         const outputKey = PHASE_TO_KEY[agent.phase] ?? agent.phase;
         context.priorOutputs[outputKey] = mapped;
 
@@ -397,6 +698,9 @@ musicAgentsRouter.post('/music/run-agents-sse', async (req: Request, res: Respon
     const recommendations = context.priorOutputs.recommendations as unknown[] | undefined;
     const explanationData = context.priorOutputs.explanationData as Record<string, unknown> | undefined;
 
+    // Fetch real graph stats from PostgreSQL if available
+    const pgGraphStats = await fetchGraphStatsFromPg();
+
     const combinedResult = {
       queryResult: {
         query: parsedQuery ?? {},
@@ -417,7 +721,7 @@ musicAgentsRouter.post('/music/run-agents-sse', async (req: Request, res: Respon
       },
       recommendations: recommendations ?? [],
       catalogInsights: (explanationData?.catalogInsights as unknown[]) ?? [],
-      graphStats: (explanationData?.graphStats as Record<string, unknown>) ?? {},
+      graphStats: pgGraphStats ?? (explanationData?.graphStats as Record<string, unknown>) ?? {},
     };
 
     // Send final combined result
