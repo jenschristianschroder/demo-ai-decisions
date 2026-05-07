@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { generateDemoDataPhased, type ProgressStep } from '../lib/adpAi';
-import { setAdpData, resetAdpData } from '../data/mockAdpData';
+import { setAdpData, resetAdpData, isUsingGeneratedData } from '../data/mockAdpData';
 import './AdpLandingScreen.css';
 
 const AdpLandingScreen: React.FC = () => {
@@ -168,7 +168,7 @@ const AdpLandingScreen: React.FC = () => {
             >
               {generating ? 'Generating…' : 'Generate Demo Data'}
             </button>
-            {successMsg && (
+            {(successMsg || isUsingGeneratedData()) && (
               <button className="adp-landing-generate-reset" onClick={handleReset}>
                 Reset to Default
               </button>

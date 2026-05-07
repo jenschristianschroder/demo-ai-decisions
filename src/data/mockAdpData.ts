@@ -899,6 +899,12 @@ let accountPlans: AccountPlan[] = [...ORIGINAL_ACCOUNT_PLANS];
 // Set / Reset helpers
 // ---------------------------------------------------------------------------
 
+let usingGeneratedData = false;
+
+export function isUsingGeneratedData(): boolean {
+  return usingGeneratedData;
+}
+
 export function setAdpData(data: GeneratedDemoData): void {
   accounts = data.accounts;
   stakeholders = data.stakeholders;
@@ -907,6 +913,7 @@ export function setAdpData(data: GeneratedDemoData): void {
   initiatives = data.initiatives;
   nudges = data.nudges;
   accountPlans = data.accountPlans;
+  usingGeneratedData = true;
 }
 
 export function resetAdpData(): void {
@@ -917,6 +924,7 @@ export function resetAdpData(): void {
   initiatives = [...ORIGINAL_INITIATIVES];
   nudges = [...ORIGINAL_NUDGES];
   accountPlans = [...ORIGINAL_ACCOUNT_PLANS];
+  usingGeneratedData = false;
 }
 
 // ---------------------------------------------------------------------------
