@@ -128,7 +128,7 @@ jobs:
 
       # ─── Initialize PostgreSQL database (schema + extensions) ────────
       - name: Initialize PostgreSQL database
-        if: ${{ secrets.PG_ADMIN_PASSWORD != '' }}
+        if: steps.infra.outputs.pgFqdn != ''
         run: |
           PG_FQDN="${{ steps.infra.outputs.pgFqdn }}"
           if [ -z "$PG_FQDN" ]; then

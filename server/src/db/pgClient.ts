@@ -28,7 +28,7 @@ function getPool(): pg.Pool | null {
     user: process.env.PGUSER ?? 'pgadmin',
     password: process.env.PGPASSWORD,
     port: parseInt(process.env.PGPORT ?? '5432', 10),
-    ssl: process.env.PGSSLMODE === 'require' ? { rejectUnauthorized: false } : undefined,
+    ssl: process.env.PGSSLMODE === 'require' ? { rejectUnauthorized: true } : undefined,
     max: 10,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 10_000,
@@ -163,11 +163,24 @@ export async function getArtistReleases(artistGid: string, limit = 20) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Safe string escaping for Cypher literals
+// ---------------------------------------------------------------------------
+
+/**
+ * Escape a string for use in Apache AGE Cypher string literals.
+ * Handles backslashes first, then single quotes, to prevent injection.
+ */
+function escapeCypher(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
 /** Find collaborators via AGE graph */
 export async function findCollaborators(artistName: string, maxHops = 2) {
+  const safeName = escapeCypher(artistName);
   return cypherQuery(`
-    MATCH (a:Artist {name: '${artistName.replace(/'/g, "\\'")}'})
-          -[:COLLABORATED_WITH*1..${maxHops}]-(b:Artist)
+    MATCH (a:Artist {name: '${safeName}'})
+          -[:COLLABORATED_WITH*1..${Math.min(Math.max(1, maxHops), 6)}]-(b:Artist)
     RETURN DISTINCT b.name AS name, b.gid AS gid
     LIMIT 20
   `);
@@ -175,10 +188,11 @@ export async function findCollaborators(artistName: string, maxHops = 2) {
 
 /** Find relationship paths between two artists */
 export async function findPaths(artistName1: string, artistName2: string, maxHops = 4) {
-  const safe1 = artistName1.replace(/'/g, "\\'");
-  const safe2 = artistName2.replace(/'/g, "\\'");
+  const safe1 = escapeCypher(artistName1);
+  const safe2 = escapeCypher(artistName2);
+  const safeMaxHops = Math.min(Math.max(1, maxHops), 6);
   return cypherQuery(`
-    MATCH path = (a:Artist {name: '${safe1}'})-[*1..${maxHops}]-(b:Artist {name: '${safe2}'})
+    MATCH path = (a:Artist {name: '${safe1}'})-[*1..${safeMaxHops}]-(b:Artist {name: '${safe2}'})
     RETURN path
     LIMIT 5
   `);
