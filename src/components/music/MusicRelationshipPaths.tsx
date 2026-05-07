@@ -1,17 +1,42 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { MusicRelationshipPath } from '../../types/music';
+import MusicForceGraph from './MusicForceGraph';
+
+type ViewMode = 'graph' | 'list';
 
 interface Props {
   paths: MusicRelationshipPath[];
 }
 
 const MusicRelationshipPaths: React.FC<Props> = ({ paths }) => {
+  const [viewMode, setViewMode] = useState<ViewMode>('graph');
+
   return (
     <div className="music-rp-root">
-      <h3 className="music-rp-title">Relationship Graph</h3>
+      <div className="music-rp-header">
+        <h3 className="music-rp-title">Relationship Graph</h3>
+        {paths.length > 0 && (
+          <div className="music-rp-toggle">
+            <button
+              className={`music-rp-toggle-btn ${viewMode === 'graph' ? 'music-rp-toggle-btn--active' : ''}`}
+              onClick={() => setViewMode('graph')}
+            >
+              Force Graph
+            </button>
+            <button
+              className={`music-rp-toggle-btn ${viewMode === 'list' ? 'music-rp-toggle-btn--active' : ''}`}
+              onClick={() => setViewMode('list')}
+            >
+              Path List
+            </button>
+          </div>
+        )}
+      </div>
 
       {paths.length === 0 ? (
         <p className="music-rp-empty">No relationship paths found.</p>
+      ) : viewMode === 'graph' ? (
+        <MusicForceGraph paths={paths} />
       ) : (
         <div className="music-rp-list">
           {paths.map((path, idx) => (
