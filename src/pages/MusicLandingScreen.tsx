@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { runMusicWorkflow } from '../lib/musicAi';
 import { SAMPLE_QUERIES, setMusicData, resetMusicData } from '../data/mockMusicData';
-import type { MusicProgressStep } from '../types/music';
+import type { MusicProgressStep, DataSourceInfo } from '../types/music';
 import './MusicLandingScreen.css';
 
 const MusicLandingScreen: React.FC = () => {
@@ -13,6 +13,17 @@ const MusicLandingScreen: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [progressSteps, setProgressSteps] = useState<MusicProgressStep[]>([]);
+  const [dataSource, setDataSource] = useState<DataSourceInfo | null>(null);
+
+  useEffect(() => {
+    fetch('/api/ai/music/data-source')
+      .then((res) => res.json())
+      .then((info: DataSourceInfo) => setDataSource(info))
+      .catch((err) => {
+        console.warn('Failed to fetch data source status:', err);
+        setDataSource({ source: 'mock', label: 'AI-Generated Demo Data' });
+      });
+  }, []);
 
   const handleSelectSampleQuery = (index: number) => {
     const sample = SAMPLE_QUERIES[index];
@@ -85,6 +96,12 @@ const MusicLandingScreen: React.FC = () => {
     <div className="music-landing-root">
       <div className="music-landing-card">
         <div className="music-landing-badge">Music Intelligence</div>
+        {dataSource && (
+          <div className={`music-landing-data-source music-landing-data-source--${dataSource.source}`}>
+            <span className="music-landing-data-source-dot" />
+            {dataSource.label}
+          </div>
+        )}
 
         <div className="music-landing-header">
           <div className="music-landing-icon">

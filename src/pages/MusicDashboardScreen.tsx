@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getMusicScenario, resetMusicData } from '../data/mockMusicData';
 import MusicQueryResults from '../components/music/MusicQueryResults';
@@ -6,6 +6,7 @@ import MusicRelationshipPaths from '../components/music/MusicRelationshipPaths';
 import MusicRecommendations from '../components/music/MusicRecommendations';
 import MusicCatalogInsights from '../components/music/MusicCatalogInsights';
 import MusicAgentTimeline from '../components/music/MusicAgentTimeline';
+import type { DataSourceInfo } from '../types/music';
 import './MusicDashboardScreen.css';
 
 type TabId =
@@ -33,6 +34,17 @@ const MusicDashboardScreen: React.FC = () => {
   const scenario = getMusicScenario();
   const [activeTab, setActiveTab] = useState<TabId>('query');
   const outputs = scenario.agentOutputs;
+  const [dataSource, setDataSource] = useState<DataSourceInfo | null>(null);
+
+  useEffect(() => {
+    fetch('/api/ai/music/data-source')
+      .then((res) => res.json())
+      .then((info: DataSourceInfo) => setDataSource(info))
+      .catch((err) => {
+        console.warn('Failed to fetch data source status:', err);
+        setDataSource({ source: 'mock', label: 'AI-Generated Demo Data' });
+      });
+  }, []);
 
   const handleReset = () => {
     resetMusicData();
@@ -59,6 +71,12 @@ const MusicDashboardScreen: React.FC = () => {
               <h1 className="music-dash-title">{scenario.title}</h1>
               <div className="music-dash-subtitle">{scenario.description}</div>
             </div>
+            {dataSource && (
+              <div className={`music-dash-data-source music-dash-data-source--${dataSource.source}`}>
+                <span className="music-dash-data-source-dot" />
+                {dataSource.label}
+              </div>
+            )}
           </div>
         </div>
       </header>

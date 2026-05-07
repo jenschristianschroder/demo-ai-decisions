@@ -28,6 +28,19 @@ import {
 export const musicAgentsRouter = Router();
 
 // ---------------------------------------------------------------------------
+// Data-source status endpoint — tells the frontend whether PostgreSQL is
+// configured and reachable, so the UI can show an indicator.
+// ---------------------------------------------------------------------------
+
+musicAgentsRouter.get('/music/data-source', (_req: Request, res: Response) => {
+  const pgAvailable = isPgAvailable();
+  res.json({
+    source: pgAvailable ? 'postgresql' : 'mock',
+    label: pgAvailable ? 'PostgreSQL Data' : 'AI-Generated Demo Data',
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Helper
 // ---------------------------------------------------------------------------
 

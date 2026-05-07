@@ -30,6 +30,48 @@
   margin-bottom: 32px;
 }
 
+/* Data source indicator */
+.music-landing-data-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border-radius: 4px;
+  padding: 4px 10px;
+  margin-left: 10px;
+  margin-bottom: 32px;
+}
+
+.music-landing-data-source--postgresql {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.music-landing-data-source--mock {
+  background: #fefce8;
+  color: #854d0e;
+  border: 1px solid #fde047;
+}
+
+.music-landing-data-source-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.music-landing-data-source--postgresql .music-landing-data-source-dot {
+  background: #22c55e;
+}
+
+.music-landing-data-source--mock .music-landing-data-source-dot {
+  background: #eab308;
+}
+
 .music-landing-header {
   display: flex;
   align-items: flex-start;
