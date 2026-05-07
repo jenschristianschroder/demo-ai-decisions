@@ -118,13 +118,13 @@ jobs:
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --image ${{ steps.acr.outputs.acrLoginServer }}/${{ env.APP_NAME }}-spa:${{ github.sha }} \
             --set-env-vars \
-              AZURE_AI_ENDPOINT=${{ secrets.AZURE_AI_ENDPOINT }} \
-              AZURE_AI_DEPLOYMENT=${{ secrets.AZURE_AI_DEPLOYMENT }} \
-              PGHOST=${{ steps.infra.outputs.pgFqdn }} \
-              PGDATABASE=musicbrainz \
-              PGUSER=pgadmin \
-              PGPASSWORD=${{ secrets.PG_ADMIN_PASSWORD }} \
-              PGSSLMODE=require \
+              "AZURE_AI_ENDPOINT=${{ secrets.AZURE_AI_ENDPOINT }}" \
+              "AZURE_AI_DEPLOYMENT=${{ secrets.AZURE_AI_DEPLOYMENT }}" \
+              "PGHOST=${{ steps.infra.outputs.pgFqdn }}" \
+              "PGDATABASE=musicbrainz" \
+              "PGUSER=pgadmin" \
+              "PGPASSWORD=${{ secrets.PG_ADMIN_PASSWORD }}" \
+              "PGSSLMODE=require" \
             --min-replicas 1
 
       # ─── Initialize PostgreSQL database (schema + extensions) ────────
