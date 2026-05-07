@@ -29,7 +29,7 @@ interface SSEEvent {
 
 function consumeSSE(
   url: string,
-  body: Record<string, unknown>,
+  body: object,
   onEvent: (event: SSEEvent) => void,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -172,7 +172,7 @@ export async function runNdaSingleStage(
 
   await consumeSSE(
     '/api/ai/nda/run-single-stage-sse',
-    input as unknown as Record<string, unknown>,
+    input,
     (event) => {
       if (event.type === 'agent-start' && event.phase) {
         onProgress({
