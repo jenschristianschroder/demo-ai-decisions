@@ -1,17 +1,42 @@
 import React, { useState } from 'react';
-import type { NdaRedlineItem } from '../../types/nda';
+import type { NdaRedlineItem, RedlineClassification } from '../../types/nda';
 
 interface Props {
   redlines: NdaRedlineItem[];
+  onRedlineDecisionsChange?: (decisions: Record<string, RedlineClassification>) => void;
 }
 
-const NdaRedlineAssessmentView: React.FC<Props> = ({ redlines }) => {
+const NdaRedlineAssessmentView: React.FC<Props> = ({ redlines, onRedlineDecisionsChange }) => {
   const [openId, setOpenId] = useState<string | null>(null);
+  const [userDecisions, setUserDecisions] = useState<Record<string, RedlineClassification>>({});
 
-  const acceptCount = redlines.filter((r) => r.classification === 'accept').length;
-  const rejectCount = redlines.filter((r) => r.classification === 'reject').length;
-  const negotiateCount = redlines.filter((r) => r.classification === 'negotiate').length;
-  const escalateCount = redlines.filter((r) => r.classification === 'escalate').length;
+  const getEffectiveClassification = (item: NdaRedlineItem): RedlineClassification =>
+    userDecisions[item.clauseId] ?? item.classification;
+
+  const effectiveRedlines = redlines.map((r) => ({
+    ...r,
+    effectiveClassification: getEffectiveClassification(r),
+  }));
+
+  const acceptCount = effectiveRedlines.filter((r) => r.effectiveClassification === 'accept').length;
+  const rejectCount = effectiveRedlines.filter((r) => r.effectiveClassification === 'reject').length;
+  const negotiateCount = effectiveRedlines.filter((r) => r.effectiveClassification === 'negotiate').length;
+  const escalateCount = effectiveRedlines.filter((r) => r.effectiveClassification === 'escalate').length;
+
+  const handleDecision = (clauseId: string, decision: RedlineClassification) => {
+    const updated = { ...userDecisions, [clauseId]: decision };
+    setUserDecisions(updated);
+    onRedlineDecisionsChange?.(updated);
+  };
+
+  const clearDecision = (clauseId: string) => {
+    const updated = { ...userDecisions };
+    delete updated[clauseId];
+    setUserDecisions(updated);
+    onRedlineDecisionsChange?.(updated);
+  };
+
+  const overriddenCount = Object.keys(userDecisions).length;
 
   return (
     <div className="nda-redline-root">
@@ -23,63 +48,125 @@ const NdaRedlineAssessmentView: React.FC<Props> = ({ redlines }) => {
         {rejectCount > 0 && <span className="nda-redline-classification-badge nda-redline-classification--reject">{rejectCount} reject</span>}
         {negotiateCount > 0 && <span className="nda-redline-classification-badge nda-redline-classification--negotiate">{negotiateCount} negotiate</span>}
         {escalateCount > 0 && <span className="nda-redline-classification-badge nda-redline-classification--escalate">{escalateCount} escalate</span>}
+        {overriddenCount > 0 && (
+          <span className="nda-redline-override-count">{overriddenCount} overridden by user</span>
+        )}
       </div>
 
       <div className="nda-redline-list">
-        {redlines.map((item) => (
-          <div
-            key={item.clauseId}
-            className={`nda-redline-card ${openId === item.clauseId ? 'nda-redline-card--open' : ''}`}
-          >
-            <button
-              className="nda-redline-card-header"
-              onClick={() => setOpenId(openId === item.clauseId ? null : item.clauseId)}
+        {redlines.map((item) => {
+          const effective = getEffectiveClassification(item);
+          const isOverridden = userDecisions[item.clauseId] !== undefined;
+          return (
+            <div
+              key={item.clauseId}
+              className={`nda-redline-card ${openId === item.clauseId ? 'nda-redline-card--open' : ''}`}
             >
-              <span className="nda-redline-card-toggle">{openId === item.clauseId ? '▾' : '▸'}</span>
-              <span className="nda-redline-card-id">{item.clauseId}</span>
-              <span className="nda-redline-card-clause">{item.clauseTitle}</span>
-              <span className={`nda-redline-classification-badge nda-redline-classification--${item.classification}`}>
-                {item.classification}
-              </span>
-              <span className={`nda-redline-severity-badge nda-redline-severity--${item.severity}`}>
-                {item.severity}
-              </span>
-            </button>
-            {openId === item.clauseId && (
-              <div className="nda-redline-card-body">
-                <div className="nda-redline-diff">
-                  <div>
-                    <span className="nda-redline-diff-label">Original (Our Draft)</span>
-                    <div className="nda-redline-original-text">{item.originalText}</div>
-                  </div>
-                  <div>
-                    <span className="nda-redline-diff-label">Counterparty Change (Input)</span>
-                    <div className="nda-redline-counterparty-text">{item.counterpartyText}</div>
-                  </div>
-                </div>
-                <div className="nda-redline-ai-output">
-                  <span className="nda-redline-ai-output-label">AI Assessment</span>
-                  <div className="nda-redline-meta">
+              <button
+                className="nda-redline-card-header"
+                onClick={() => setOpenId(openId === item.clauseId ? null : item.clauseId)}
+              >
+                <span className="nda-redline-card-toggle">{openId === item.clauseId ? '▾' : '▸'}</span>
+                <span className="nda-redline-card-id">{item.clauseId}</span>
+                <span className="nda-redline-card-clause">{item.clauseTitle}</span>
+                <span className={`nda-redline-classification-badge nda-redline-classification--${effective}`}>
+                  {effective}
+                </span>
+                {isOverridden && (
+                  <span className="nda-redline-override-badge" title={`AI recommended: ${item.classification}`}>
+                    overridden
+                  </span>
+                )}
+                <span className={`nda-redline-severity-badge nda-redline-severity--${item.severity}`}>
+                  {item.severity}
+                </span>
+              </button>
+              {openId === item.clauseId && (
+                <div className="nda-redline-card-body">
+                  <div className="nda-redline-diff">
                     <div>
-                      <span className="nda-redline-meta-label">Rationale:</span>
-                      <span className="nda-redline-rationale">{item.rationale}</span>
+                      <span className="nda-redline-diff-label">Original (Our Draft)</span>
+                      <div className="nda-redline-original-text">{item.originalText}</div>
                     </div>
                     <div>
-                      <span className="nda-redline-meta-label">Suggested Response:</span>
-                      <span className="nda-redline-response">{item.suggestedResponse}</span>
+                      <span className="nda-redline-diff-label">Counterparty Change (Input)</span>
+                      <div className="nda-redline-counterparty-text">{item.counterpartyText}</div>
                     </div>
-                    {item.playbookReference && (
+                  </div>
+                  <div className="nda-redline-ai-output">
+                    <span className="nda-redline-ai-output-label">AI Assessment</span>
+                    <div className="nda-redline-meta">
                       <div>
-                        <span className="nda-redline-meta-label">Playbook Ref:</span>
-                        <span className="nda-redline-source">{item.playbookReference}</span>
+                        <span className="nda-redline-meta-label">AI Recommendation:</span>
+                        <span className={`nda-redline-classification-badge nda-redline-classification--${item.classification}`}>
+                          {item.classification}
+                        </span>
                       </div>
-                    )}
+                      <div>
+                        <span className="nda-redline-meta-label">Rationale:</span>
+                        <span className="nda-redline-rationale">{item.rationale}</span>
+                      </div>
+                      <div>
+                        <span className="nda-redline-meta-label">Suggested Response:</span>
+                        <span className="nda-redline-response">{item.suggestedResponse}</span>
+                      </div>
+                      {item.playbookReference && (
+                        <div>
+                          <span className="nda-redline-meta-label">Playbook Ref:</span>
+                          <span className="nda-redline-source">{item.playbookReference}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* User decision buttons */}
+                  <div className="nda-redline-decision-bar">
+                    <span className="nda-redline-decision-label">Your Decision:</span>
+                    <div className="nda-redline-decision-buttons">
+                      <button
+                        className={`nda-redline-decision-btn nda-redline-decision-btn--accept ${effective === 'accept' ? 'nda-redline-decision-btn--selected' : ''}`}
+                        onClick={() => handleDecision(item.clauseId, 'accept')}
+                        title="Accept the counterparty's proposed change"
+                      >
+                        ✓ Accept
+                      </button>
+                      <button
+                        className={`nda-redline-decision-btn nda-redline-decision-btn--reject ${effective === 'reject' ? 'nda-redline-decision-btn--selected' : ''}`}
+                        onClick={() => handleDecision(item.clauseId, 'reject')}
+                        title="Reject the counterparty's proposed change"
+                      >
+                        ✕ Reject
+                      </button>
+                      <button
+                        className={`nda-redline-decision-btn nda-redline-decision-btn--negotiate ${effective === 'negotiate' ? 'nda-redline-decision-btn--selected' : ''}`}
+                        onClick={() => handleDecision(item.clauseId, 'negotiate')}
+                        title="Mark for negotiation — propose a counter"
+                      >
+                        ⇄ Negotiate
+                      </button>
+                      <button
+                        className={`nda-redline-decision-btn nda-redline-decision-btn--escalate ${effective === 'escalate' ? 'nda-redline-decision-btn--selected' : ''}`}
+                        onClick={() => handleDecision(item.clauseId, 'escalate')}
+                        title="Escalate for senior review"
+                      >
+                        ↑ Escalate
+                      </button>
+                      {isOverridden && (
+                        <button
+                          className="nda-redline-decision-btn nda-redline-decision-btn--reset"
+                          onClick={() => clearDecision(item.clauseId)}
+                          title="Revert to AI recommendation"
+                        >
+                          ↺ Use AI
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

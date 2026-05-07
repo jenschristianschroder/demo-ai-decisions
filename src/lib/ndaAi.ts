@@ -149,7 +149,64 @@ export async function runNdaTemplateRecommendation(
 }
 
 // ---------------------------------------------------------------------------
-// Full workflow (stages 2–7)
+// Single stage runner (for phased pipeline)
+// ---------------------------------------------------------------------------
+
+export interface NdaSingleStageInput {
+  stage: string;
+  intakeData: NdaIntakeData;
+  templateId: NdaTemplateId;
+  templateText?: string;
+  playbookText?: string;
+  escalationRulesText?: string;
+  counterpartyRedlineText?: string;
+  priorOutputs?: Record<string, unknown>;
+}
+
+export async function runNdaSingleStage(
+  input: NdaSingleStageInput,
+  onProgress: (step: NdaProgressStep) => void,
+): Promise<Record<string, unknown>> {
+  let stageOutput: Record<string, unknown> = {};
+  let sseError: string | null = null;
+
+  await consumeSSE(
+    '/api/ai/nda/run-single-stage-sse',
+    input,
+    (event) => {
+      if (event.type === 'agent-start' && event.phase) {
+        onProgress({
+          phase: event.phase as NdaProgressStep['phase'],
+          status: 'running',
+          message: PHASE_RUNNING_MESSAGES[event.phase] ?? event.message ?? 'Processing…',
+        });
+      } else if (event.type === 'agent-done' && event.phase) {
+        stageOutput = (event.data as Record<string, unknown>) ?? {};
+        onProgress({
+          phase: event.phase as NdaProgressStep['phase'],
+          status: 'done',
+          message: event.message ?? `${event.phase} complete`,
+          reasoning: event.reasoning,
+        });
+      } else if (event.type === 'agent-error' && event.phase) {
+        onProgress({
+          phase: event.phase as NdaProgressStep['phase'],
+          status: 'error',
+          message: event.error ?? `${event.phase} failed`,
+        });
+        sseError = event.error ?? `${event.phase} failed`;
+      } else if (event.type === 'error') {
+        sseError = event.error ?? 'Stage failed';
+      }
+    },
+  );
+
+  if (sseError) throw new Error(sseError);
+  return stageOutput;
+}
+
+// ---------------------------------------------------------------------------
+// Full workflow (stages 2–7) — runs all at once (legacy)
 // ---------------------------------------------------------------------------
 
 export async function runNdaWorkflow(

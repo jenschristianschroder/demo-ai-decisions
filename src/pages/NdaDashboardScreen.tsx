@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getNdaScenario, resetNdaData, NDA_TEMPLATE_CATALOG } from '../data/mockNdaData';
+import { getNdaScenario, resetNdaData, NDA_TEMPLATE_CATALOG, updateNdaScenario } from '../data/mockNdaData';
+import { loadTemplateById, loadNdaPlaybookData, loadCounterpartyRedline } from '../lib/ndaDataLoader';
+import { runNdaSingleStage } from '../lib/ndaAi';
 import NdaTemplateRecommendationView from '../components/nda/NdaTemplateRecommendationView';
 import NdaDraftView from '../components/nda/NdaDraftView';
 import NdaRedlineAssessmentView from '../components/nda/NdaRedlineAssessmentView';
@@ -8,6 +10,7 @@ import NdaApprovalView from '../components/nda/NdaApprovalView';
 import NdaVersionHistoryView from '../components/nda/NdaVersionHistoryView';
 import NdaAuditTrailView from '../components/nda/NdaAuditTrailView';
 import NdaStatusBadge from '../components/nda/NdaStatusBadge';
+import type { NdaProgressStep, NdaAgentOutputs, NdaStatus } from '../types/nda';
 import './NdaDashboardScreen.css';
 
 type TabId =
@@ -36,12 +39,45 @@ const TABS: TabDef[] = [
   { id: 'audit', label: 'Audit Trail', stepNumber: 7, description: 'A complete log of every agent action, with timestamps and source citations for traceability.' },
 ];
 
+// Advance button config per tab — what clicking will do
+const ADVANCE_CONFIG: Record<string, { nextTab: TabId; stage: string; label: string; tooltip: string }> = {
+  'draft': {
+    nextTab: 'redline',
+    stage: 'redline-assessment',
+    label: '▶ Run Redline Assessment',
+    tooltip: 'The AI Redline Assessment agent will analyze the counterparty\'s proposed changes to the NDA draft and classify each change as accept, reject, negotiate, or escalate based on the legal playbook.',
+  },
+  'redline': {
+    nextTab: 'playbook',
+    stage: 'playbook-validation',
+    label: '▶ Run Playbook Validation',
+    tooltip: 'The Playbook Validation agent will check the current NDA draft clause-by-clause against organizational playbook standards for compliance.',
+  },
+  'playbook': {
+    nextTab: 'approval',
+    stage: 'approval-routing',
+    label: '▶ Run Approval Routing',
+    tooltip: 'The Approval Routing agent will determine the correct approval tier (1/2/3) based on escalation rules, redline findings, and playbook validation results.',
+  },
+  'approval': {
+    nextTab: 'versions',
+    stage: 'signature-dispatch',
+    label: '▶ Prepare for Signature',
+    tooltip: 'The Signature Dispatch agent will prepare the approved NDA for signature, generate version history, and create a complete audit trail.',
+  },
+};
+
 const NdaDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
-  const scenario = getNdaScenario();
+  const [scenario, setScenarioState] = useState(getNdaScenario());
   const [activeTab, setActiveTab] = useState<TabId>('template-selection');
   const [showGuide, setShowGuide] = useState(false);
+  const [runningStage, setRunningStage] = useState<string | null>(null);
+  const [stageProgress, setStageProgress] = useState<NdaProgressStep | null>(null);
+  const [stageError, setStageError] = useState<string | null>(null);
   const outputs = scenario.agentOutputs;
+
+  const refreshScenario = () => setScenarioState(getNdaScenario());
 
   const handleReset = () => {
     resetNdaData();
@@ -75,6 +111,76 @@ const NdaDashboardScreen: React.FC = () => {
       case 'approval': return !!outputs.approval;
       case 'versions': return !!(outputs.versionHistory && outputs.versionHistory.length > 0);
       case 'audit': return !!(outputs.auditTrail && outputs.auditTrail.length > 0);
+    }
+  };
+
+  // Run a single stage and merge results into the scenario
+  const handleAdvanceStage = async (stage: string, nextTab: TabId) => {
+    if (!outputs || !scenario.intakeData.selectedTemplateId) return;
+    setRunningStage(stage);
+    setStageError(null);
+    setStageProgress(null);
+
+    try {
+      const templateId = scenario.intakeData.selectedTemplateId;
+      const templateText = await loadTemplateById(templateId);
+      const { playbookText, escalationRulesText } = await loadNdaPlaybookData();
+      const counterpartyRedlineText = await loadCounterpartyRedline();
+
+      // Build priorOutputs from existing scenario data
+      const priorOutputs: Record<string, unknown> = {};
+      if (outputs.draft) priorOutputs.draft = outputs.draft;
+      if (outputs.redlineAssessment) priorOutputs.redlineAssessment = outputs.redlineAssessment;
+      if (outputs.playbookValidation) priorOutputs.playbookValidation = outputs.playbookValidation;
+      if (outputs.approval) priorOutputs.approval = outputs.approval;
+      if (outputs.templateRecommendation) priorOutputs.templateSelection = outputs.templateRecommendation;
+
+      const result = await runNdaSingleStage(
+        {
+          stage,
+          intakeData: scenario.intakeData,
+          templateId,
+          templateText,
+          playbookText,
+          escalationRulesText,
+          counterpartyRedlineText,
+          priorOutputs,
+        },
+        (step) => setStageProgress(step),
+      );
+
+      // Merge result into scenario
+      updateNdaScenario((s) => {
+        const merged: NdaAgentOutputs = { ...s.agentOutputs };
+        if (result.draft) merged.draft = result.draft as NdaAgentOutputs['draft'];
+        if (result.redlineAssessment) merged.redlineAssessment = result.redlineAssessment as NdaAgentOutputs['redlineAssessment'];
+        if (result.playbookValidation) merged.playbookValidation = result.playbookValidation as NdaAgentOutputs['playbookValidation'];
+        if (result.approval) merged.approval = result.approval as NdaAgentOutputs['approval'];
+        if (result.signatureDispatch) merged.signatureDispatch = result.signatureDispatch as NdaAgentOutputs['signatureDispatch'];
+        if (result.versionHistory) merged.versionHistory = result.versionHistory as NdaAgentOutputs['versionHistory'];
+        if (result.auditTrail) merged.auditTrail = result.auditTrail as NdaAgentOutputs['auditTrail'];
+
+        // Update status
+        let newStatus: NdaStatus = s.status;
+        if (stage === 'redline-assessment') newStatus = 'redline-reviewed';
+        if (stage === 'playbook-validation') newStatus = 'validated';
+        if (stage === 'approval-routing') {
+          const decision = (result.approval as Record<string, unknown> | undefined)?.decision;
+          if (decision === 'approved') newStatus = 'approved';
+        }
+        if (stage === 'signature-dispatch') newStatus = 'dispatched';
+
+        return { ...s, status: newStatus, agentOutputs: merged };
+      });
+
+      refreshScenario();
+      setActiveTab(nextTab);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Stage failed. Please try again.';
+      setStageError(message);
+    } finally {
+      setRunningStage(null);
+      setStageProgress(null);
     }
   };
 
@@ -188,11 +294,11 @@ const NdaDashboardScreen: React.FC = () => {
               </div>
             )}
             {activeTab === 'redline' && outputs.redlineAssessment && outputs.redlineAssessment.length > 0 && (
-              <NdaRedlineAssessmentView redlines={outputs.redlineAssessment} />
+              <NdaRedlineAssessmentView redlines={outputs.redlineAssessment} onRedlineDecisionsChange={() => {}} />
             )}
             {activeTab === 'redline' && (!outputs.redlineAssessment || outputs.redlineAssessment.length === 0) && (
               <div className="nda-dash-empty">
-                <p className="nda-dash-empty-text">No redline assessment data available (counterparty redline not provided or skipped).</p>
+                <p className="nda-dash-empty-text">Redline assessment has not been run yet. Go to the Draft tab and click the advance button to run it.</p>
               </div>
             )}
             {activeTab === 'playbook' && outputs.playbookValidation && (() => {
@@ -257,7 +363,7 @@ const NdaDashboardScreen: React.FC = () => {
             })()}
             {activeTab === 'playbook' && !outputs.playbookValidation && (
               <div className="nda-dash-empty">
-                <p className="nda-dash-empty-text">No playbook validation data available.</p>
+                <p className="nda-dash-empty-text">Playbook validation has not been run yet. Go to the Redline Assessment tab and click the advance button to run it.</p>
               </div>
             )}
             {activeTab === 'approval' && outputs.approval && (
@@ -265,7 +371,7 @@ const NdaDashboardScreen: React.FC = () => {
             )}
             {activeTab === 'approval' && !outputs.approval && (
               <div className="nda-dash-empty">
-                <p className="nda-dash-empty-text">No approval routing data available.</p>
+                <p className="nda-dash-empty-text">Approval routing has not been run yet. Go to the Playbook Validation tab and click the advance button to run it.</p>
               </div>
             )}
             {activeTab === 'versions' && outputs.versionHistory && outputs.versionHistory.length > 0 && (
@@ -273,7 +379,7 @@ const NdaDashboardScreen: React.FC = () => {
             )}
             {activeTab === 'versions' && (!outputs.versionHistory || outputs.versionHistory.length === 0) && (
               <div className="nda-dash-empty">
-                <p className="nda-dash-empty-text">No version history available.</p>
+                <p className="nda-dash-empty-text">Version history will be available after the Signature Dispatch stage is run.</p>
               </div>
             )}
             {activeTab === 'audit' && outputs.auditTrail && outputs.auditTrail.length > 0 && (
@@ -281,10 +387,37 @@ const NdaDashboardScreen: React.FC = () => {
             )}
             {activeTab === 'audit' && (!outputs.auditTrail || outputs.auditTrail.length === 0) && (
               <div className="nda-dash-empty">
-                <p className="nda-dash-empty-text">No audit trail available.</p>
+                <p className="nda-dash-empty-text">Audit trail will be available after the Signature Dispatch stage is run.</p>
               </div>
             )}
           </>
+        )}
+
+        {/* Advance to next stage button */}
+        {outputs && ADVANCE_CONFIG[activeTab] && !stepHasData(ADVANCE_CONFIG[activeTab].nextTab) && (
+          <div className="nda-dash-advance-section">
+            {stageError && (
+              <div className="nda-dash-advance-error">{stageError}</div>
+            )}
+            {stageProgress && runningStage && (
+              <div className="nda-dash-advance-progress">
+                <span className="nda-landing-spinner-sm" />
+                <span>{stageProgress.message}</span>
+              </div>
+            )}
+            <button
+              className="nda-dash-advance-btn"
+              onClick={() => handleAdvanceStage(ADVANCE_CONFIG[activeTab].stage, ADVANCE_CONFIG[activeTab].nextTab)}
+              disabled={!!runningStage}
+              title={ADVANCE_CONFIG[activeTab].tooltip}
+            >
+              {runningStage === ADVANCE_CONFIG[activeTab].stage
+                ? '⏳ Running…'
+                : ADVANCE_CONFIG[activeTab].label
+              }
+            </button>
+            <div className="nda-dash-advance-hint">{ADVANCE_CONFIG[activeTab].tooltip}</div>
+          </div>
         )}
 
         <div className="nda-dash-actions-bar">
