@@ -29,7 +29,7 @@ interface SSEEvent {
 
 function consumeSSE(
   url: string,
-  body: Record<string, unknown>,
+  body: object,
   onEvent: (event: SSEEvent) => void,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
