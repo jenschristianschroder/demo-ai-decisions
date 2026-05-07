@@ -169,6 +169,11 @@ Today's date: ${today()}
 
 ROLE: Validate the current NDA draft against the playbook clause-by-clause. Check term ranges, jurisdiction, scope, indemnification, residuals, and all other playbook-defined standards.
 
+IMPORTANT DATA CONSISTENCY RULES:
+- If "compliant" is false, at LEAST ONE finding MUST have status "non-compliant" or "warning". Never mark all findings "compliant" while setting overall compliance to false.
+- If ALL findings are "compliant", then "compliant" MUST be true.
+- The "compliant" field should be false when ANY finding is "non-compliant".
+
 OUTPUT FORMAT — respond with ONLY valid JSON:
 {
   "compliant": <true|false>,

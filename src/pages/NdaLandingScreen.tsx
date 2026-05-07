@@ -92,12 +92,26 @@ const NdaLandingScreen: React.FC = () => {
         },
       );
 
+      // Derive status from actual pipeline results
+      const playbookOk = outputs.playbookValidation?.compliant !== false;
+      const approvalDecision = outputs.approval?.decision;
+      let derivedStatus: import('../types/nda').NdaStatus = 'validated';
+      if (approvalDecision === 'approved') {
+        derivedStatus = playbookOk ? 'approved' : 'validated';
+      } else if (approvalDecision === 'conditionally-approved') {
+        derivedStatus = 'validated';
+      } else if (approvalDecision === 'escalated') {
+        derivedStatus = 'redline-reviewed';
+      } else if (approvalDecision === 'rejected') {
+        derivedStatus = 'redline-reviewed';
+      }
+
       setNdaData({
         scenario: {
           id: 'nda-generated-2026',
           title: `NDA — ${intake.counterpartyName}`,
           description: `AI-generated NDA using ${selectedTemplateId} template.`,
-          status: 'approved',
+          status: derivedStatus,
           intakeData: intake,
           agentOutputs: { ...outputs, templateRecommendation: recommendation ?? undefined },
           progressSteps: [],
