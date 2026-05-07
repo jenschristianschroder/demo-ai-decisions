@@ -81,7 +81,7 @@ module spaApp 'modules/aca-spa.bicep' = {
     identityId: identity.outputs.id
     azureAiEndpoint: azureAiEndpoint
     azureAiDeployment: azureAiDeployment
-    pgHost: !empty(pgAdminPassword) ? postgresql.outputs.fqdn : ''
+    pgHost: postgresql.?outputs.?fqdn ?? ''
     pgDatabase: pgDatabaseName
     pgUser: 'pgadmin'
     pgPassword: pgAdminPassword
@@ -106,4 +106,4 @@ output spaUrl string = 'https://${spaApp.outputs.fqdn}'
 output acrLoginServer string = acr.outputs.loginServer
 
 @description('PostgreSQL server FQDN')
-output pgFqdn string = !empty(pgAdminPassword) ? postgresql.outputs.fqdn : ''
+output pgFqdn string = postgresql.?outputs.?fqdn ?? ''
