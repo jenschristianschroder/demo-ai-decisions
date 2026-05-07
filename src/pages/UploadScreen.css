@@ -58,6 +58,10 @@
   background: #fafafa;
 }
 
+.drop-zone-input {
+  display: none;
+}
+
 .drop-icon {
   font-size: 36px;
 }
