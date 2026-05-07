@@ -175,3 +175,592 @@
 .contract-dash-btn-danger:hover {
   background: #fee2e2;
 }
+
+/* ==========================================================================
+   Document Summary (contract-summary-)
+   ========================================================================== */
+
+.contract-summary-root {
+  padding: 4px 0;
+}
+
+.contract-summary-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111111;
+  margin-bottom: 16px;
+}
+
+.contract-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.contract-summary-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.contract-summary-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #999999;
+}
+
+.contract-summary-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111111;
+}
+
+.contract-summary-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111111;
+  margin: 20px 0 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.contract-summary-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 20px;
+}
+
+.contract-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.contract-summary-table th {
+  text-align: left;
+  padding: 10px 14px;
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #111111;
+  border-bottom: 1.5px solid #e5e7eb;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.contract-summary-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f0f0f0;
+  color: #333333;
+  vertical-align: top;
+}
+
+.contract-summary-table tr:last-child td {
+  border-bottom: none;
+}
+
+.contract-summary-highlight {
+  margin-top: 20px;
+  padding: 14px 16px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #333333;
+  line-height: 1.6;
+}
+
+/* ==========================================================================
+   Extracted Clauses (contract-clauses-)
+   ========================================================================== */
+
+.contract-clauses-root {
+  padding: 4px 0;
+}
+
+.contract-clauses-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111111;
+  margin-bottom: 16px;
+}
+
+.contract-clauses-table-wrap {
+  overflow-x: auto;
+}
+
+.contract-clauses-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.contract-clauses-table th {
+  text-align: left;
+  padding: 10px 14px;
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #111111;
+  border-bottom: 1.5px solid #e5e7eb;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.contract-clauses-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f0f0f0;
+  color: #333333;
+  vertical-align: top;
+}
+
+.contract-clauses-table tr:last-child td {
+  border-bottom: none;
+}
+
+.contract-clauses-table tr:hover td {
+  background: #fafafa;
+}
+
+.contract-clauses-id {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.contract-clauses-category-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   Playbook Deviations (contract-deviations-)
+   ========================================================================== */
+
+.contract-deviations-root {
+  padding: 4px 0;
+}
+
+.contract-deviations-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111111;
+  margin-bottom: 16px;
+}
+
+.contract-deviations-table-wrap {
+  overflow-x: auto;
+}
+
+.contract-deviations-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.contract-deviations-table th {
+  text-align: left;
+  padding: 10px 14px;
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #111111;
+  border-bottom: 1.5px solid #e5e7eb;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.contract-deviations-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f0f0f0;
+  color: #333333;
+  vertical-align: top;
+}
+
+.contract-deviations-table tr:last-child td {
+  border-bottom: none;
+}
+
+.contract-deviations-table tr:hover td {
+  background: #fafafa;
+}
+
+.contract-deviations-clause-id {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.contract-deviations-type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.contract-deviations-severity-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   Risk Assessment (contract-risks-)
+   ========================================================================== */
+
+.contract-risks-root {
+  padding: 4px 0;
+}
+
+.contract-risks-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111111;
+  margin-bottom: 16px;
+}
+
+.contract-risks-table-wrap {
+  overflow-x: auto;
+}
+
+.contract-risks-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.contract-risks-table th {
+  text-align: left;
+  padding: 10px 14px;
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #111111;
+  border-bottom: 1.5px solid #e5e7eb;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.contract-risks-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f0f0f0;
+  color: #333333;
+  vertical-align: top;
+}
+
+.contract-risks-table tr:last-child td {
+  border-bottom: none;
+}
+
+.contract-risks-table tr:hover td {
+  background: #fafafa;
+}
+
+.contract-risks-clause-id {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.contract-risks-level-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.contract-risks-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   Redline Suggestions (contract-redlines-)
+   ========================================================================== */
+
+.contract-redlines-root {
+  padding: 4px 0;
+}
+
+.contract-redlines-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111111;
+  margin-bottom: 16px;
+}
+
+.contract-redlines-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.contract-redlines-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.contract-redlines-card--open {
+  border-color: #111111;
+}
+
+.contract-redlines-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  color: #333333;
+}
+
+.contract-redlines-card-header:hover {
+  background: #fafafa;
+}
+
+.contract-redlines-card-toggle {
+  font-size: 12px;
+  color: #999999;
+  flex-shrink: 0;
+}
+
+.contract-redlines-card-id {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: #111111;
+  flex-shrink: 0;
+}
+
+.contract-redlines-card-clause {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  color: #666666;
+  flex-shrink: 0;
+}
+
+.contract-redlines-type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  flex-shrink: 0;
+}
+
+.contract-redlines-priority-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.contract-redlines-card-body {
+  padding: 0 16px 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.contract-redlines-diff {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 0;
+}
+
+.contract-redlines-diff-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #999999;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.contract-redlines-original-text {
+  padding: 10px 12px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #7f1d1d;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.contract-redlines-suggested-text {
+  padding: 10px 12px;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #166534;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.contract-redlines-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.contract-redlines-meta-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #999999;
+  margin-right: 6px;
+}
+
+.contract-redlines-rationale {
+  font-size: 13px;
+  color: #333333;
+  line-height: 1.5;
+}
+
+.contract-redlines-source {
+  font-size: 13px;
+  color: #666666;
+}
+
+/* ==========================================================================
+   Recommendations (contract-recs-)
+   ========================================================================== */
+
+.contract-recs-root {
+  padding: 4px 0;
+}
+
+.contract-recs-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111111;
+  margin-bottom: 16px;
+}
+
+.contract-recs-table-wrap {
+  overflow-x: auto;
+}
+
+.contract-recs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.contract-recs-table th {
+  text-align: left;
+  padding: 10px 14px;
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #111111;
+  border-bottom: 1.5px solid #e5e7eb;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.contract-recs-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f0f0f0;
+  color: #333333;
+  vertical-align: top;
+}
+
+.contract-recs-table tr:last-child td {
+  border-bottom: none;
+}
+
+.contract-recs-table tr:hover td {
+  background: #fafafa;
+}
+
+.contract-recs-priority-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.contract-recs-category-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
