@@ -91,16 +91,23 @@ jobs:
       # ────────────────────────────────────────────────────────────────────────
       # 4. Download and extract only the tables we need
       # ────────────────────────────────────────────────────────────────────────
-      - name: Download mbdump.tar.bz2
+      - name: Download dump archives
         run: |
-          DUMP_URL="${{ env.BASE_URL }}/${{ steps.latest.outputs.dump }}/mbdump.tar.bz2"
-          echo "⬇️  Downloading $DUMP_URL …"
-          curl -sSfL -o mbdump.tar.bz2 "$DUMP_URL"
+          DUMP_BASE="${{ env.BASE_URL }}/${{ steps.latest.outputs.dump }}"
+
+          echo "⬇️  Downloading mbdump.tar.bz2 …"
+          curl -sSfL -o mbdump.tar.bz2 "$DUMP_BASE/mbdump.tar.bz2"
           ls -lh mbdump.tar.bz2
+
+          # tag and artist_tag live in the derived dump
+          echo "⬇️  Downloading mbdump-derived.tar.bz2 …"
+          curl -sSfL -o mbdump-derived.tar.bz2 "$DUMP_BASE/mbdump-derived.tar.bz2"
+          ls -lh mbdump-derived.tar.bz2
 
       - name: Extract required table files
         run: |
-          TABLES=(
+          # Tables in mbdump.tar.bz2
+          CORE_TABLES=(
             artist
             artist_type
             area
@@ -114,8 +121,6 @@ jobs:
             artist_credit
             artist_credit_name
             genre
-            tag
-            artist_tag
             l_artist_artist
             l_artist_recording
             l_artist_release
@@ -124,18 +129,32 @@ jobs:
             link_type
           )
 
-          # Build the list of paths inside the tar
+          # Tables in mbdump-derived.tar.bz2
+          DERIVED_TABLES=(
+            tag
+            artist_tag
+          )
+
+          # Extract core tables
           PATHS=()
-          for t in "${TABLES[@]}"; do
+          for t in "${CORE_TABLES[@]}"; do
             PATHS+=("mbdump/$t")
           done
-
-          echo "📂 Extracting ${#PATHS[@]} table files …"
+          echo "📂 Extracting ${#PATHS[@]} core table files …"
           tar -xjf mbdump.tar.bz2 "${PATHS[@]}"
+
+          # Extract derived tables
+          PATHS=()
+          for t in "${DERIVED_TABLES[@]}"; do
+            PATHS+=("mbdump/$t")
+          done
+          echo "📂 Extracting ${#PATHS[@]} derived table files …"
+          tar -xjf mbdump-derived.tar.bz2 "${PATHS[@]}"
+
           ls -lh mbdump/
 
           # Free disk space
-          rm -f mbdump.tar.bz2
+          rm -f mbdump.tar.bz2 mbdump-derived.tar.bz2
 
       # ────────────────────────────────────────────────────────────────────────
       # 5. Ensure demo schema exists
