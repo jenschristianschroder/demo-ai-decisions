@@ -109,8 +109,6 @@ export async function runNdaTemplateRecommendation(
   catalogText: string,
   onProgress: (step: NdaProgressStep) => void,
 ): Promise<NdaTemplateRecommendation> {
-  onProgress({ phase: 'template-recommendation', status: 'pending', message: '' });
-
   let recommendation: NdaTemplateRecommendation | null = null;
   let sseError: string | null = null;
 
@@ -163,19 +161,6 @@ export async function runNdaWorkflow(
   counterpartyRedlineText: string,
   onProgress: (step: NdaProgressStep) => void,
 ): Promise<NdaAgentOutputs> {
-  // Initialize phases as pending
-  const phases = [
-    'template-selection',
-    'draft-generation',
-    'redline-assessment',
-    'playbook-validation',
-    'approval-routing',
-    'signature-dispatch',
-  ];
-  for (const phase of phases) {
-    onProgress({ phase: phase as NdaProgressStep['phase'], status: 'pending', message: '' });
-  }
-
   let finalOutputs: Record<string, unknown> = {};
   let sseError: string | null = null;
 
