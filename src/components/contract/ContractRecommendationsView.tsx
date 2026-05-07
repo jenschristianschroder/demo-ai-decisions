@@ -83,8 +83,8 @@ const ContractRecommendationsView: React.FC<Props> = ({ recommendations }) => {
                 </td>
                 <td>{rec.title}</td>
                 <td>{rec.description}</td>
-                <td>{rec.affectedClauses.join(', ')}</td>
-                <td>{rec.assignedTo}</td>
+                <td>{(rec.affectedClauses ?? []).join(', ') || '—'}</td>
+                <td>{rec.assignedTo || '—'}</td>
                 <td>{rec.playbookReference || '—'}</td>
               </tr>
             ))}

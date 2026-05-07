@@ -255,9 +255,9 @@ OUTPUT FORMAT — respond with ONLY valid JSON:
       "priority": "<high|medium|low>",
       "title": "<brief recommendation title>",
       "description": "<detailed recommendation description>",
-      "relatedClauses": ["<clause IDs>"],
-      "relatedRisks": ["<risk IDs>"],
-      "nextSteps": ["<specific action items>"]
+      "affectedClauses": ["<clause IDs affected by this recommendation>"],
+      "assignedTo": "<role or team responsible, e.g. Legal Team, Senior Counsel, Procurement>",
+      "playbookReference": "<optional reference to playbook section, e.g. Section 4.2>"
     }
   ],
   "reasoning": "<your detailed reasoning about recommendation synthesis>"
