@@ -154,7 +154,7 @@
   margin-bottom: 12px;
 }
 
-.nda-landing-outcomes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.nda-landing-outcomes-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .nda-landing-outcome { display: flex; align-items: flex-start; gap: 8px; }
 .nda-landing-outcome-metric { font-size: 14px; flex-shrink: 0; width: 20px; text-align: center; }
 .nda-landing-outcome-text { font-size: 12px; color: #333333; line-height: 1.4; }

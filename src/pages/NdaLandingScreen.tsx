@@ -209,15 +209,31 @@ const NdaLandingScreen: React.FC = () => {
           <div className="nda-landing-outcomes-grid">
             <div className="nda-landing-outcome">
               <span className="nda-landing-outcome-metric">{'\uD83C\uDFAF'}</span>
-              <span className="nda-landing-outcome-text">Template Recommender &middot; Template Selector</span>
+              <span className="nda-landing-outcome-text">Template Recommender</span>
+            </div>
+            <div className="nda-landing-outcome">
+              <span className="nda-landing-outcome-metric">{'\uD83C\uDFAF'}</span>
+              <span className="nda-landing-outcome-text">Template Selector</span>
             </div>
             <div className="nda-landing-outcome">
               <span className="nda-landing-outcome-metric">{'\uD83D\uDCC4'}</span>
-              <span className="nda-landing-outcome-text">Draft Generator &middot; Redline Assessor</span>
+              <span className="nda-landing-outcome-text">Draft Generator</span>
+            </div>
+            <div className="nda-landing-outcome">
+              <span className="nda-landing-outcome-metric">{'\uD83D\uDCC4'}</span>
+              <span className="nda-landing-outcome-text">Redline Assessor</span>
             </div>
             <div className="nda-landing-outcome">
               <span className="nda-landing-outcome-metric">{'\u2696\uFE0F'}</span>
-              <span className="nda-landing-outcome-text">Playbook Validator &middot; Approval Router &middot; Dispatch</span>
+              <span className="nda-landing-outcome-text">Playbook Validator</span>
+            </div>
+            <div className="nda-landing-outcome">
+              <span className="nda-landing-outcome-metric">{'\u2696\uFE0F'}</span>
+              <span className="nda-landing-outcome-text">Approval Router</span>
+            </div>
+            <div className="nda-landing-outcome">
+              <span className="nda-landing-outcome-metric">{'\uD83D\uDCE8'}</span>
+              <span className="nda-landing-outcome-text">Dispatch</span>
             </div>
           </div>
         </div>
