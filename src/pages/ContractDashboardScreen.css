@@ -355,6 +355,52 @@
   white-space: nowrap;
 }
 
+.contract-clauses-hint {
+  font-size: 12px;
+  color: #888888;
+  margin-bottom: 12px;
+}
+
+.contract-clauses-row {
+  cursor: pointer;
+}
+
+.contract-clauses-toggle {
+  width: 24px;
+  text-align: center;
+  color: #999999;
+  font-size: 12px;
+  user-select: none;
+}
+
+.contract-clauses-expanded-row td {
+  padding: 0 !important;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.contract-clauses-text-panel {
+  background: #f8f9fb;
+  border-top: 1px solid #e5e7eb;
+  padding: 14px 18px;
+}
+
+.contract-clauses-text-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #666666;
+  margin-bottom: 6px;
+}
+
+.contract-clauses-text-content {
+  font-size: 13px;
+  color: #222222;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
 /* ==========================================================================
    Playbook Deviations (contract-deviations-)
    ========================================================================== */

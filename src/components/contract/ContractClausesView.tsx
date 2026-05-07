@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { ExtractedClause } from '../../types/contract';
 
 interface Props {
@@ -42,13 +42,21 @@ const categoryBg = (c: string): string => {
 };
 
 const ContractClausesView: React.FC<Props> = ({ clauses }) => {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const toggleClause = (clauseId: string) => {
+    setExpandedId(expandedId === clauseId ? null : clauseId);
+  };
+
   return (
     <div className="contract-clauses-root">
       <h3 className="contract-clauses-title">Extracted Clauses</h3>
+      <p className="contract-clauses-hint">Click a clause to view its original text.</p>
       <div className="contract-clauses-table-wrap">
         <table className="contract-clauses-table">
           <thead>
             <tr>
+              <th></th>
               <th>ID</th>
               <th>Title</th>
               <th>Category</th>
@@ -59,21 +67,39 @@ const ContractClausesView: React.FC<Props> = ({ clauses }) => {
           </thead>
           <tbody>
             {clauses.map((clause) => (
-              <tr key={clause.clauseId}>
-                <td className="contract-clauses-id">{clause.clauseId}</td>
-                <td>{clause.title}</td>
-                <td>
-                  <span
-                    className="contract-clauses-category-badge"
-                    style={{ color: categoryColor(clause.category), background: categoryBg(clause.category) }}
-                  >
-                    {clause.category}
-                  </span>
-                </td>
-                <td>{clause.section}</td>
-                <td>{clause.hasDefinitions ? 'Yes' : 'No'}</td>
-                <td>{(clause.relatedClauses ?? []).join(', ') || '—'}</td>
-              </tr>
+              <React.Fragment key={clause.clauseId}>
+                <tr
+                  className="contract-clauses-row"
+                  onClick={() => toggleClause(clause.clauseId)}
+                >
+                  <td className="contract-clauses-toggle">
+                    {expandedId === clause.clauseId ? '▾' : '▸'}
+                  </td>
+                  <td className="contract-clauses-id">{clause.clauseId}</td>
+                  <td>{clause.title}</td>
+                  <td>
+                    <span
+                      className="contract-clauses-category-badge"
+                      style={{ color: categoryColor(clause.category), background: categoryBg(clause.category) }}
+                    >
+                      {clause.category}
+                    </span>
+                  </td>
+                  <td>{clause.section}</td>
+                  <td>{clause.hasDefinitions ? 'Yes' : 'No'}</td>
+                  <td>{(clause.relatedClauses ?? []).join(', ') || '—'}</td>
+                </tr>
+                {expandedId === clause.clauseId && (
+                  <tr className="contract-clauses-expanded-row">
+                    <td colSpan={7}>
+                      <div className="contract-clauses-text-panel">
+                        <span className="contract-clauses-text-label">Original Text</span>
+                        <div className="contract-clauses-text-content">{clause.text}</div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
             ))}
           </tbody>
         </table>
