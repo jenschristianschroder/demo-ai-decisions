@@ -33,11 +33,14 @@ export const musicAgentsRouter = Router();
 // ---------------------------------------------------------------------------
 
 musicAgentsRouter.get('/music/data-source', (_req: Request, res: Response) => {
+  console.log('[Music Data-Source] /music/data-source endpoint hit');
   const pgAvailable = isPgAvailable();
-  res.json({
+  const response = {
     source: pgAvailable ? 'postgresql' : 'mock',
     label: pgAvailable ? 'PostgreSQL Data' : 'AI-Generated Demo Data',
-  });
+  };
+  console.log('[Music Data-Source] Responding with:', JSON.stringify(response));
+  res.json(response);
 });
 
 // ---------------------------------------------------------------------------
