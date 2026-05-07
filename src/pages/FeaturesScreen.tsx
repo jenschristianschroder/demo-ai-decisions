@@ -45,6 +45,13 @@ const DEMOS: DemoInfo[] = [
       'Enhance productivity and quality of legal contract review by automatically highlighting deviations from standards, identifying inconsistencies, suggesting edits from the legal playbook, and assessing risk levels',
     route: '/contract',
   },
+  {
+    id: 'nda-automation',
+    label: 'AI NDA Automation',
+    description:
+      'Select the right NDA template with AI-assisted recommendation, generate drafts, assess counterparty redlines, validate against playbook, and route for approval — all powered by a 7-agent pipeline',
+    route: '/nda',
+  },
 ];
 
 const DemoIcon: React.FC<{ id: string }> = ({ id }) => {
@@ -101,6 +108,16 @@ const DemoIcon: React.FC<{ id: string }> = ({ id }) => {
           <line x1="11" y1="16" x2="15" y2="16" stroke="#111111" strokeWidth="1.2" opacity="0.5" />
           <path d="M22 14L25 11L27 13L24 16L22 14Z" fill="white" opacity="0.8" />
           <line x1="21.5" y1="14.5" x2="24.5" y2="17.5" stroke="white" strokeWidth="1" opacity="0.6" />
+        </svg>
+      );
+    case 'nda-automation':
+      return (
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" rx="8" fill="#111111" />
+          <path d="M10 7H18L22 11V25H10V7Z" fill="white" opacity="0.9" />
+          <path d="M18 7V11H22" fill="none" stroke="white" strokeWidth="0.5" />
+          <circle cx="16" cy="18" r="3" fill="#111111" opacity="0.3" />
+          <path d="M16 16V20M14 18H18" stroke="#111111" strokeWidth="0.8" opacity="0.5" />
         </svg>
       );
     default:
