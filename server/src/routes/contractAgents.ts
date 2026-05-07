@@ -384,14 +384,65 @@ function mapAgentOutput(phase: string, raw: Record<string, unknown>): unknown {
     }
     case 'clause-extraction':
       return (raw as { clauses?: unknown[] }).clauses ?? [];
-    case 'playbook-comparison':
-      return (raw as { deviations?: unknown[] }).deviations ?? [];
-    case 'risk-assessment':
-      return (raw as { risks?: unknown[] }).risks ?? [];
-    case 'redline-generation':
-      return (raw as { redlines?: unknown[] }).redlines ?? [];
-    case 'recommendation':
-      return (raw as { recommendations?: unknown[] }).recommendations ?? [];
+    case 'playbook-comparison': {
+      // AI returns playbookStandard/significance/category but frontend expects
+      // playbookLanguage/explanation/severity
+      const deviations = (raw as { deviations?: Record<string, unknown>[] }).deviations ?? [];
+      return deviations.map((d) => ({
+        clauseId: d.clauseId ?? '',
+        deviationType: d.deviationType ?? 'different',
+        contractLanguage: d.contractLanguage ?? '',
+        playbookLanguage: d.playbookStandard ?? d.playbookLanguage ?? '',
+        explanation: d.significance ?? d.explanation ?? '',
+        severity: d.severity ?? 'medium',
+      }));
+    }
+    case 'risk-assessment': {
+      // AI returns impact/notes/clauseTitle but frontend expects
+      // potentialImpact/description/category/recommendedAction/status
+      const risks = (raw as { risks?: Record<string, unknown>[] }).risks ?? [];
+      return risks.map((r) => ({
+        riskId: r.riskId ?? '',
+        clauseId: r.clauseId ?? '',
+        category: r.category ?? r.clauseTitle ?? '',
+        riskLevel: r.riskLevel ?? 'medium',
+        description: r.description ?? r.notes ?? '',
+        potentialImpact: r.potentialImpact ?? r.impact ?? '',
+        likelihood: r.likelihood ?? 'possible',
+        recommendedAction: r.recommendedAction ?? '',
+        alternativeClause: r.alternativeClause,
+        status: r.status ?? 'identified',
+      }));
+    }
+    case 'redline-generation': {
+      // AI returns clauseTitle but frontend expects source
+      const redlines = (raw as { redlines?: Record<string, unknown>[] }).redlines ?? [];
+      return redlines.map((r) => ({
+        redlineId: r.redlineId ?? '',
+        clauseId: r.clauseId ?? '',
+        type: r.type ?? 'modification',
+        originalText: r.originalText ?? '',
+        suggestedText: r.suggestedText ?? '',
+        rationale: r.rationale ?? '',
+        source: r.source ?? (r.clauseTitle ? `Clause: ${r.clauseTitle}` : ''),
+        priority: r.priority ?? 'recommended',
+      }));
+    }
+    case 'recommendation': {
+      // AI returns relatedClauses/nextSteps but frontend expects
+      // affectedClauses/assignedTo/playbookReference
+      const recs = (raw as { recommendations?: Record<string, unknown>[] }).recommendations ?? [];
+      return recs.map((r) => ({
+        recommendationId: r.recommendationId ?? '',
+        category: r.category ?? 'negotiate',
+        title: r.title ?? '',
+        description: r.description ?? '',
+        affectedClauses: r.affectedClauses ?? r.relatedClauses ?? [],
+        priority: r.priority ?? 'medium',
+        assignedTo: r.assignedTo ?? 'Legal Team',
+        playbookReference: r.playbookReference ?? '',
+      }));
+    }
     default:
       return raw;
   }
