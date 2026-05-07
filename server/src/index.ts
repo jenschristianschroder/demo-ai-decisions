@@ -13,6 +13,7 @@ import { financeAiRouter } from './routes/financeAi.js';
 import { rndAiRouter } from './routes/rndAi.js';
 import { rndAgentsRouter } from './routes/rndAgents.js';
 import { rfpAgentsRouter } from './routes/rfpAgents.js';
+import { contractAgentsRouter } from './routes/contractAgents.js';
 import { DEFAULT_DEPLOYMENT } from './aiClient.js';
 
 const app = express();
@@ -35,6 +36,7 @@ app.use('/api/ai/finance', apiLimiter, financeAiRouter);
 app.use('/api/ai/rnd', apiLimiter, rndAiRouter);
 app.use('/api/ai/rnd', apiLimiter, rndAgentsRouter);
 app.use('/api/ai', apiLimiter, rfpAgentsRouter);
+app.use('/api/ai', apiLimiter, contractAgentsRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {

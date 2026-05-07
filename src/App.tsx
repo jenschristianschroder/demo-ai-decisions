@@ -17,6 +17,8 @@ import RndConceptDetailScreen from './pages/RndConceptDetailScreen';
 import RndDecisionScreen from './pages/RndDecisionScreen';
 import RfpLandingScreen from './pages/RfpLandingScreen';
 import RfpDashboardScreen from './pages/RfpDashboardScreen';
+import ContractLandingScreen from './pages/ContractLandingScreen';
+import ContractDashboardScreen from './pages/ContractDashboardScreen';
 
 const App: React.FC = () => {
   return (
@@ -38,6 +40,8 @@ const App: React.FC = () => {
       <Route path="/rnd/decision" element={<RndDecisionScreen />} />
       <Route path="/rfp" element={<RfpLandingScreen />} />
       <Route path="/rfp/dashboard" element={<RfpDashboardScreen />} />
+      <Route path="/contract" element={<ContractLandingScreen />} />
+      <Route path="/contract/dashboard" element={<ContractDashboardScreen />} />
     </Routes>
   );
 };
