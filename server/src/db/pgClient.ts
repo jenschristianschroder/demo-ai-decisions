@@ -20,7 +20,21 @@ let pool: pg.Pool | null = null;
 
 function getPool(): pg.Pool | null {
   if (pool) return pool;
-  if (!process.env.PGHOST) return null;
+
+  console.log('[PG Debug] Checking PG environment variables:');
+  console.log(`[PG Debug]   PGHOST=${process.env.PGHOST ?? '(not set)'}`);
+  console.log(`[PG Debug]   PGDATABASE=${process.env.PGDATABASE ?? '(not set, default: musicbrainz)'}`);
+  console.log(`[PG Debug]   PGUSER=${process.env.PGUSER ?? '(not set, default: pgadmin)'}`);
+  console.log(`[PG Debug]   PGPASSWORD=${process.env.PGPASSWORD ? '****' : '(not set)'}`);
+  console.log(`[PG Debug]   PGPORT=${process.env.PGPORT ?? '(not set, default: 5432)'}`);
+  console.log(`[PG Debug]   PGSSLMODE=${process.env.PGSSLMODE ?? '(not set)'}`);
+
+  if (!process.env.PGHOST) {
+    console.warn('[PG Debug] PGHOST is not set — skipping pool creation, falling back to AI-only mode.');
+    return null;
+  }
+
+  console.log('[PG Debug] Creating PG pool...');
 
   pool = new Pool({
     host: process.env.PGHOST,
@@ -35,15 +49,18 @@ function getPool(): pg.Pool | null {
   });
 
   pool.on('error', (err) => {
-    console.error('Unexpected PG pool error:', err);
+    console.error('[PG Debug] Unexpected PG pool error:', err);
   });
 
+  console.log('[PG Debug] PG pool created successfully.');
   return pool;
 }
 
 /** True when a PostgreSQL connection is configured */
 export function isPgAvailable(): boolean {
-  return !!process.env.PGHOST;
+  const available = !!process.env.PGHOST;
+  console.log(`[PG Debug] isPgAvailable() => ${available} (PGHOST=${process.env.PGHOST ?? '(not set)'})`);
+  return available;
 }
 
 // ---------------------------------------------------------------------------

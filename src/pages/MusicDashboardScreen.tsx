@@ -37,11 +37,18 @@ const MusicDashboardScreen: React.FC = () => {
   const [dataSource, setDataSource] = useState<DataSourceInfo | null>(null);
 
   useEffect(() => {
+    console.log('[MusicDashboard] Fetching data source status...');
     fetch('/api/ai/music/data-source')
-      .then((res) => res.json())
-      .then((info: DataSourceInfo) => setDataSource(info))
+      .then((res) => {
+        console.log('[MusicDashboard] /api/ai/music/data-source response status:', res.status);
+        return res.json();
+      })
+      .then((info: DataSourceInfo) => {
+        console.log('[MusicDashboard] Data source info received:', JSON.stringify(info));
+        setDataSource(info);
+      })
       .catch((err) => {
-        console.warn('Failed to fetch data source status:', err);
+        console.warn('[MusicDashboard] Failed to fetch data source status:', err);
         setDataSource({ source: 'mock', label: 'AI-Generated Demo Data' });
       });
   }, []);

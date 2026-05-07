@@ -110,6 +110,45 @@ jobs:
             -t ${{ steps.acr.outputs.acrLoginServer }}/${{ env.APP_NAME }}-spa:${{ github.sha }} .
           docker push ${{ steps.acr.outputs.acrLoginServer }}/${{ env.APP_NAME }}-spa:${{ github.sha }}
 
+      # ─── Resolve PostgreSQL connection settings ─────────────────────
+      # Uses infra Bicep outputs when available, otherwise falls back to
+      # GitHub secrets: PG_HOST, PG_DATABASE, PG_USER, PG_PASSWORD, PG_SSLMODE
+      - name: Resolve PostgreSQL connection settings
+        id: pg
+        run: |
+          RESOLVED_PGHOST="${{ steps.infra.outputs.pgFqdn }}"
+          if [ -z "$RESOLVED_PGHOST" ]; then
+            RESOLVED_PGHOST="${{ secrets.PG_HOST }}"
+          fi
+          RESOLVED_PGDATABASE="${{ secrets.PG_DATABASE }}"
+          if [ -z "$RESOLVED_PGDATABASE" ]; then
+            RESOLVED_PGDATABASE="musicbrainz"
+          fi
+          RESOLVED_PGUSER="${{ secrets.PG_USER }}"
+          if [ -z "$RESOLVED_PGUSER" ]; then
+            RESOLVED_PGUSER="pgadmin"
+          fi
+          RESOLVED_PGPASSWORD="${{ secrets.PG_PASSWORD }}"
+          if [ -z "$RESOLVED_PGPASSWORD" ]; then
+            RESOLVED_PGPASSWORD="${{ secrets.PG_ADMIN_PASSWORD }}"
+          fi
+          RESOLVED_PGSSLMODE="${{ secrets.PG_SSLMODE }}"
+          if [ -z "$RESOLVED_PGSSLMODE" ]; then
+            RESOLVED_PGSSLMODE="require"
+          fi
+
+          echo "pgHost=$RESOLVED_PGHOST" >> "$GITHUB_OUTPUT"
+          echo "pgDatabase=$RESOLVED_PGDATABASE" >> "$GITHUB_OUTPUT"
+          echo "pgUser=$RESOLVED_PGUSER" >> "$GITHUB_OUTPUT"
+          echo "pgPassword=$RESOLVED_PGPASSWORD" >> "$GITHUB_OUTPUT"
+          echo "pgSslMode=$RESOLVED_PGSSLMODE" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$RESOLVED_PGHOST" ]; then
+            echo "✅ PostgreSQL will be configured: host=$RESOLVED_PGHOST, db=$RESOLVED_PGDATABASE, user=$RESOLVED_PGUSER, ssl=$RESOLVED_PGSSLMODE"
+          else
+            echo "⚠️ No PGHOST resolved — app will fall back to AI-only mode. Set PG_HOST secret or ensure Bicep deploys PostgreSQL."
+          fi
+
       # ─── Update container app with new image ────────────────────────
       - name: Update SPA Container App
         run: |
@@ -120,25 +159,22 @@ jobs:
             --set-env-vars \
               "AZURE_AI_ENDPOINT=${{ secrets.AZURE_AI_ENDPOINT }}" \
               "AZURE_AI_DEPLOYMENT=${{ secrets.AZURE_AI_DEPLOYMENT }}" \
-              "PGHOST=${{ steps.infra.outputs.pgFqdn }}" \
-              "PGDATABASE=musicbrainz" \
-              "PGUSER=pgadmin" \
-              "PGPASSWORD=${{ secrets.PG_ADMIN_PASSWORD }}" \
-              "PGSSLMODE=require" \
+              "PGHOST=${{ steps.pg.outputs.pgHost }}" \
+              "PGDATABASE=${{ steps.pg.outputs.pgDatabase }}" \
+              "PGUSER=${{ steps.pg.outputs.pgUser }}" \
+              "PGPASSWORD=${{ steps.pg.outputs.pgPassword }}" \
+              "PGSSLMODE=${{ steps.pg.outputs.pgSslMode }}" \
             --min-replicas 1
 
       # ─── Initialize PostgreSQL database (schema + extensions) ────────
       - name: Initialize PostgreSQL database
-        if: steps.infra.outputs.pgFqdn != ''
+        if: steps.pg.outputs.pgHost != ''
         run: |
-          PG_FQDN="${{ steps.infra.outputs.pgFqdn }}"
-          if [ -z "$PG_FQDN" ]; then
-            PG_FQDN="$(az postgres flexible-server list --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --query "[?name=='${{ env.APP_NAME }}-pg'].fullyQualifiedDomainName | [0]" -o tsv)"
-          fi
+          PG_FQDN="${{ steps.pg.outputs.pgHost }}"
           if [ -n "$PG_FQDN" ]; then
             echo "Initializing database schema on $PG_FQDN..."
-            PGPASSWORD="${{ secrets.PG_ADMIN_PASSWORD }}" psql \
-              "host=$PG_FQDN dbname=musicbrainz user=pgadmin sslmode=require" \
+            PGPASSWORD="${{ steps.pg.outputs.pgPassword }}" psql \
+              "host=$PG_FQDN dbname=${{ steps.pg.outputs.pgDatabase }} user=${{ steps.pg.outputs.pgUser }} sslmode=${{ steps.pg.outputs.pgSslMode }}" \
               -f server/src/db/initSchema.sql
           else
             echo "::warning::Could not resolve PostgreSQL server FQDN — skipping DB init."
