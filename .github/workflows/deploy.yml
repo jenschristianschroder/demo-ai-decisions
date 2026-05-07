@@ -21,10 +21,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Azure Login (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -45,13 +45,14 @@ jobs:
 
       # ─── Deploy infrastructure (creates ACR if needed) ───────────────
       - name: Deploy Bicep (infra only — placeholder images)
-        uses: azure/arm-deploy@v2
+        uses: azure/bicep-deploy@v2
         id: infra
         continue-on-error: true
         with:
           deploymentName: ${{ env.INFRA_DEPLOYMENT_NAME }}
           resourceGroupName: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          template: infra/main.bicep
+          scope: resourceGroup
+          templateFile: infra/main.bicep
           parameters: >-
             imageTag=${{ github.sha }}
             azureAiEndpoint=${{ secrets.AZURE_AI_ENDPOINT }}
