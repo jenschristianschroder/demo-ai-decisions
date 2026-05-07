@@ -172,7 +172,7 @@ export async function runNdaSingleStage(
 
   await consumeSSE(
     '/api/ai/nda/run-single-stage-sse',
-    input,
+    input as unknown as Record<string, unknown>,
     (event) => {
       if (event.type === 'agent-start' && event.phase) {
         onProgress({
