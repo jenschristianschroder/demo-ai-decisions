@@ -21,6 +21,15 @@ interface GraphLink {
   type: string;
 }
 
+/** Base radius for every node circle (px). */
+const BASE_NODE_RADIUS = 5;
+/** Maximum extra radius added based on connection count (px). */
+const MAX_CONNECTION_BONUS = 8;
+
+/** Compute the visual radius for a node based on its connections. */
+const nodeRadius = (connections: number) =>
+  BASE_NODE_RADIUS + Math.min(connections, MAX_CONNECTION_BONUS);
+
 const TYPE_COLORS: Record<string, string> = {
   artist: '#7c3aed',
   recording: '#059669',
@@ -67,9 +76,10 @@ const MusicForceGraph: React.FC<Props> = ({ paths }) => {
     return { nodes: Array.from(nodeMap.values()), links };
   }, [paths]);
 
+  /* eslint-disable @typescript-eslint/no-explicit-any */
   const paintNode = useCallback(
     (node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
-      const r = 5 + Math.min(node.connections, 8);
+      const r = nodeRadius(node.connections);
       const color = getColor(node.type);
       const isHovered = hoveredNode?.id === node.id;
 
@@ -128,12 +138,12 @@ const MusicForceGraph: React.FC<Props> = ({ paths }) => {
 
       <div ref={containerRef} className="music-fg-canvas">
         <ForceGraph2D
-          graphData={graphData as never}
+          graphData={graphData as any}
           width={containerRef.current?.clientWidth ?? 900}
           height={500}
-          nodeCanvasObject={paintNode as never}
-          nodePointerAreaPaint={(node: GraphNode, color: string, ctx: CanvasRenderingContext2D) => {
-            const r = 5 + Math.min(node.connections, 8);
+          nodeCanvasObject={paintNode as any}
+          nodePointerAreaPaint={(node: any, color: string, ctx: CanvasRenderingContext2D) => {
+            const r = nodeRadius((node as GraphNode).connections);
             ctx.beginPath();
             ctx.arc(node.x!, node.y!, r + 2, 0, 2 * Math.PI);
             ctx.fillStyle = color;
@@ -143,12 +153,13 @@ const MusicForceGraph: React.FC<Props> = ({ paths }) => {
           linkWidth={1.5}
           linkDirectionalArrowLength={4}
           linkDirectionalArrowRelPos={1}
-          onNodeHover={(node: GraphNode | null) => setHoveredNode(node)}
+          onNodeHover={(node: any) => setHoveredNode(node as GraphNode | null)}
           cooldownTicks={80}
           enableZoomInteraction={true}
           enablePanInteraction={true}
         />
       </div>
+      {/* eslint-enable @typescript-eslint/no-explicit-any */}
     </div>
   );
 };
