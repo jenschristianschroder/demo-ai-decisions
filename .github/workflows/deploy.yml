@@ -57,6 +57,7 @@ jobs:
             azureAiEndpoint=${{ secrets.AZURE_AI_ENDPOINT }}
             azureAiDeployment=${{ secrets.AZURE_AI_DEPLOYMENT }}
             cognitiveServicesAccountId=${{ secrets.COGNITIVE_SERVICES_ACCOUNT_ID }}
+            pgAdminPassword=${{ secrets.PG_ADMIN_PASSWORD }}
           failOnStdErr: false
 
       - name: Validate infra deployment failure reason
@@ -118,7 +119,29 @@ jobs:
             --set-env-vars \
               AZURE_AI_ENDPOINT=${{ secrets.AZURE_AI_ENDPOINT }} \
               AZURE_AI_DEPLOYMENT=${{ secrets.AZURE_AI_DEPLOYMENT }} \
+              PGHOST=${{ steps.infra.outputs.pgFqdn }} \
+              PGDATABASE=musicbrainz \
+              PGUSER=pgadmin \
+              PGPASSWORD=${{ secrets.PG_ADMIN_PASSWORD }} \
+              PGSSLMODE=require \
             --min-replicas 1
+
+      # ─── Initialize PostgreSQL database (schema + extensions) ────────
+      - name: Initialize PostgreSQL database
+        if: steps.infra.outputs.pgFqdn != ''
+        run: |
+          PG_FQDN="${{ steps.infra.outputs.pgFqdn }}"
+          if [ -z "$PG_FQDN" ]; then
+            PG_FQDN="$(az postgres flexible-server list --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --query "[?name=='${{ env.APP_NAME }}-pg'].fullyQualifiedDomainName | [0]" -o tsv)"
+          fi
+          if [ -n "$PG_FQDN" ]; then
+            echo "Initializing database schema on $PG_FQDN..."
+            PGPASSWORD="${{ secrets.PG_ADMIN_PASSWORD }}" psql \
+              "host=$PG_FQDN dbname=musicbrainz user=pgadmin sslmode=require" \
+              -f server/src/db/initSchema.sql
+          else
+            echo "::warning::Could not resolve PostgreSQL server FQDN — skipping DB init."
+          fi
 
       - name: Output SPA URL
         run: |

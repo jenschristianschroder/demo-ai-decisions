@@ -20,12 +20,18 @@ param azureAiDeployment string = 'gpt-4o'
 @description('Resource ID of the Cognitive Services account for role assignment')
 param cognitiveServicesAccountId string = ''
 
+@description('PostgreSQL administrator password')
+@secure()
+param pgAdminPassword string = ''
+
 // ─── Derived names ───────────────────────────────────────────────────────────
 
 var acrName = '${replace('${appName}acr', '-', '')}${uniqueString(resourceGroup().id)}'
 var envName = '${appName}-env'
 var identityName = '${appName}-identity'
 var spaAppName = '${appName}-spa'
+var pgServerName = '${appName}-pg'
+var pgDatabaseName = 'musicbrainz'
 
 // ─── Modules ─────────────────────────────────────────────────────────────────
 
@@ -54,6 +60,16 @@ module identity 'modules/identity.bicep' = {
   }
 }
 
+module postgresql 'modules/postgresql.bicep' = if (!empty(pgAdminPassword)) {
+  name: 'postgresql'
+  params: {
+    location: location
+    name: pgServerName
+    administratorLoginPassword: pgAdminPassword
+    databaseName: pgDatabaseName
+  }
+}
+
 module spaApp 'modules/aca-spa.bicep' = {
   name: 'aca-spa'
   params: {
@@ -65,6 +81,10 @@ module spaApp 'modules/aca-spa.bicep' = {
     identityId: identity.outputs.id
     azureAiEndpoint: azureAiEndpoint
     azureAiDeployment: azureAiDeployment
+    pgHost: !empty(pgAdminPassword) ? postgresql.outputs.fqdn : ''
+    pgDatabase: pgDatabaseName
+    pgUser: 'pgadmin'
+    pgPassword: pgAdminPassword
   }
 }
 
@@ -84,3 +104,6 @@ output spaUrl string = 'https://${spaApp.outputs.fqdn}'
 
 @description('ACR login server')
 output acrLoginServer string = acr.outputs.loginServer
+
+@description('PostgreSQL server FQDN')
+output pgFqdn string = !empty(pgAdminPassword) ? postgresql.outputs.fqdn : ''

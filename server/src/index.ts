@@ -17,6 +17,7 @@ import { contractAgentsRouter } from './routes/contractAgents.js';
 import { ndaAgentsRouter } from './routes/ndaAgents.js';
 import { musicAgentsRouter } from './routes/musicAgents.js';
 import { DEFAULT_DEPLOYMENT } from './aiClient.js';
+import { isPgAvailable, closePool } from './db/pgClient.js';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -70,4 +71,12 @@ app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
   console.log(`  AZURE_AI_ENDPOINT: ${process.env.AZURE_AI_ENDPOINT ? '✓ configured' : '✗ not set'}`);
   console.log(`  AZURE_AI_DEPLOYMENT: ${process.env.AZURE_AI_DEPLOYMENT || DEFAULT_DEPLOYMENT + ' (default)'}`);
+  console.log(`  PostgreSQL: ${isPgAvailable() ? '✓ configured (' + process.env.PGHOST + ')' : '✗ not set (AI-only mode)'}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received — shutting down');
+  await closePool();
+  process.exit(0);
 });
