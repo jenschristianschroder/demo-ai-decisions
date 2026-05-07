@@ -52,6 +52,13 @@ const DEMOS: DemoInfo[] = [
       'Select the right NDA template with AI-assisted recommendation, generate drafts, assess counterparty redlines, validate against playbook, and route for approval — all powered by a 7-agent pipeline',
     route: '/nda',
   },
+  {
+    id: 'music-intelligence',
+    label: 'Music Intelligence Graph',
+    description:
+      'Discover hidden relationships across artists, recordings, releases, labels, and genres using PostgreSQL graph capabilities, semantic search, and AI-powered natural language queries',
+    route: '/music',
+  },
 ];
 
 const DemoIcon: React.FC<{ id: string }> = ({ id }) => {
@@ -118,6 +125,18 @@ const DemoIcon: React.FC<{ id: string }> = ({ id }) => {
           <path d="M18 7V11H22" fill="none" stroke="white" strokeWidth="0.5" />
           <circle cx="16" cy="18" r="3" fill="#111111" opacity="0.3" />
           <path d="M16 16V20M14 18H18" stroke="#111111" strokeWidth="0.8" opacity="0.5" />
+        </svg>
+      );
+    case 'music-intelligence':
+      return (
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" rx="8" fill="#111111" />
+          <circle cx="10" cy="10" r="3" fill="white" opacity="0.9" />
+          <circle cx="22" cy="10" r="3" fill="white" opacity="0.9" />
+          <circle cx="16" cy="22" r="3" fill="white" opacity="0.9" />
+          <line x1="12.5" y1="11.5" x2="19.5" y2="11.5" stroke="white" strokeWidth="1.2" opacity="0.7" />
+          <line x1="11" y1="12.5" x2="14.5" y2="19.5" stroke="white" strokeWidth="1.2" opacity="0.7" />
+          <line x1="21" y1="12.5" x2="17.5" y2="19.5" stroke="white" strokeWidth="1.2" opacity="0.7" />
         </svg>
       );
     default:

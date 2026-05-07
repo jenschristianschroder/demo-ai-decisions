@@ -15,6 +15,7 @@ import { rndAgentsRouter } from './routes/rndAgents.js';
 import { rfpAgentsRouter } from './routes/rfpAgents.js';
 import { contractAgentsRouter } from './routes/contractAgents.js';
 import { ndaAgentsRouter } from './routes/ndaAgents.js';
+import { musicAgentsRouter } from './routes/musicAgents.js';
 import { DEFAULT_DEPLOYMENT } from './aiClient.js';
 
 const app = express();
@@ -39,6 +40,7 @@ app.use('/api/ai/rnd', apiLimiter, rndAgentsRouter);
 app.use('/api/ai', apiLimiter, rfpAgentsRouter);
 app.use('/api/ai', apiLimiter, contractAgentsRouter);
 app.use('/api/ai', apiLimiter, ndaAgentsRouter);
+app.use('/api/ai', apiLimiter, musicAgentsRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {
