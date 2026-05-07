@@ -2,6 +2,12 @@
 // Music Intelligence Graph Demo — Type definitions
 // ---------------------------------------------------------------------------
 
+/** Describes whether the demo is backed by PostgreSQL or AI-generated data. */
+export interface DataSourceInfo {
+  source: 'postgresql' | 'mock';
+  label: string;
+}
+
 // ---------------------------------------------------------------------------
 // Progress tracking (follows RfpProgressStep pattern)
 // ---------------------------------------------------------------------------

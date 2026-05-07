@@ -6,12 +6,8 @@ import MusicRelationshipPaths from '../components/music/MusicRelationshipPaths';
 import MusicRecommendations from '../components/music/MusicRecommendations';
 import MusicCatalogInsights from '../components/music/MusicCatalogInsights';
 import MusicAgentTimeline from '../components/music/MusicAgentTimeline';
+import type { DataSourceInfo } from '../types/music';
 import './MusicDashboardScreen.css';
-
-interface DataSourceInfo {
-  source: 'postgresql' | 'mock';
-  label: string;
-}
 
 type TabId =
   | 'query'
@@ -44,7 +40,10 @@ const MusicDashboardScreen: React.FC = () => {
     fetch('/api/ai/music/data-source')
       .then((res) => res.json())
       .then((info: DataSourceInfo) => setDataSource(info))
-      .catch(() => setDataSource({ source: 'mock', label: 'AI-Generated Demo Data' }));
+      .catch((err) => {
+        console.warn('Failed to fetch data source status:', err);
+        setDataSource({ source: 'mock', label: 'AI-Generated Demo Data' });
+      });
   }, []);
 
   const handleReset = () => {

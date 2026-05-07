@@ -2,13 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { runMusicWorkflow } from '../lib/musicAi';
 import { SAMPLE_QUERIES, setMusicData, resetMusicData } from '../data/mockMusicData';
-import type { MusicProgressStep } from '../types/music';
+import type { MusicProgressStep, DataSourceInfo } from '../types/music';
 import './MusicLandingScreen.css';
-
-interface DataSourceInfo {
-  source: 'postgresql' | 'mock';
-  label: string;
-}
 
 const MusicLandingScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -24,7 +19,10 @@ const MusicLandingScreen: React.FC = () => {
     fetch('/api/ai/music/data-source')
       .then((res) => res.json())
       .then((info: DataSourceInfo) => setDataSource(info))
-      .catch(() => setDataSource({ source: 'mock', label: 'AI-Generated Demo Data' }));
+      .catch((err) => {
+        console.warn('Failed to fetch data source status:', err);
+        setDataSource({ source: 'mock', label: 'AI-Generated Demo Data' });
+      });
   }, []);
 
   const handleSelectSampleQuery = (index: number) => {
