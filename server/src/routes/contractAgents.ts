@@ -103,6 +103,9 @@ OUTPUT FORMAT — respond with ONLY valid JSON:
       "title": "<clause title or heading>",
       "category": "<category from list above>",
       "text": "<full clause text>",
+      "section": "<section number or heading reference, e.g. Section 3.1>",
+      "hasDefinitions": <true if clause contains defined terms, false otherwise>,
+      "relatedClauses": ["<IDs of related or cross-referenced clauses, empty array if none>"],
       "summary": "<brief summary of the clause>"
     }
   ],
@@ -370,8 +373,15 @@ const AGENTS: AgentDef[] = [
 
 function mapAgentOutput(phase: string, raw: Record<string, unknown>): unknown {
   switch (phase) {
-    case 'document-parse':
-      return raw;
+    case 'document-parse': {
+      // The AI prompt returns "title" but the frontend type expects "contractTitle"
+      const doc = { ...raw };
+      if ('title' in doc && !('contractTitle' in doc)) {
+        doc.contractTitle = doc.title;
+        delete doc.title;
+      }
+      return doc;
+    }
     case 'clause-extraction':
       return (raw as { clauses?: unknown[] }).clauses ?? [];
     case 'playbook-comparison':

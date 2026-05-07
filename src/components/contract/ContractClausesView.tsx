@@ -72,7 +72,7 @@ const ContractClausesView: React.FC<Props> = ({ clauses }) => {
                 </td>
                 <td>{clause.section}</td>
                 <td>{clause.hasDefinitions ? 'Yes' : 'No'}</td>
-                <td>{clause.relatedClauses.join(', ') || '—'}</td>
+                <td>{(clause.relatedClauses ?? []).join(', ') || '—'}</td>
               </tr>
             ))}
           </tbody>
