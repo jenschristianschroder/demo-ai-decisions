@@ -81,7 +81,7 @@ const MusicDashboardScreen: React.FC = () => {
       <main className="music-dash-main">
         {!outputs ? (
           <div className="music-dash-empty">
-            <p className="music-dash-empty-text">No analysis data available yet.</p>
+            <p className="music-dash-empty-text">No analysis data available. Run a query from the landing page to generate results.</p>
             <button className="music-dash-btn-secondary" onClick={() => navigate('/music')}>
               ← Back to Music Landing
             </button>
