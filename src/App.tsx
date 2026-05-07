@@ -21,6 +21,8 @@ import ContractLandingScreen from './pages/ContractLandingScreen';
 import ContractDashboardScreen from './pages/ContractDashboardScreen';
 import NdaLandingScreen from './pages/NdaLandingScreen';
 import NdaDashboardScreen from './pages/NdaDashboardScreen';
+import MusicLandingScreen from './pages/MusicLandingScreen';
+import MusicDashboardScreen from './pages/MusicDashboardScreen';
 
 const App: React.FC = () => {
   return (
@@ -46,6 +48,8 @@ const App: React.FC = () => {
       <Route path="/contract/dashboard" element={<ContractDashboardScreen />} />
       <Route path="/nda" element={<NdaLandingScreen />} />
       <Route path="/nda/dashboard" element={<NdaDashboardScreen />} />
+      <Route path="/music" element={<MusicLandingScreen />} />
+      <Route path="/music/dashboard" element={<MusicDashboardScreen />} />
     </Routes>
   );
 };

@@ -1,0 +1,53 @@
+import React from 'react';
+import type { MusicProgressStep } from '../../types/music';
+
+interface Props {
+  steps: MusicProgressStep[];
+}
+
+const phaseLabels: Record<string, string> = {
+  'query-parse': 'Query Parsing',
+  'graph-traversal': 'Graph Traversal',
+  'semantic-search': 'Semantic Search',
+  recommendation: 'Recommendation',
+  explanation: 'Explanation Generation',
+  complete: 'Complete',
+};
+
+const statusIcon = (status: string): React.ReactNode => {
+  switch (status) {
+    case 'done':
+      return <span className="music-at-icon music-at-icon--done">✓</span>;
+    case 'running':
+      return <span className="music-at-icon music-at-icon--running"><span className="music-at-spinner" /></span>;
+    case 'error':
+      return <span className="music-at-icon music-at-icon--error">✗</span>;
+    default:
+      return <span className="music-at-icon music-at-icon--pending" />;
+  }
+};
+
+const MusicAgentTimeline: React.FC<Props> = ({ steps }) => {
+  return (
+    <div className="music-at-root">
+      <h3 className="music-at-title">Agent Processing Timeline</h3>
+      <div className="music-at-list">
+        {steps.map((step) => (
+          <div key={step.phase} className={`music-at-step music-at-step--${step.status}`}>
+            <div className="music-at-connector" />
+            {statusIcon(step.status)}
+            <div className="music-at-content">
+              <div className="music-at-phase">{phaseLabels[step.phase] ?? step.phase}</div>
+              <div className="music-at-message">{step.message}</div>
+              {step.reasoning && (
+                <div className="music-at-reasoning">{step.reasoning}</div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default MusicAgentTimeline;
