@@ -10,12 +10,9 @@ const NdaRedlineAssessmentView: React.FC<Props> = ({ redlines, onRedlineDecision
   const [openId, setOpenId] = useState<string | null>(null);
   const [userDecisions, setUserDecisions] = useState<Record<string, RedlineClassification>>({});
 
-  const getEffectiveClassification = (item: NdaRedlineItem): RedlineClassification =>
-    userDecisions[item.clauseId] ?? item.classification;
-
   const effectiveRedlines = redlines.map((r) => ({
     ...r,
-    effectiveClassification: getEffectiveClassification(r),
+    effectiveClassification: userDecisions[r.clauseId] ?? r.classification,
   }));
 
   const acceptCount = effectiveRedlines.filter((r) => r.effectiveClassification === 'accept').length;
@@ -54,8 +51,7 @@ const NdaRedlineAssessmentView: React.FC<Props> = ({ redlines, onRedlineDecision
       </div>
 
       <div className="nda-redline-list">
-        {redlines.map((item) => {
-          const effective = getEffectiveClassification(item);
+        {effectiveRedlines.map((item) => {
           const isOverridden = userDecisions[item.clauseId] !== undefined;
           return (
             <div
@@ -69,8 +65,8 @@ const NdaRedlineAssessmentView: React.FC<Props> = ({ redlines, onRedlineDecision
                 <span className="nda-redline-card-toggle">{openId === item.clauseId ? '▾' : '▸'}</span>
                 <span className="nda-redline-card-id">{item.clauseId}</span>
                 <span className="nda-redline-card-clause">{item.clauseTitle}</span>
-                <span className={`nda-redline-classification-badge nda-redline-classification--${effective}`}>
-                  {effective}
+                <span className={`nda-redline-classification-badge nda-redline-classification--${item.effectiveClassification}`}>
+                  {item.effectiveClassification}
                 </span>
                 {isOverridden && (
                   <span className="nda-redline-override-badge" title={`AI recommended: ${item.classification}`}>
@@ -124,28 +120,28 @@ const NdaRedlineAssessmentView: React.FC<Props> = ({ redlines, onRedlineDecision
                     <span className="nda-redline-decision-label">Your Decision:</span>
                     <div className="nda-redline-decision-buttons">
                       <button
-                        className={`nda-redline-decision-btn nda-redline-decision-btn--accept ${effective === 'accept' ? 'nda-redline-decision-btn--selected' : ''}`}
+                        className={`nda-redline-decision-btn nda-redline-decision-btn--accept ${item.effectiveClassification === 'accept' ? 'nda-redline-decision-btn--selected' : ''}`}
                         onClick={() => handleDecision(item.clauseId, 'accept')}
                         title="Accept the counterparty's proposed change"
                       >
                         ✓ Accept
                       </button>
                       <button
-                        className={`nda-redline-decision-btn nda-redline-decision-btn--reject ${effective === 'reject' ? 'nda-redline-decision-btn--selected' : ''}`}
+                        className={`nda-redline-decision-btn nda-redline-decision-btn--reject ${item.effectiveClassification === 'reject' ? 'nda-redline-decision-btn--selected' : ''}`}
                         onClick={() => handleDecision(item.clauseId, 'reject')}
                         title="Reject the counterparty's proposed change"
                       >
                         ✕ Reject
                       </button>
                       <button
-                        className={`nda-redline-decision-btn nda-redline-decision-btn--negotiate ${effective === 'negotiate' ? 'nda-redline-decision-btn--selected' : ''}`}
+                        className={`nda-redline-decision-btn nda-redline-decision-btn--negotiate ${item.effectiveClassification === 'negotiate' ? 'nda-redline-decision-btn--selected' : ''}`}
                         onClick={() => handleDecision(item.clauseId, 'negotiate')}
                         title="Mark for negotiation — propose a counter"
                       >
                         ⇄ Negotiate
                       </button>
                       <button
-                        className={`nda-redline-decision-btn nda-redline-decision-btn--escalate ${effective === 'escalate' ? 'nda-redline-decision-btn--selected' : ''}`}
+                        className={`nda-redline-decision-btn nda-redline-decision-btn--escalate ${item.effectiveClassification === 'escalate' ? 'nda-redline-decision-btn--selected' : ''}`}
                         onClick={() => handleDecision(item.clauseId, 'escalate')}
                         title="Escalate for senior review"
                       >

@@ -69,7 +69,7 @@ const ADVANCE_CONFIG: Record<string, { nextTab: TabId; stage: string; label: str
 
 const NdaDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
-  const [scenario, setScenarioState] = useState(getNdaScenario());
+  const [scenario, setScenario] = useState(getNdaScenario());
   const [activeTab, setActiveTab] = useState<TabId>('template-selection');
   const [showGuide, setShowGuide] = useState(false);
   const [runningStage, setRunningStage] = useState<string | null>(null);
@@ -77,7 +77,7 @@ const NdaDashboardScreen: React.FC = () => {
   const [stageError, setStageError] = useState<string | null>(null);
   const outputs = scenario.agentOutputs;
 
-  const refreshScenario = () => setScenarioState(getNdaScenario());
+  const refreshScenario = () => setScenario(getNdaScenario());
 
   const handleReset = () => {
     resetNdaData();
@@ -294,7 +294,7 @@ const NdaDashboardScreen: React.FC = () => {
               </div>
             )}
             {activeTab === 'redline' && outputs.redlineAssessment && outputs.redlineAssessment.length > 0 && (
-              <NdaRedlineAssessmentView redlines={outputs.redlineAssessment} onRedlineDecisionsChange={() => {}} />
+              <NdaRedlineAssessmentView redlines={outputs.redlineAssessment} />
             )}
             {activeTab === 'redline' && (!outputs.redlineAssessment || outputs.redlineAssessment.length === 0) && (
               <div className="nda-dash-empty">
