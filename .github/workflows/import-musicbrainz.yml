@@ -1,0 +1,263 @@
+name: Import MusicBrainz Data
+
+# Downloads the latest MusicBrainz full-export dump and loads the subset of
+# tables used by the Music Intelligence Graph demo into PostgreSQL.
+#
+# Data source: https://data.metabrainz.org/pub/musicbrainz/data/fullexport/
+#
+# Required secrets (same as deploy workflow):
+#   PG_HOST  /  PG_DATABASE  /  PG_USER  /  PG_PASSWORD  /  PG_SSLMODE
+#   — or —
+#   PG_ADMIN_PASSWORD  (uses defaults: host from last deploy, db=musicbrainz,
+#                       user=pgadmin, sslmode=require)
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'MusicBrainz full-export base URL'
+        required: false
+        default: 'https://data.metabrainz.org/pub/musicbrainz/data/fullexport'
+
+permissions:
+  contents: read
+
+env:
+  BASE_URL: ${{ inputs.base_url || 'https://data.metabrainz.org/pub/musicbrainz/data/fullexport' }}
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360            # full dump can take a while
+
+    steps:
+      # ────────────────────────────────────────────────────────────────────────
+      # 1. Checkout (we need the SQL helper scripts)
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # ────────────────────────────────────────────────────────────────────────
+      # 2. Resolve PostgreSQL connection
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Resolve PostgreSQL connection settings
+        id: pg
+        run: |
+          RESOLVED_PGHOST="${{ secrets.PG_HOST }}"
+          RESOLVED_PGDATABASE="${{ secrets.PG_DATABASE }}"
+          if [ -z "$RESOLVED_PGDATABASE" ]; then
+            RESOLVED_PGDATABASE="musicbrainz"
+          fi
+          RESOLVED_PGUSER="${{ secrets.PG_USER }}"
+          if [ -z "$RESOLVED_PGUSER" ]; then
+            RESOLVED_PGUSER="pgadmin"
+          fi
+          RESOLVED_PGPASSWORD="${{ secrets.PG_PASSWORD }}"
+          if [ -z "$RESOLVED_PGPASSWORD" ]; then
+            RESOLVED_PGPASSWORD="${{ secrets.PG_ADMIN_PASSWORD }}"
+          fi
+          RESOLVED_PGSSLMODE="${{ secrets.PG_SSLMODE }}"
+          if [ -z "$RESOLVED_PGSSLMODE" ]; then
+            RESOLVED_PGSSLMODE="require"
+          fi
+
+          if [ -z "$RESOLVED_PGHOST" ]; then
+            echo "::error::PG_HOST secret is not set. Cannot connect to PostgreSQL."
+            exit 1
+          fi
+          if [ -z "$RESOLVED_PGPASSWORD" ]; then
+            echo "::error::PG_PASSWORD (or PG_ADMIN_PASSWORD) secret is not set."
+            exit 1
+          fi
+
+          # Build a connection string (mask the password)
+          echo "::add-mask::$RESOLVED_PGPASSWORD"
+          CONNSTR="host=$RESOLVED_PGHOST dbname=$RESOLVED_PGDATABASE user=$RESOLVED_PGUSER password=$RESOLVED_PGPASSWORD sslmode=$RESOLVED_PGSSLMODE"
+          echo "connstr=$CONNSTR" >> "$GITHUB_OUTPUT"
+
+          echo "✅ PostgreSQL: host=$RESOLVED_PGHOST db=$RESOLVED_PGDATABASE user=$RESOLVED_PGUSER ssl=$RESOLVED_PGSSLMODE"
+
+      # ────────────────────────────────────────────────────────────────────────
+      # 3. Discover the latest dump
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Discover latest MusicBrainz dump
+        id: latest
+        run: |
+          LATEST="$(curl -sSf "${{ env.BASE_URL }}/LATEST")"
+          LATEST="$(echo "$LATEST" | tr -d '[:space:]')"
+          echo "dump=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "📦 Latest dump: $LATEST"
+
+      # ────────────────────────────────────────────────────────────────────────
+      # 4. Download and extract only the tables we need
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Download mbdump.tar.bz2
+        run: |
+          DUMP_URL="${{ env.BASE_URL }}/${{ steps.latest.outputs.dump }}/mbdump.tar.bz2"
+          echo "⬇️  Downloading $DUMP_URL …"
+          curl -sSfL -o mbdump.tar.bz2 "$DUMP_URL"
+          ls -lh mbdump.tar.bz2
+
+      - name: Extract required table files
+        run: |
+          TABLES=(
+            artist
+            artist_type
+            area
+            recording
+            release_group
+            release
+            release_country
+            release_label
+            label
+            work
+            artist_credit
+            artist_credit_name
+            genre
+            tag
+            artist_tag
+            l_artist_artist
+            l_artist_recording
+            l_artist_release
+            l_artist_work
+            link
+            link_type
+          )
+
+          # Build the list of paths inside the tar
+          PATHS=()
+          for t in "${TABLES[@]}"; do
+            PATHS+=("mbdump/$t")
+          done
+
+          echo "📂 Extracting ${#PATHS[@]} table files …"
+          tar -xjf mbdump.tar.bz2 "${PATHS[@]}"
+          ls -lh mbdump/
+
+          # Free disk space
+          rm -f mbdump.tar.bz2
+
+      # ────────────────────────────────────────────────────────────────────────
+      # 5. Ensure demo schema exists
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Ensure demo schema exists
+        run: |
+          psql "${{ steps.pg.outputs.connstr }}" -f server/src/db/initSchema.sql
+        env:
+          PGCONNECT_TIMEOUT: '30'
+
+      # ────────────────────────────────────────────────────────────────────────
+      # 6. Create staging tables
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Create staging tables
+        run: |
+          psql "${{ steps.pg.outputs.connstr }}" -f server/src/db/mb_staging_create.sql
+        env:
+          PGCONNECT_TIMEOUT: '30'
+
+      # ────────────────────────────────────────────────────────────────────────
+      # 7. COPY dump data into staging tables
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Load dump files into staging tables
+        run: |
+          CONNSTR="${{ steps.pg.outputs.connstr }}"
+          TABLES=(
+            artist
+            artist_type
+            area
+            recording
+            release_group
+            release
+            release_country
+            release_label
+            label
+            work
+            artist_credit
+            artist_credit_name
+            genre
+            tag
+            artist_tag
+            l_artist_artist
+            l_artist_recording
+            l_artist_release
+            l_artist_work
+            link
+            link_type
+          )
+
+          for t in "${TABLES[@]}"; do
+            FILE="mbdump/$t"
+            if [ ! -f "$FILE" ]; then
+              echo "⚠️  Skipping $t — file not found"
+              continue
+            fi
+
+            ROW_COUNT=$(wc -l < "$FILE")
+            echo "📥 Loading $t ($ROW_COUNT rows) …"
+
+            psql "$CONNSTR" -c "\\copy mb_staging.$t FROM '$FILE'"
+
+            echo "   ✅ $t loaded"
+          done
+        env:
+          PGCONNECT_TIMEOUT: '30'
+
+      # ────────────────────────────────────────────────────────────────────────
+      # 8. Transform staging → demo tables
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Transform staging data into demo schema
+        run: |
+          echo "🔄 Transforming staging data into demo tables …"
+          psql "${{ steps.pg.outputs.connstr }}" -f server/src/db/mb_staging_load.sql
+          echo "✅ Import complete"
+        env:
+          PGCONNECT_TIMEOUT: '30'
+
+      # ────────────────────────────────────────────────────────────────────────
+      # 9. Verify import
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Verify row counts
+        run: |
+          psql "${{ steps.pg.outputs.connstr }}" <<'EOF'
+          SELECT 'artist'            AS tbl, COUNT(*) AS rows FROM musicbrainz.artist
+          UNION ALL
+          SELECT 'recording',        COUNT(*) FROM musicbrainz.recording
+          UNION ALL
+          SELECT 'release',          COUNT(*) FROM musicbrainz.release
+          UNION ALL
+          SELECT 'release_group',    COUNT(*) FROM musicbrainz.release_group
+          UNION ALL
+          SELECT 'label',            COUNT(*) FROM musicbrainz.label
+          UNION ALL
+          SELECT 'work',             COUNT(*) FROM musicbrainz.work
+          UNION ALL
+          SELECT 'area',             COUNT(*) FROM musicbrainz.area
+          UNION ALL
+          SELECT 'genre',            COUNT(*) FROM musicbrainz.genre
+          UNION ALL
+          SELECT 'tag',              COUNT(*) FROM musicbrainz.tag
+          UNION ALL
+          SELECT 'artist_tag',       COUNT(*) FROM musicbrainz.artist_tag
+          UNION ALL
+          SELECT 'artist_credit',    COUNT(*) FROM musicbrainz.artist_credit
+          UNION ALL
+          SELECT 'link_type',        COUNT(*) FROM musicbrainz.link_type
+          UNION ALL
+          SELECT 'l_artist_artist',  COUNT(*) FROM musicbrainz.l_artist_artist
+          UNION ALL
+          SELECT 'l_artist_recording', COUNT(*) FROM musicbrainz.l_artist_recording
+          UNION ALL
+          SELECT 'l_artist_release', COUNT(*) FROM musicbrainz.l_artist_release
+          UNION ALL
+          SELECT 'l_artist_work',    COUNT(*) FROM musicbrainz.l_artist_work
+          ORDER BY tbl;
+          EOF
+        env:
+          PGCONNECT_TIMEOUT: '30'
+
+      # ────────────────────────────────────────────────────────────────────────
+      # 10. Clean up workspace
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Clean up
+        if: always()
+        run: rm -rf mbdump mbdump.tar.bz2
