@@ -7,6 +7,13 @@
   padding: 0;
 }
 
+html {
+  overflow-x: hidden;
+  overscroll-behavior: none;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
 html,
 body,
 #root {
@@ -17,12 +24,8 @@ body,
   color: #111111;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
   -webkit-user-select: none;
   user-select: none;
-  overscroll-behavior: none;
-  touch-action: pan-y;
-  -webkit-overflow-scrolling: touch;
 }
 
 /* Blank footer spacer — allows bottom content to scroll to mid-screen on portrait displays */
