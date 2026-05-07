@@ -387,7 +387,7 @@ function mapAgentOutput(phase: string, raw: Record<string, unknown>): unknown {
     case 'playbook-comparison': {
       // AI returns playbookStandard/significance/category but frontend expects
       // playbookLanguage/explanation/severity
-      const deviations = ((raw as { deviations?: Record<string, unknown>[] }).deviations ?? []);
+      const deviations = (raw as { deviations?: Record<string, unknown>[] }).deviations ?? [];
       return deviations.map((d) => ({
         clauseId: d.clauseId ?? '',
         deviationType: d.deviationType ?? 'different',
@@ -400,7 +400,7 @@ function mapAgentOutput(phase: string, raw: Record<string, unknown>): unknown {
     case 'risk-assessment': {
       // AI returns impact/notes/clauseTitle but frontend expects
       // potentialImpact/description/category/recommendedAction/status
-      const risks = ((raw as { risks?: Record<string, unknown>[] }).risks ?? []);
+      const risks = (raw as { risks?: Record<string, unknown>[] }).risks ?? [];
       return risks.map((r) => ({
         riskId: r.riskId ?? '',
         clauseId: r.clauseId ?? '',
@@ -416,7 +416,7 @@ function mapAgentOutput(phase: string, raw: Record<string, unknown>): unknown {
     }
     case 'redline-generation': {
       // AI returns clauseTitle but frontend expects source
-      const redlines = ((raw as { redlines?: Record<string, unknown>[] }).redlines ?? []);
+      const redlines = (raw as { redlines?: Record<string, unknown>[] }).redlines ?? [];
       return redlines.map((r) => ({
         redlineId: r.redlineId ?? '',
         clauseId: r.clauseId ?? '',
@@ -431,7 +431,7 @@ function mapAgentOutput(phase: string, raw: Record<string, unknown>): unknown {
     case 'recommendation': {
       // AI returns relatedClauses/nextSteps but frontend expects
       // affectedClauses/assignedTo/playbookReference
-      const recs = ((raw as { recommendations?: Record<string, unknown>[] }).recommendations ?? []);
+      const recs = (raw as { recommendations?: Record<string, unknown>[] }).recommendations ?? [];
       return recs.map((r) => ({
         recommendationId: r.recommendationId ?? '',
         category: r.category ?? 'negotiate',
