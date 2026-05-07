@@ -19,6 +19,8 @@ import RfpLandingScreen from './pages/RfpLandingScreen';
 import RfpDashboardScreen from './pages/RfpDashboardScreen';
 import ContractLandingScreen from './pages/ContractLandingScreen';
 import ContractDashboardScreen from './pages/ContractDashboardScreen';
+import NdaLandingScreen from './pages/NdaLandingScreen';
+import NdaDashboardScreen from './pages/NdaDashboardScreen';
 
 const App: React.FC = () => {
   return (
@@ -42,6 +44,8 @@ const App: React.FC = () => {
       <Route path="/rfp/dashboard" element={<RfpDashboardScreen />} />
       <Route path="/contract" element={<ContractLandingScreen />} />
       <Route path="/contract/dashboard" element={<ContractDashboardScreen />} />
+      <Route path="/nda" element={<NdaLandingScreen />} />
+      <Route path="/nda/dashboard" element={<NdaDashboardScreen />} />
     </Routes>
   );
 };

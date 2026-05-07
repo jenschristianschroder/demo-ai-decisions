@@ -1,0 +1,564 @@
+/* ==========================================================================
+   NDA Dashboard
+   ========================================================================== */
+
+.nda-dash-root { min-height: 100vh; background: #f8f9fa; }
+
+/* Header */
+.nda-dash-header {
+  background: #ffffff;
+  border-bottom: 1.5px solid #222222;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.nda-dash-header-inner { max-width: 1400px; margin: 0 auto; padding: 16px 0; }
+
+.nda-dash-breadcrumb { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+
+.nda-dash-breadcrumb-link {
+  font-size: 13px; color: #666666; background: none; border: none;
+  padding: 0; cursor: pointer; transition: color 0.15s;
+}
+.nda-dash-breadcrumb-link:hover { color: #111111; }
+.nda-dash-breadcrumb-sep { font-size: 13px; color: #cccccc; }
+.nda-dash-breadcrumb-current { font-size: 13px; color: #111111; font-weight: 500; }
+
+.nda-dash-title-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.nda-dash-title { font-size: 22px; font-weight: 700; color: #111111; margin-bottom: 2px; }
+.nda-dash-subtitle { font-size: 13px; color: #666666; display: flex; align-items: center; gap: 10px; }
+
+/* Tab bar */
+.nda-dash-tab-bar {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0 24px;
+  position: sticky;
+  top: 62px;
+  z-index: 9;
+}
+
+.nda-dash-tab-bar-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+}
+
+.nda-dash-tab {
+  padding: 12px 20px;
+  font-size: 13px; font-weight: 500; color: #666666;
+  background: none; border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer; white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+.nda-dash-tab:hover { color: #111111; }
+.nda-dash-tab--active { color: #111111; border-bottom-color: #111111; font-weight: 600; }
+
+.nda-dash-main { max-width: 1400px; margin: 0 auto; padding: 32px 24px; }
+
+.nda-dash-empty { text-align: center; padding: 64px 24px; }
+.nda-dash-empty-text { font-size: 16px; color: #666666; margin-bottom: 20px; }
+
+.nda-dash-actions-bar {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 40px; padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.nda-dash-btn-secondary {
+  padding: 10px 20px; font-size: 14px; font-weight: 500;
+  color: #333333; background: #ffffff;
+  border: 1.5px solid #222222; border-radius: 8px;
+  cursor: pointer; transition: background 0.15s;
+}
+.nda-dash-btn-secondary:hover { background: #f0f0f0; }
+
+.nda-dash-btn-danger {
+  padding: 10px 20px; font-size: 14px; font-weight: 500;
+  color: #b91c1c; background: #fef2f2;
+  border: 1.5px solid #fca5a5; border-radius: 8px;
+  cursor: pointer; transition: background 0.15s;
+}
+.nda-dash-btn-danger:hover { background: #fee2e2; }
+
+/* ==========================================================================
+   Status Badge
+   ========================================================================== */
+
+.nda-status-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.nda-status-badge--intake { background: #f3f4f6; color: #374151; }
+.nda-status-badge--template-selected { background: #dbeafe; color: #1e40af; }
+.nda-status-badge--draft-generated { background: #fef3c7; color: #92400e; }
+.nda-status-badge--redline-reviewed { background: #fef3c7; color: #92400e; }
+.nda-status-badge--validated { background: #d1fae5; color: #065f46; }
+.nda-status-badge--approved { background: #d1fae5; color: #065f46; }
+.nda-status-badge--dispatched { background: #dbeafe; color: #1e40af; }
+.nda-status-badge--signed { background: #d1fae5; color: #065f46; border: 1px solid #86efac; }
+
+/* ==========================================================================
+   Template Recommendation (nda-recommend-)
+   ========================================================================== */
+
+.nda-recommend-root { padding: 4px 0; }
+.nda-recommend-title { font-size: 16px; font-weight: 700; color: #111111; margin-bottom: 16px; }
+
+.nda-recommend-top {
+  padding: 16px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  margin-bottom: 16px;
+  transition: border-color 0.15s;
+}
+.nda-recommend-top--selected { border-color: #0f766e; background: #f0fdfa; }
+
+.nda-recommend-top-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.nda-recommend-top-name { font-size: 15px; font-weight: 700; color: #111111; }
+
+.nda-recommend-confidence {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid;
+}
+
+.nda-recommend-top-desc { font-size: 13px; color: #666666; margin-bottom: 8px; }
+.nda-recommend-reasoning { font-size: 13px; color: #333333; line-height: 1.5; margin-bottom: 12px; }
+
+.nda-recommend-btn {
+  padding: 8px 16px;
+  font-size: 13px; font-weight: 600;
+  background: #111111; color: #ffffff;
+  border: none; border-radius: 6px;
+  cursor: pointer;
+}
+.nda-recommend-btn:hover { background: #333333; }
+
+.nda-recommend-alt-title {
+  font-size: 13px; font-weight: 700; color: #111111;
+  margin: 16px 0 8px; text-transform: uppercase; letter-spacing: 0.04em;
+}
+
+.nda-recommend-alt-list { display: flex; flex-direction: column; gap: 8px; }
+
+.nda-recommend-alt-card {
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #ffffff;
+  transition: border-color 0.15s;
+}
+.nda-recommend-alt-card--selected { border-color: #0f766e; background: #f0fdfa; }
+
+.nda-recommend-alt-name { font-size: 14px; font-weight: 600; color: #111111; margin-bottom: 4px; }
+.nda-recommend-alt-reason { font-size: 13px; color: #666666; margin-bottom: 8px; }
+
+.nda-recommend-alt-btn {
+  padding: 5px 12px;
+  font-size: 12px; font-weight: 600;
+  background: #ffffff; color: #111111;
+  border: 1px solid #222222; border-radius: 4px;
+  cursor: pointer;
+}
+.nda-recommend-alt-btn:hover { background: #f0f0f0; }
+
+.nda-recommend-questions { margin-top: 16px; padding: 14px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; }
+.nda-recommend-questions-title { font-size: 13px; font-weight: 700; color: #92400e; margin-bottom: 4px; }
+.nda-recommend-questions-hint { font-size: 13px; color: #92400e; margin-bottom: 8px; }
+.nda-recommend-questions-list { margin: 0; padding-left: 20px; font-size: 13px; color: #333333; }
+.nda-recommend-questions-list li { margin-bottom: 4px; }
+
+/* ==========================================================================
+   Template Catalog (nda-catalog-)
+   ========================================================================== */
+
+.nda-catalog-root { padding: 4px 0; }
+.nda-catalog-title { font-size: 16px; font-weight: 700; color: #111111; margin-bottom: 16px; }
+
+.nda-catalog-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.nda-catalog-card {
+  padding: 14px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.nda-catalog-card:hover { border-color: #999999; }
+.nda-catalog-card--selected { border-color: #0f766e; background: #f0fdfa; }
+
+.nda-catalog-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.nda-catalog-card-name { font-size: 13px; font-weight: 700; color: #111111; }
+
+.nda-catalog-card-type {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.nda-catalog-card-type--mutual { background: #dbeafe; color: #1e40af; }
+.nda-catalog-card-type--one-way { background: #fef3c7; color: #92400e; }
+
+.nda-catalog-card-desc { font-size: 12px; color: #666666; line-height: 1.4; margin-bottom: 8px; }
+
+.nda-catalog-card-meta { font-size: 11px; color: #999999; margin-bottom: 2px; }
+.nda-catalog-card-meta-label { font-weight: 600; color: #666666; }
+
+.nda-catalog-card-uses { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+
+.nda-catalog-card-use-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* ==========================================================================
+   Draft View (nda-draft-)
+   ========================================================================== */
+
+.nda-draft-root { padding: 4px 0; }
+.nda-draft-title { font-size: 16px; font-weight: 700; color: #111111; margin-bottom: 16px; }
+
+.nda-draft-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 12px; margin-bottom: 24px;
+}
+
+.nda-draft-field {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 10px 14px; background: #ffffff;
+  border: 1px solid #e5e7eb; border-radius: 8px;
+}
+
+.nda-draft-label {
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  color: #999999;
+}
+
+.nda-draft-value { font-size: 14px; font-weight: 500; color: #111111; }
+
+.nda-draft-section-title {
+  font-size: 13px; font-weight: 700; color: #111111;
+  margin: 20px 0 10px;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+
+.nda-draft-table-wrap { overflow-x: auto; margin-bottom: 20px; }
+
+.nda-draft-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 13px; background: #ffffff;
+  border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;
+}
+
+.nda-draft-table th {
+  text-align: left; padding: 10px 14px;
+  background: #f8f9fa; font-weight: 600; color: #111111;
+  border-bottom: 1.5px solid #e5e7eb;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+}
+
+.nda-draft-table td {
+  padding: 10px 14px; border-bottom: 1px solid #f0f0f0;
+  color: #333333; vertical-align: top;
+}
+.nda-draft-table tr:last-child td { border-bottom: none; }
+
+.nda-draft-highlight {
+  margin-top: 20px; padding: 14px 16px;
+  background: #fffbeb; border: 1px solid #fde68a;
+  border-radius: 8px; font-size: 14px; color: #333333; line-height: 1.6;
+}
+
+.nda-draft-content {
+  padding: 16px; background: #ffffff;
+  border: 1px solid #e5e7eb; border-radius: 8px;
+  font-size: 13px; line-height: 1.7; color: #333333;
+  white-space: pre-wrap; word-wrap: break-word;
+  max-height: 600px; overflow-y: auto;
+  font-family: inherit;
+}
+
+.nda-draft-reasoning {
+  margin-top: 16px; padding: 12px 14px;
+  background: #f0f9ff; border: 1px solid #bae6fd;
+  border-radius: 6px; font-size: 13px; color: #0369a1; line-height: 1.5;
+}
+
+.nda-draft-reasoning-label { font-weight: 700; }
+
+/* ==========================================================================
+   Redline Assessment (nda-redline-)
+   ========================================================================== */
+
+.nda-redline-root { padding: 4px 0; }
+.nda-redline-title { font-size: 16px; font-weight: 700; color: #111111; margin-bottom: 16px; }
+.nda-redline-list { display: flex; flex-direction: column; gap: 8px; }
+
+.nda-redline-card {
+  background: #ffffff; border: 1px solid #e5e7eb;
+  border-radius: 8px; overflow: hidden; transition: border-color 0.15s;
+}
+.nda-redline-card--open { border-color: #111111; }
+
+.nda-redline-card-header {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 14px 16px;
+  background: none; border: none;
+  cursor: pointer; text-align: left;
+  font-size: 13px; color: #333333;
+}
+.nda-redline-card-header:hover { background: #fafafa; }
+
+.nda-redline-card-toggle { font-size: 12px; color: #999999; flex-shrink: 0; }
+.nda-redline-card-id { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; font-weight: 600; color: #111111; flex-shrink: 0; }
+.nda-redline-card-clause { font-size: 13px; color: #333333; flex: 1; }
+
+.nda-redline-classification-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 11px; font-weight: 600; text-transform: capitalize; flex-shrink: 0;
+}
+.nda-redline-classification--accept { background: #d1fae5; color: #065f46; }
+.nda-redline-classification--reject { background: #fef2f2; color: #991b1b; }
+.nda-redline-classification--negotiate { background: #fef3c7; color: #92400e; }
+.nda-redline-classification--escalate { background: #ede9fe; color: #6b21a8; }
+
+.nda-redline-severity-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; flex-shrink: 0; margin-left: auto;
+}
+.nda-redline-severity--low { background: #f3f4f6; color: #374151; }
+.nda-redline-severity--medium { background: #fef3c7; color: #92400e; }
+.nda-redline-severity--high { background: #fed7aa; color: #9a3412; }
+.nda-redline-severity--critical { background: #fef2f2; color: #991b1b; }
+
+.nda-redline-card-body { padding: 0 16px 16px; border-top: 1px solid #f0f0f0; }
+
+.nda-redline-diff { display: flex; flex-direction: column; gap: 12px; padding: 14px 0; }
+.nda-redline-diff-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #999999; display: block; margin-bottom: 6px; }
+
+.nda-redline-original-text {
+  padding: 10px 12px; background: #f0fdf4;
+  border: 1px solid #86efac; border-radius: 6px;
+  font-size: 13px; color: #166534; line-height: 1.5; white-space: pre-wrap;
+}
+
+.nda-redline-counterparty-text {
+  padding: 10px 12px; background: #fef2f2;
+  border: 1px solid #fca5a5; border-radius: 6px;
+  font-size: 13px; color: #7f1d1d; line-height: 1.5; white-space: pre-wrap;
+}
+
+.nda-redline-meta { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid #f0f0f0; }
+.nda-redline-meta-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #999999; margin-right: 6px; }
+.nda-redline-rationale { font-size: 13px; color: #333333; line-height: 1.5; }
+.nda-redline-response { font-size: 13px; color: #333333; line-height: 1.5; }
+.nda-redline-source { font-size: 13px; color: #666666; }
+
+/* ==========================================================================
+   Approval View (nda-approval-)
+   ========================================================================== */
+
+.nda-approval-root { padding: 4px 0; }
+.nda-approval-title { font-size: 16px; font-weight: 700; color: #111111; margin-bottom: 16px; }
+
+.nda-approval-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 12px; margin-bottom: 24px;
+}
+
+.nda-approval-field {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 10px 14px; background: #ffffff;
+  border: 1px solid #e5e7eb; border-radius: 8px;
+}
+
+.nda-approval-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #999999; }
+.nda-approval-value { font-size: 14px; font-weight: 500; color: #111111; }
+
+.nda-approval-tier-badge {
+  display: inline-block; padding: 3px 10px; border-radius: 10px;
+  font-size: 12px; font-weight: 700;
+}
+.nda-approval-tier--tier-1 { background: #d1fae5; color: #065f46; }
+.nda-approval-tier--tier-2 { background: #fef3c7; color: #92400e; }
+.nda-approval-tier--tier-3 { background: #fef2f2; color: #991b1b; }
+
+.nda-approval-decision-badge {
+  display: inline-block; padding: 3px 10px; border-radius: 10px;
+  font-size: 12px; font-weight: 600; text-transform: capitalize;
+}
+.nda-approval-decision--approved { background: #d1fae5; color: #065f46; }
+.nda-approval-decision--conditionally-approved { background: #fef3c7; color: #92400e; }
+.nda-approval-decision--escalated { background: #ede9fe; color: #6b21a8; }
+.nda-approval-decision--rejected { background: #fef2f2; color: #991b1b; }
+
+.nda-approval-section-title {
+  font-size: 13px; font-weight: 700; color: #111111;
+  margin: 16px 0 8px; text-transform: uppercase; letter-spacing: 0.04em;
+}
+
+.nda-approval-list { margin: 0; padding-left: 20px; font-size: 13px; color: #333333; }
+.nda-approval-list li { margin-bottom: 4px; }
+
+.nda-approval-reasoning {
+  margin-top: 16px; padding: 12px 14px;
+  background: #f0f9ff; border: 1px solid #bae6fd;
+  border-radius: 6px; font-size: 13px; color: #0369a1; line-height: 1.5;
+}
+.nda-approval-reasoning-label { font-weight: 700; }
+
+/* ==========================================================================
+   Version History (nda-versions-)
+   ========================================================================== */
+
+.nda-versions-root { padding: 4px 0; }
+.nda-versions-title { font-size: 16px; font-weight: 700; color: #111111; margin-bottom: 16px; }
+.nda-versions-timeline { display: flex; flex-direction: column; gap: 0; }
+
+.nda-versions-entry {
+  display: flex; gap: 14px; padding: 14px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.nda-versions-entry:last-child { border-bottom: none; }
+
+.nda-versions-marker {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #111111; flex-shrink: 0; margin-top: 4px;
+}
+
+.nda-versions-content { flex: 1; }
+
+.nda-versions-header { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.nda-versions-version { font-size: 13px; font-weight: 700; color: #111111; }
+.nda-versions-date { font-size: 12px; color: #999999; }
+.nda-versions-action { font-size: 12px; font-weight: 600; color: #0f766e; }
+
+.nda-versions-actor { font-size: 12px; color: #666666; margin-bottom: 4px; }
+.nda-versions-summary { font-size: 13px; color: #333333; line-height: 1.5; }
+
+.nda-versions-changes {
+  margin: 6px 0 0; padding-left: 18px;
+  font-size: 12px; color: #666666;
+}
+.nda-versions-changes li { margin-bottom: 2px; }
+
+/* ==========================================================================
+   Audit Trail (nda-audit-)
+   ========================================================================== */
+
+.nda-audit-root { padding: 4px 0; }
+.nda-audit-title { font-size: 16px; font-weight: 700; color: #111111; margin-bottom: 16px; }
+.nda-audit-table-wrap { overflow-x: auto; }
+
+.nda-audit-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 13px; background: #ffffff;
+  border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;
+}
+
+.nda-audit-table th {
+  text-align: left; padding: 10px 14px;
+  background: #f8f9fa; font-weight: 600; color: #111111;
+  border-bottom: 1.5px solid #e5e7eb;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
+}
+
+.nda-audit-table td {
+  padding: 10px 14px; border-bottom: 1px solid #f0f0f0;
+  color: #333333; vertical-align: top;
+}
+.nda-audit-table tr:last-child td { border-bottom: none; }
+.nda-audit-table tr:hover td { background: #fafafa; }
+
+.nda-audit-timestamp { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; white-space: nowrap; }
+
+.nda-audit-phase-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 11px; font-weight: 600; text-transform: capitalize;
+  background: #f3f4f6; color: #374151; white-space: nowrap;
+}
+
+.nda-audit-citation {
+  display: inline-block; padding: 1px 6px; border-radius: 4px;
+  font-size: 11px; background: #eff6ff; color: #1e40af;
+  margin-right: 4px; margin-bottom: 2px;
+}
+
+/* ==========================================================================
+   Playbook Validation (nda-playbook-)
+   ========================================================================== */
+
+.nda-playbook-root { padding: 4px 0; }
+.nda-playbook-title { font-size: 16px; font-weight: 700; color: #111111; margin-bottom: 16px; }
+
+.nda-playbook-status {
+  display: inline-block; padding: 6px 14px; border-radius: 8px;
+  font-size: 14px; font-weight: 700; margin-bottom: 16px;
+}
+.nda-playbook-status--compliant { background: #d1fae5; color: #065f46; }
+.nda-playbook-status--non-compliant { background: #fef2f2; color: #991b1b; }
+
+.nda-playbook-table-wrap { overflow-x: auto; }
+
+.nda-playbook-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 13px; background: #ffffff;
+  border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;
+}
+
+.nda-playbook-table th {
+  text-align: left; padding: 10px 14px;
+  background: #f8f9fa; font-weight: 600; color: #111111;
+  border-bottom: 1.5px solid #e5e7eb;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
+}
+
+.nda-playbook-table td {
+  padding: 10px 14px; border-bottom: 1px solid #f0f0f0;
+  color: #333333; vertical-align: top;
+}
+.nda-playbook-table tr:last-child td { border-bottom: none; }
+
+.nda-playbook-finding-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 11px; font-weight: 600; text-transform: capitalize;
+}
+.nda-playbook-finding--compliant { background: #d1fae5; color: #065f46; }
+.nda-playbook-finding--warning { background: #fef3c7; color: #92400e; }
+.nda-playbook-finding--non-compliant { background: #fef2f2; color: #991b1b; }
+
+.nda-playbook-reasoning {
+  margin-top: 16px; padding: 12px 14px;
+  background: #f0f9ff; border: 1px solid #bae6fd;
+  border-radius: 6px; font-size: 13px; color: #0369a1; line-height: 1.5;
+}
