@@ -1,0 +1,177 @@
+/* ==========================================================================
+   Contract Dashboard
+   ========================================================================== */
+
+.contract-dash-root {
+  min-height: 100vh;
+  background: #f8f9fa;
+}
+
+/* Header */
+.contract-dash-header {
+  background: #ffffff;
+  border-bottom: 1.5px solid #222222;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.contract-dash-header-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px 0;
+}
+
+.contract-dash-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.contract-dash-breadcrumb-link {
+  font-size: 13px;
+  color: #666666;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.contract-dash-breadcrumb-link:hover {
+  color: #111111;
+}
+
+.contract-dash-breadcrumb-sep {
+  font-size: 13px;
+  color: #cccccc;
+}
+
+.contract-dash-breadcrumb-current {
+  font-size: 13px;
+  color: #111111;
+  font-weight: 500;
+}
+
+.contract-dash-title-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.contract-dash-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111111;
+  margin-bottom: 2px;
+}
+
+.contract-dash-subtitle {
+  font-size: 13px;
+  color: #666666;
+}
+
+/* Tab bar */
+.contract-dash-tab-bar {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0 24px;
+  position: sticky;
+  top: 62px;
+  z-index: 9;
+}
+
+.contract-dash-tab-bar-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+}
+
+.contract-dash-tab {
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #666666;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.contract-dash-tab:hover {
+  color: #111111;
+}
+
+.contract-dash-tab--active {
+  color: #111111;
+  border-bottom-color: #111111;
+  font-weight: 600;
+}
+
+/* Main */
+.contract-dash-main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+/* Empty state */
+.contract-dash-empty {
+  text-align: center;
+  padding: 64px 24px;
+}
+
+.contract-dash-empty-text {
+  font-size: 16px;
+  color: #666666;
+  margin-bottom: 20px;
+}
+
+/* Actions */
+.contract-dash-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.contract-dash-btn-secondary {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333333;
+  background: #ffffff;
+  border: 1.5px solid #222222;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.contract-dash-btn-secondary:hover {
+  background: #f0f0f0;
+}
+
+.contract-dash-btn-danger {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1.5px solid #fca5a5;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.contract-dash-btn-danger:hover {
+  background: #fee2e2;
+}
