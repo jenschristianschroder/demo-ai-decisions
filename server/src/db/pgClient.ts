@@ -75,6 +75,11 @@ export async function cypherQuery(
   const p = getPool();
   if (!p) return [];
 
+  // Validate graphName to prevent injection (alphanumeric + underscore only)
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(graphName)) {
+    throw new Error(`Invalid graph name: ${graphName}`);
+  }
+
   // AGE requires the search path to include ag_catalog
   const sql = `
     SET search_path = ag_catalog, "$user", public;
@@ -178,9 +183,10 @@ function escapeCypher(value: string): string {
 /** Find collaborators via AGE graph */
 export async function findCollaborators(artistName: string, maxHops = 2) {
   const safeName = escapeCypher(artistName);
+  const safeMaxHops = Math.min(Math.max(1, maxHops), 6);
   return cypherQuery(`
     MATCH (a:Artist {name: '${safeName}'})
-          -[:COLLABORATED_WITH*1..${Math.min(Math.max(1, maxHops), 6)}]-(b:Artist)
+          -[:COLLABORATED_WITH*1..${safeMaxHops}]-(b:Artist)
     RETURN DISTINCT b.name AS name, b.gid AS gid
     LIMIT 20
   `);

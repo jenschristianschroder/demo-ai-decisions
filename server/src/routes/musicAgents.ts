@@ -434,8 +434,12 @@ async function fetchGraphStatsFromPg(): Promise<Record<string, unknown> | null> 
 
     if (counts.length === 0) return null;
     const c = counts[0];
-    const totalNodes = Number(c.artist_count) + Number(c.recording_count) +
-                       Number(c.release_count) + Number(c.work_count) + Number(c.label_count);
+    const artistCount = Number(c.artist_count ?? 0);
+    const recordingCount = Number(c.recording_count ?? 0);
+    const releaseCount = Number(c.release_count ?? 0);
+    const workCount = Number(c.work_count ?? 0);
+    const labelCount = Number(c.label_count ?? 0);
+    const totalNodes = artistCount + recordingCount + releaseCount + workCount + labelCount;
 
     // Try to get edge count from AGE graph
     let totalEdges = 0;
@@ -461,11 +465,11 @@ async function fetchGraphStatsFromPg(): Promise<Record<string, unknown> | null> 
     return {
       totalNodes,
       totalEdges,
-      artistCount: Number(c.artist_count),
-      recordingCount: Number(c.recording_count),
-      releaseCount: Number(c.release_count),
-      workCount: Number(c.work_count),
-      labelCount: Number(c.label_count),
+      artistCount,
+      recordingCount,
+      releaseCount,
+      workCount,
+      labelCount,
     };
   } catch (err) {
     console.error('PostgreSQL graph stats error:', err);
