@@ -90,8 +90,8 @@ REASONING INSTRUCTIONS:
 OUTPUT FORMAT — respond with ONLY valid JSON:
 {
   "artists": [{"id": "<uuid>", "name": "<name>", "type": "<Person|Group>", "area": "<country/region>", "genres": ["<genre>"], "description": "<brief bio>"}],
-  "recordings": [{"id": "<uuid>", "title": "<title>", "artistCredits": "<artist name(s)>", "year": "<year>"}],
-  "releases": [{"id": "<uuid>", "title": "<title>", "type": "<Album|Single|EP>", "date": "<date>", "label": "<label>", "country": "<country>", "artistCredits": "<artist name(s)>"}],
+  "recordings": [{"id": "<uuid>", "title": "<title>", "artistCredits": ["<artist name>"], "year": "<year>"}],
+  "releases": [{"id": "<uuid>", "title": "<title>", "type": "<Album|Single|EP>", "date": "<date>", "label": "<label>", "country": "<country>", "artistCredits": ["<artist name>"]}],
   "works": [{"id": "<uuid>", "title": "<title>", "composers": ["<composer>"]}],
   "labels": [{"id": "<uuid>", "name": "<name>", "type": "<Original Production|Distributor>", "area": "<country>"}],
   "relationshipPaths": [{"nodes": [{"id": "<uuid>", "label": "<name>", "type": "<Artist|Recording|Release|Label>"}], "edges": [{"type": "<relationship type>", "sourceId": "<uuid>", "sourceLabel": "<name>", "targetId": "<uuid>", "targetLabel": "<name>"}], "description": "<path description>"}],
