@@ -360,6 +360,10 @@ jobs:
             # Round down to the nearest batch boundary so we re-check the
             # last partial batch (ON CONFLICT DO NOTHING keeps it safe).
             RESUME_FROM=$(( (LAST_LOADED / BATCH) * BATCH ))
+            # Ensure we don't go below the min staging id
+            if [ "$RESUME_FROM" -lt "$MIN_ID" ]; then
+              RESUME_FROM=$MIN_ID
+            fi
             echo "♻️  Resuming recording import — last loaded id $LAST_LOADED, restarting from batch boundary $RESUME_FROM"
           else
             RESUME_FROM=$MIN_ID
