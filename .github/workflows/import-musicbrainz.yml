@@ -262,7 +262,7 @@ jobs:
           echo "   Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           TRANSFORM_START=$(date +%s)
 
-          psql "${{ steps.pg.outputs.connstr }}" -e -f server/src/db/mb_staging_load.sql
+          psql "${{ steps.pg.outputs.connstr }}" -e --set=ON_ERROR_STOP=1 -f server/src/db/mb_staging_load.sql
 
           TRANSFORM_END=$(date +%s)
           TRANSFORM_ELAPSED=$((TRANSFORM_END - TRANSFORM_START))

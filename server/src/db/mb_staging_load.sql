@@ -13,12 +13,20 @@
 --   • Disables foreign-key triggers during load for performance.
 --   • Truncates demo tables (full refresh).
 --   • Inserts the subset of columns from staging into demo tables.
+--     – Very large tables (recording, l_artist_recording) are batched in
+--       chunks of 500 000 rows using psql \gexec to avoid connection timeouts.
 --   • Joins the link table to resolve link_type for relationship tables.
 --   • Re-enables triggers.
 --   • Drops the staging schema.
+--
+-- NOTE: Each statement auto-commits independently (no wrapping transaction).
+-- This prevents Azure PostgreSQL from terminating long-running connections.
+-- If the script fails partway through, re-run it from the beginning.
 -- ============================================================================
 
-BEGIN;
+-- ── Session-level settings to prevent timeouts ──────────────────────────────
+SET statement_timeout = 0;
+SET lock_timeout = 0;
 
 -- ── Temporarily disable triggers (foreign keys) for bulk load ────────────────
 SET session_replication_role = 'replica';
@@ -70,10 +78,20 @@ SELECT id, gid, name, type FROM mb_staging.area;
 SELECT setval(pg_get_serial_sequence('musicbrainz.area', 'id'),
               COALESCE((SELECT MAX(id) FROM musicbrainz.area), 1));
 
--- recording
-INSERT INTO musicbrainz.recording (id, gid, name, artist_credit, length, comment)
-SELECT id, gid, name, artist_credit, length, COALESCE(comment, '')
-FROM mb_staging.recording;
+-- recording (batched – table may exceed 30 M rows)
+SELECT format(
+  'INSERT INTO musicbrainz.recording (id, gid, name, artist_credit, length, comment)
+   SELECT id, gid, name, artist_credit, length, COALESCE(comment, '''')
+   FROM mb_staging.recording
+   WHERE id >= %s AND id < %s',
+  gs, gs + 500000
+)
+FROM generate_series(
+  (SELECT min(id) FROM mb_staging.recording),
+  (SELECT max(id) FROM mb_staging.recording),
+  500000
+) gs
+\gexec
 
 SELECT setval(pg_get_serial_sequence('musicbrainz.recording', 'id'),
               COALESCE((SELECT MAX(id) FROM musicbrainz.recording), 1));
@@ -178,11 +196,21 @@ JOIN mb_staging.link l ON l.id = laa.link;
 SELECT setval(pg_get_serial_sequence('musicbrainz.l_artist_artist', 'id'),
               COALESCE((SELECT MAX(id) FROM musicbrainz.l_artist_artist), 1));
 
--- l_artist_recording
-INSERT INTO musicbrainz.l_artist_recording (id, entity0, entity1, link_type)
-SELECT lar.id, lar.entity0, lar.entity1, l.link_type
-FROM mb_staging.l_artist_recording lar
-JOIN mb_staging.link l ON l.id = lar.link;
+-- l_artist_recording (batched – large table with JOIN)
+SELECT format(
+  'INSERT INTO musicbrainz.l_artist_recording (id, entity0, entity1, link_type)
+   SELECT lar.id, lar.entity0, lar.entity1, l.link_type
+   FROM mb_staging.l_artist_recording lar
+   JOIN mb_staging.link l ON l.id = lar.link
+   WHERE lar.id >= %s AND lar.id < %s',
+  gs, gs + 500000
+)
+FROM generate_series(
+  (SELECT min(id) FROM mb_staging.l_artist_recording),
+  (SELECT max(id) FROM mb_staging.l_artist_recording),
+  500000
+) gs
+\gexec
 
 SELECT setval(pg_get_serial_sequence('musicbrainz.l_artist_recording', 'id'),
               COALESCE((SELECT MAX(id) FROM musicbrainz.l_artist_recording), 1));
@@ -210,5 +238,3 @@ SET session_replication_role = 'origin';
 
 -- ── Drop staging schema ─────────────────────────────────────────────────────
 DROP SCHEMA mb_staging CASCADE;
-
-COMMIT;
