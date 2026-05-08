@@ -8,6 +8,18 @@ export interface DataSourceInfo {
   label: string;
 }
 
+/** Row count for a single database table. */
+export interface TableCount {
+  table: string;
+  count: number;
+}
+
+/** Grouped table counts returned by the /music/table-counts endpoint. */
+export interface TableCounts {
+  coreEntities: TableCount[];
+  relationships: TableCount[];
+}
+
 // ---------------------------------------------------------------------------
 // Progress tracking (follows RfpProgressStep pattern)
 // ---------------------------------------------------------------------------
