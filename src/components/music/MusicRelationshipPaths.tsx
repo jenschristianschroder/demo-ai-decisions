@@ -9,7 +9,14 @@ interface Props {
 }
 
 const MusicRelationshipPaths: React.FC<Props> = ({ paths }) => {
-  const [viewMode, setViewMode] = useState<ViewMode>('graph');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+
+  // Debug: log incoming relationship path data so we can inspect the shape
+  console.debug('[MusicRelationshipPaths] paths received:', paths);
+  console.debug('[MusicRelationshipPaths] paths count:', paths.length);
+  if (paths.length > 0) {
+    console.debug('[MusicRelationshipPaths] first path sample:', JSON.stringify(paths[0], null, 2));
+  }
 
   return (
     <div className="music-rp-root">

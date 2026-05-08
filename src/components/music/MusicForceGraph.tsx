@@ -79,17 +79,38 @@ const MusicForceGraph: React.FC<Props> = ({ paths }) => {
   }, []);
 
   const graphData = useMemo(() => {
+    console.debug('[MusicForceGraph] Building graph from paths:', paths);
     const nodeMap = new Map<string, GraphNode>();
     const links: GraphLink[] = [];
     const linkSet = new Set<string>();
 
     for (const path of paths) {
+      console.debug('[MusicForceGraph] Processing path:', {
+        nodeCount: path.nodes?.length ?? 0,
+        edgeCount: path.edges?.length ?? 0,
+        description: path.description,
+      });
+
+      if (!Array.isArray(path.nodes) || !Array.isArray(path.edges)) {
+        console.warn('[MusicForceGraph] Skipping malformed path (missing nodes or edges array):', path);
+        continue;
+      }
+
       for (const node of path.nodes) {
+        if (!node.id || !node.label) {
+          console.warn('[MusicForceGraph] Skipping node with missing id or label:', node);
+          continue;
+        }
         if (!nodeMap.has(node.id)) {
-          nodeMap.set(node.id, { id: node.id, label: node.label, type: node.type, connections: 0 });
+          // Normalize type to lowercase for consistent color mapping
+          nodeMap.set(node.id, { id: node.id, label: node.label, type: (node.type ?? 'unknown').toLowerCase(), connections: 0 });
         }
       }
       for (const edge of path.edges) {
+        if (!edge.sourceId || !edge.targetId) {
+          console.warn('[MusicForceGraph] Skipping edge with missing sourceId or targetId:', edge);
+          continue;
+        }
         const key = `${edge.sourceId}-${edge.type}-${edge.targetId}`;
         if (!linkSet.has(key)) {
           linkSet.add(key);
@@ -102,7 +123,15 @@ const MusicForceGraph: React.FC<Props> = ({ paths }) => {
       }
     }
 
-    return { nodes: Array.from(nodeMap.values()), links };
+    const result = { nodes: Array.from(nodeMap.values()), links };
+    console.debug('[MusicForceGraph] Final graph data:', { nodeCount: result.nodes.length, linkCount: result.links.length });
+    if (result.nodes.length > 0) {
+      console.debug('[MusicForceGraph] Sample node:', result.nodes[0]);
+    }
+    if (result.links.length > 0) {
+      console.debug('[MusicForceGraph] Sample link:', result.links[0]);
+    }
+    return result;
   }, [paths]);
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
