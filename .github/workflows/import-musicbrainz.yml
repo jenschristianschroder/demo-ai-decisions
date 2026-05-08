@@ -18,6 +18,11 @@ on:
         description: 'MusicBrainz full-export base URL'
         required: false
         default: 'https://data.metabrainz.org/pub/musicbrainz/data/fullexport'
+      skip_download:
+        description: 'Skip download/extract/staging-load — resume transforms from existing staging data'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -85,6 +90,7 @@ jobs:
       # 3. Discover the latest dump
       # ────────────────────────────────────────────────────────────────────────
       - name: Discover latest MusicBrainz dump
+        if: ${{ !inputs.skip_download }}
         id: latest
         run: |
           LATEST="$(curl -sSf "${{ env.BASE_URL }}/LATEST")"
@@ -96,6 +102,7 @@ jobs:
       # 4. Download and extract only the tables we need
       # ────────────────────────────────────────────────────────────────────────
       - name: Download dump archives
+        if: ${{ !inputs.skip_download }}
         run: |
           DUMP_BASE="${{ env.BASE_URL }}/${{ steps.latest.outputs.dump }}"
 
@@ -115,6 +122,7 @@ jobs:
           ls -lh mbdump-derived.tar.bz2
 
       - name: Extract required table files
+        if: ${{ !inputs.skip_download }}
         run: |
           # Tables in mbdump.tar.bz2
           CORE_TABLES=(
@@ -241,6 +249,59 @@ jobs:
               delay=$((delay * 2))
             done
           }
+          # Resumable batch-insert helper.
+          # Usage: batch_insert_resumable <connstr> <batch_size> <staging_table>
+          #            <target_table> <range_column> <insert_sql_template>
+          # The insert_sql_template must contain __START__ and __END__ placeholders.
+          batch_insert_resumable() {
+            local connstr="$1"
+            local batch_size="$2"
+            local staging_table="$3"
+            local target_table="$4"
+            local range_column="$5"
+            local insert_sql_template="$6"
+
+            local min_id max_id last_loaded resume_from
+            min_id=$(psql_retry_capture "$connstr" -t -A -c \
+              "SELECT COALESCE(min($range_column), 0) FROM mb_staging.$staging_table")
+            max_id=$(psql_retry_capture "$connstr" -t -A -c \
+              "SELECT COALESCE(max($range_column), 0) FROM mb_staging.$staging_table")
+
+            # Resume: check how far the target table already got
+            last_loaded=$(psql_retry_capture "$connstr" -t -A -c \
+              "SELECT COALESCE(max($range_column), 0) FROM musicbrainz.$target_table")
+            if [ "$last_loaded" -gt "$min_id" ]; then
+              resume_from=$(( (last_loaded / batch_size) * batch_size ))
+              if [ "$resume_from" -lt "$min_id" ]; then
+                resume_from=$min_id
+              fi
+              echo "  ♻️  Resuming $target_table — last $range_column=$last_loaded, restarting from batch boundary $resume_from"
+            else
+              resume_from=$min_id
+            fi
+
+            echo "  📥 Batch-inserting $target_table ($range_column $resume_from → $max_id, batch $batch_size) …"
+            local total=0
+
+            for (( s=resume_from; s<=max_id; s+=batch_size )); do
+              local e=$((s + batch_size))
+              local sql="${insert_sql_template//__START__/$s}"
+              sql="${sql//__END__/$e}"
+              local rows
+              rows=$(psql_retry_capture "$connstr" -t -A -c "
+                SET session_replication_role = 'replica';
+                SET statement_timeout = 0;
+                $sql
+              ")
+              local count
+              count=$(echo "$rows" | tail -1 | grep -oE '[0-9]+' | tail -1 || echo 0)
+              total=$((total + count))
+              echo "    ✅ $range_column [$s, $e) — $count rows (cumulative: $total)"
+              sleep 0.5
+            done
+
+            echo "  ✅ $target_table done — $total total rows"
+          }
           SCRIPT
           chmod +x /tmp/psql_retry.sh
           echo "✅ Retry helper created"
@@ -259,6 +320,7 @@ jobs:
       # 7. Create staging tables
       # ────────────────────────────────────────────────────────────────────────
       - name: Create staging tables
+        if: ${{ !inputs.skip_download }}
         run: |
           source /tmp/psql_retry.sh
           psql_retry "${{ steps.pg.outputs.connstr }}" -f server/src/db/mb_staging_create.sql
@@ -269,6 +331,7 @@ jobs:
       # 8. COPY dump data into staging tables
       # ────────────────────────────────────────────────────────────────────────
       - name: Load dump files into staging tables
+        if: ${{ !inputs.skip_download }}
         run: |
           source /tmp/psql_retry.sh
           CONNSTR="${{ steps.pg.outputs.connstr }}"
@@ -332,6 +395,31 @@ jobs:
           PGCONNECT_TIMEOUT: '30'
 
       # ────────────────────────────────────────────────────────────────────────
+      # 8b. Create staging indexes for transform performance
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Create staging indexes for transform performance
+        if: ${{ !inputs.skip_download }}
+        run: |
+          source /tmp/psql_retry.sh
+          CONNSTR="${{ steps.pg.outputs.connstr }}"
+
+          echo "🔑 Creating staging indexes …"
+          echo "   Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+
+          psql_retry "$CONNSTR" -c "CREATE INDEX IF NOT EXISTS idx_stg_release_country_release ON mb_staging.release_country (release);"
+          echo "   ✅ idx_stg_release_country_release"
+
+          psql_retry "$CONNSTR" -c "CREATE INDEX IF NOT EXISTS idx_stg_release_label_release ON mb_staging.release_label (release);"
+          echo "   ✅ idx_stg_release_label_release"
+
+          psql_retry "$CONNSTR" -c "CREATE INDEX IF NOT EXISTS idx_stg_link_id ON mb_staging.link (id);"
+          echo "   ✅ idx_stg_link_id"
+
+          echo "✅ Staging indexes created at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        env:
+          PGCONNECT_TIMEOUT: '30'
+
+      # ────────────────────────────────────────────────────────────────────────
       # 9. Transform staging → demo tables
       # ────────────────────────────────────────────────────────────────────────
       - name: "Transform: setup & core tables"
@@ -387,73 +475,46 @@ jobs:
             COUNT=$(echo "$ROWS" | tail -1 | grep -oE '[0-9]+' | tail -1 || echo 0)
             TOTAL=$((TOTAL + COUNT))
             echo "   ✅ id [$start, $END) — $COUNT rows (cumulative: $TOTAL)"
-            sleep 2
+            sleep 0.5
           done
 
           echo "✅ Recording done — $TOTAL total rows at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
         env:
           PGCONNECT_TIMEOUT: '30'
 
-      - name: "Transform: remaining entity & link tables (batched)"
+      - name: "Transform: reset recording sequence"
+        run: |
+          source /tmp/psql_retry.sh
+          psql_retry "${{ steps.pg.outputs.connstr }}" -c "
+            SELECT setval(pg_get_serial_sequence('musicbrainz.recording', 'id'),
+                          COALESCE((SELECT MAX(id) FROM musicbrainz.recording), 1));"
+        env:
+          PGCONNECT_TIMEOUT: '30'
+
+      - name: "Transform: release_group"
         run: |
           source /tmp/psql_retry.sh
           CONNSTR="${{ steps.pg.outputs.connstr }}"
-          BATCH=500000
-
-          echo "🔄 Part 2 — release_group … artist_tag … link_type … l_artist_artist …"
-          echo "   Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-
-          # ── Reset recording sequence ──
-          psql_retry "$CONNSTR" -c "
-            SELECT setval(pg_get_serial_sequence('musicbrainz.recording', 'id'),
-                          COALESCE((SELECT MAX(id) FROM musicbrainz.recording), 1));"
-
-          # ── Helper: batch-insert a table by id range ──
-          batch_insert_by_id() {
-            local table_name="$1"
-            local insert_sql_template="$2"  # must contain __START__ and __END__ placeholders
-
-            local min_id max_id
-            min_id=$(psql_retry_capture "$CONNSTR" -t -A -c "SELECT COALESCE(min(id), 0) FROM mb_staging.$table_name")
-            max_id=$(psql_retry_capture "$CONNSTR" -t -A -c "SELECT COALESCE(max(id), 0) FROM mb_staging.$table_name")
-
-            echo "  📥 Batch-inserting $table_name (id $min_id → $max_id, batch $BATCH) …"
-            local total=0
-
-            for (( s=min_id; s<=max_id; s+=BATCH )); do
-              local e=$((s + BATCH))
-              local sql="${insert_sql_template//__START__/$s}"
-              sql="${sql//__END__/$e}"
-              local rows
-              rows=$(psql_retry_capture "$CONNSTR" -t -A -c "
-                SET session_replication_role = 'replica';
-                SET statement_timeout = 0;
-                $sql
-              ")
-              local count
-              count=$(echo "$rows" | tail -1 | grep -oE '[0-9]+' | tail -1 || echo 0)
-              total=$((total + count))
-              echo "    ✅ id [$s, $e) — $count rows (cumulative: $total)"
-              sleep 2
-            done
-
-            echo "  ✅ $table_name done — $total total rows"
-          }
-
-          # ── release_group ──
-          batch_insert_by_id "release_group" \
+          echo "🔄 release_group — Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          batch_insert_resumable "$CONNSTR" 500000 release_group release_group id \
             "INSERT INTO musicbrainz.release_group (id, gid, name, artist_credit, type, comment)
              SELECT id, gid, name, artist_credit, type, COALESCE(comment, '')
              FROM mb_staging.release_group
              WHERE id >= __START__ AND id < __END__
              ON CONFLICT (id) DO NOTHING;"
-
           psql_retry "$CONNSTR" -c "
             SELECT setval(pg_get_serial_sequence('musicbrainz.release_group', 'id'),
                           COALESCE((SELECT MAX(id) FROM musicbrainz.release_group), 1));"
+          echo "✅ release_group done at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        env:
+          PGCONNECT_TIMEOUT: '30'
 
-          # ── release (complex join — batch by release id) ──
-          batch_insert_by_id "release" \
+      - name: "Transform: release"
+        run: |
+          source /tmp/psql_retry.sh
+          CONNSTR="${{ steps.pg.outputs.connstr }}"
+          echo "🔄 release — Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          batch_insert_resumable "$CONNSTR" 500000 release release id \
             "INSERT INTO musicbrainz.release (id, gid, name, artist_credit, release_group,
                                               date_year, date_month, date_day, country, label, comment)
              SELECT r.id, r.gid, r.name, r.artist_credit, r.release_group,
@@ -476,10 +537,18 @@ jobs:
              ) rl ON true
              WHERE r.id >= __START__ AND r.id < __END__
              ON CONFLICT (id) DO NOTHING;"
-
           psql_retry "$CONNSTR" -c "
             SELECT setval(pg_get_serial_sequence('musicbrainz.release', 'id'),
                           COALESCE((SELECT MAX(id) FROM musicbrainz.release), 1));"
+          echo "✅ release done at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        env:
+          PGCONNECT_TIMEOUT: '30'
+
+      - name: "Transform: label, work, artist_credit"
+        run: |
+          source /tmp/psql_retry.sh
+          CONNSTR="${{ steps.pg.outputs.connstr }}"
+          echo "🔄 label, work, artist_credit — Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 
           # ── label (smaller table — single insert with retry) ──
           psql_retry "$CONNSTR" -c "
@@ -489,106 +558,82 @@ jobs:
             SELECT id, gid, name, type, area, begin_date_year, end_date_year, COALESCE(comment, '')
             FROM mb_staging.label
             ON CONFLICT (id) DO NOTHING;"
-
           psql_retry "$CONNSTR" -c "
             SELECT setval(pg_get_serial_sequence('musicbrainz.label', 'id'),
                           COALESCE((SELECT MAX(id) FROM musicbrainz.label), 1));"
+          echo "  ✅ label done"
 
           # ── work ──
-          batch_insert_by_id "work" \
+          batch_insert_resumable "$CONNSTR" 500000 work work id \
             "INSERT INTO musicbrainz.work (id, gid, name, type, comment)
              SELECT id, gid, name, type, COALESCE(comment, '')
              FROM mb_staging.work
              WHERE id >= __START__ AND id < __END__
              ON CONFLICT (id) DO NOTHING;"
-
           psql_retry "$CONNSTR" -c "
             SELECT setval(pg_get_serial_sequence('musicbrainz.work', 'id'),
                           COALESCE((SELECT MAX(id) FROM musicbrainz.work), 1));"
 
           # ── artist_credit ──
-          batch_insert_by_id "artist_credit" \
+          batch_insert_resumable "$CONNSTR" 500000 artist_credit artist_credit id \
             "INSERT INTO musicbrainz.artist_credit (id, name, artist_count)
              SELECT id, name, artist_count FROM mb_staging.artist_credit
              WHERE id >= __START__ AND id < __END__
              ON CONFLICT (id) DO NOTHING;"
-
           psql_retry "$CONNSTR" -c "
             SELECT setval(pg_get_serial_sequence('musicbrainz.artist_credit', 'id'),
                           COALESCE((SELECT MAX(id) FROM musicbrainz.artist_credit), 1));"
 
-          # ── artist_credit_name (no id column — use artist_credit as range key) ──
-          echo "  📥 Inserting artist_credit_name …"
-          MIN_AC=$(psql_retry_capture "$CONNSTR" -t -A -c "SELECT COALESCE(min(artist_credit), 0) FROM mb_staging.artist_credit_name")
-          MAX_AC=$(psql_retry_capture "$CONNSTR" -t -A -c "SELECT COALESCE(max(artist_credit), 0) FROM mb_staging.artist_credit_name")
-          ACN_TOTAL=0
+          echo "✅ label, work, artist_credit done at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        env:
+          PGCONNECT_TIMEOUT: '30'
 
-          for (( s=MIN_AC; s<=MAX_AC; s+=BATCH )); do
-            e=$((s + BATCH))
-            rows=$(psql_retry_capture "$CONNSTR" -t -A -c "
-              SET session_replication_role = 'replica';
-              SET statement_timeout = 0;
-              INSERT INTO musicbrainz.artist_credit_name (artist_credit, position, artist, name)
-              SELECT artist_credit, position, artist, name
-              FROM mb_staging.artist_credit_name
-              WHERE artist_credit >= $s AND artist_credit < $e
-              ON CONFLICT DO NOTHING;
-            ")
-            count=$(echo "$rows" | tail -1 | grep -oE '[0-9]+' | tail -1 || echo 0)
-            ACN_TOTAL=$((ACN_TOTAL + count))
-            echo "    ✅ artist_credit [$s, $e) — $count rows (cumulative: $ACN_TOTAL)"
-            sleep 2
-          done
-          echo "  ✅ artist_credit_name done — $ACN_TOTAL total rows"
+      - name: "Transform: artist_credit_name"
+        run: |
+          source /tmp/psql_retry.sh
+          CONNSTR="${{ steps.pg.outputs.connstr }}"
+          echo "🔄 artist_credit_name — Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          batch_insert_resumable "$CONNSTR" 500000 artist_credit_name artist_credit_name artist_credit \
+            "INSERT INTO musicbrainz.artist_credit_name (artist_credit, position, artist, name)
+             SELECT artist_credit, position, artist, name
+             FROM mb_staging.artist_credit_name
+             WHERE artist_credit >= __START__ AND artist_credit < __END__
+             ON CONFLICT DO NOTHING;"
+          echo "✅ artist_credit_name done at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        env:
+          PGCONNECT_TIMEOUT: '30'
 
-          # ── genre (small table) ──
+      - name: "Transform: genre, tag, link_type (small tables)"
+        run: |
+          source /tmp/psql_retry.sh
+          CONNSTR="${{ steps.pg.outputs.connstr }}"
+          echo "🔄 genre, tag, link_type — Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+
+          # ── genre ──
           psql_retry "$CONNSTR" -c "
             SET session_replication_role = 'replica';
             SET statement_timeout = 0;
             INSERT INTO musicbrainz.genre (id, gid, name)
             SELECT id, gid, name FROM mb_staging.genre
             ON CONFLICT (id) DO NOTHING;"
-
           psql_retry "$CONNSTR" -c "
             SELECT setval(pg_get_serial_sequence('musicbrainz.genre', 'id'),
                           COALESCE((SELECT MAX(id) FROM musicbrainz.genre), 1));"
+          echo "  ✅ genre done"
 
-          # ── tag (small-ish table) ──
+          # ── tag ──
           psql_retry "$CONNSTR" -c "
             SET session_replication_role = 'replica';
             SET statement_timeout = 0;
             INSERT INTO musicbrainz.tag (id, name)
             SELECT id, name FROM mb_staging.tag
             ON CONFLICT (id) DO NOTHING;"
-
           psql_retry "$CONNSTR" -c "
             SELECT setval(pg_get_serial_sequence('musicbrainz.tag', 'id'),
                           COALESCE((SELECT MAX(id) FROM musicbrainz.tag), 1));"
+          echo "  ✅ tag done"
 
-          # ── artist_tag ──
-          echo "  📥 Inserting artist_tag …"
-          MIN_AT=$(psql_retry_capture "$CONNSTR" -t -A -c "SELECT COALESCE(min(artist), 0) FROM mb_staging.artist_tag")
-          MAX_AT=$(psql_retry_capture "$CONNSTR" -t -A -c "SELECT COALESCE(max(artist), 0) FROM mb_staging.artist_tag")
-          AT_TOTAL=0
-
-          for (( s=MIN_AT; s<=MAX_AT; s+=BATCH )); do
-            e=$((s + BATCH))
-            rows=$(psql_retry_capture "$CONNSTR" -t -A -c "
-              SET session_replication_role = 'replica';
-              SET statement_timeout = 0;
-              INSERT INTO musicbrainz.artist_tag (artist, tag, count)
-              SELECT artist, tag, count FROM mb_staging.artist_tag
-              WHERE artist >= $s AND artist < $e
-              ON CONFLICT DO NOTHING;
-            ")
-            count=$(echo "$rows" | tail -1 | grep -oE '[0-9]+' | tail -1 || echo 0)
-            AT_TOTAL=$((AT_TOTAL + count))
-            echo "    ✅ artist [$s, $e) — $count rows (cumulative: $AT_TOTAL)"
-            sleep 2
-          done
-          echo "  ✅ artist_tag done — $AT_TOTAL total rows"
-
-          # ── link_type (small table) ──
+          # ── link_type ──
           psql_retry "$CONNSTR" -c "
             SET session_replication_role = 'replica';
             SET statement_timeout = 0;
@@ -596,143 +641,110 @@ jobs:
             SELECT id, gid, name, entity_type0, entity_type1, COALESCE(description, '')
             FROM mb_staging.link_type
             ON CONFLICT (id) DO NOTHING;"
-
           psql_retry "$CONNSTR" -c "
             SELECT setval(pg_get_serial_sequence('musicbrainz.link_type', 'id'),
                           COALESCE((SELECT MAX(id) FROM musicbrainz.link_type), 1));"
+          echo "  ✅ link_type done"
 
-          # ── l_artist_artist ──
-          psql_retry "$CONNSTR" -c "
-            SET session_replication_role = 'replica';
-            SET statement_timeout = 0;
-            INSERT INTO musicbrainz.l_artist_artist (id, entity0, entity1, link_type, begin_date_year, end_date_year)
-            SELECT laa.id, laa.entity0, laa.entity1, l.link_type, l.begin_date_year, l.end_date_year
-            FROM mb_staging.l_artist_artist laa
-            JOIN mb_staging.link l ON l.id = laa.link
-            ON CONFLICT (id) DO NOTHING;"
+          echo "✅ genre, tag, link_type done at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        env:
+          PGCONNECT_TIMEOUT: '30'
 
+      - name: "Transform: artist_tag"
+        run: |
+          source /tmp/psql_retry.sh
+          CONNSTR="${{ steps.pg.outputs.connstr }}"
+          echo "🔄 artist_tag — Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          batch_insert_resumable "$CONNSTR" 500000 artist_tag artist_tag artist \
+            "INSERT INTO musicbrainz.artist_tag (artist, tag, count)
+             SELECT artist, tag, count FROM mb_staging.artist_tag
+             WHERE artist >= __START__ AND artist < __END__
+             ON CONFLICT DO NOTHING;"
+          echo "✅ artist_tag done at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        env:
+          PGCONNECT_TIMEOUT: '30'
+
+      - name: "Transform: l_artist_artist"
+        run: |
+          source /tmp/psql_retry.sh
+          CONNSTR="${{ steps.pg.outputs.connstr }}"
+          echo "🔄 l_artist_artist — Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          batch_insert_resumable "$CONNSTR" 500000 l_artist_artist l_artist_artist id \
+            "INSERT INTO musicbrainz.l_artist_artist (id, entity0, entity1, link_type, begin_date_year, end_date_year)
+             SELECT laa.id, laa.entity0, laa.entity1, l.link_type, l.begin_date_year, l.end_date_year
+             FROM mb_staging.l_artist_artist laa
+             JOIN mb_staging.link l ON l.id = laa.link
+             WHERE laa.id >= __START__ AND laa.id < __END__
+             ON CONFLICT (id) DO NOTHING;"
           psql_retry "$CONNSTR" -c "
             SELECT setval(pg_get_serial_sequence('musicbrainz.l_artist_artist', 'id'),
                           COALESCE((SELECT MAX(id) FROM musicbrainz.l_artist_artist), 1));"
-
-          echo "✅ Part 2 done at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "✅ l_artist_artist done at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
         env:
           PGCONNECT_TIMEOUT: '30'
 
-      - name: "Transform: batch-insert l_artist_recording"
+      - name: "Transform: l_artist_recording"
         run: |
           source /tmp/psql_retry.sh
           CONNSTR="${{ steps.pg.outputs.connstr }}"
-          BATCH=500000
-
-          MIN_ID=$(psql_retry_capture "$CONNSTR" -t -A -c "SELECT COALESCE(min(id), 0) FROM mb_staging.l_artist_recording")
-          MAX_ID=$(psql_retry_capture "$CONNSTR" -t -A -c "SELECT COALESCE(max(id), 0) FROM mb_staging.l_artist_recording")
-
-          echo "📥 Batch-inserting l_artist_recording rows (id $MIN_ID → $MAX_ID, batch size $BATCH) …"
-          echo "   Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-          TOTAL=0
-
-          for (( start=MIN_ID; start<=MAX_ID; start+=BATCH )); do
-            END=$((start + BATCH))
-            ROWS=$(psql_retry_capture "$CONNSTR" -t -A -c "
-              SET session_replication_role = 'replica';
-              SET statement_timeout = 0;
-              INSERT INTO musicbrainz.l_artist_recording (id, entity0, entity1, link_type)
-              SELECT lar.id, lar.entity0, lar.entity1, l.link_type
-              FROM mb_staging.l_artist_recording lar
-              JOIN mb_staging.link l ON l.id = lar.link
-              WHERE lar.id >= $start AND lar.id < $END
-              ON CONFLICT (id) DO NOTHING;
-            ")
-            COUNT=$(echo "$ROWS" | tail -1 | grep -oE '[0-9]+' | tail -1 || echo 0)
-            TOTAL=$((TOTAL + COUNT))
-            echo "   ✅ id [$start, $END) — $COUNT rows (cumulative: $TOTAL)"
-            sleep 2
-          done
-
-          echo "✅ l_artist_recording done — $TOTAL total rows at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-        env:
-          PGCONNECT_TIMEOUT: '30'
-
-      - name: "Transform: final link tables & cleanup"
-        run: |
-          source /tmp/psql_retry.sh
-          CONNSTR="${{ steps.pg.outputs.connstr }}"
-          BATCH=500000
-
-          echo "🔄 Part 3 — l_artist_release … l_artist_work … drop staging …"
-          echo "   Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-
-          # ── Reset l_artist_recording sequence ──
+          echo "🔄 l_artist_recording — Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          batch_insert_resumable "$CONNSTR" 500000 l_artist_recording l_artist_recording id \
+            "INSERT INTO musicbrainz.l_artist_recording (id, entity0, entity1, link_type)
+             SELECT lar.id, lar.entity0, lar.entity1, l.link_type
+             FROM mb_staging.l_artist_recording lar
+             JOIN mb_staging.link l ON l.id = lar.link
+             WHERE lar.id >= __START__ AND lar.id < __END__
+             ON CONFLICT (id) DO NOTHING;"
           psql_retry "$CONNSTR" -c "
             SELECT setval(pg_get_serial_sequence('musicbrainz.l_artist_recording', 'id'),
                           COALESCE((SELECT MAX(id) FROM musicbrainz.l_artist_recording), 1));"
+          echo "✅ l_artist_recording done at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        env:
+          PGCONNECT_TIMEOUT: '30'
 
-          # ── l_artist_release (batch by id) ──
-          MIN_ID=$(psql_retry_capture "$CONNSTR" -t -A -c "SELECT COALESCE(min(id), 0) FROM mb_staging.l_artist_release")
-          MAX_ID=$(psql_retry_capture "$CONNSTR" -t -A -c "SELECT COALESCE(max(id), 0) FROM mb_staging.l_artist_release")
-          echo "  📥 Batch-inserting l_artist_release (id $MIN_ID → $MAX_ID) …"
-          TOTAL=0
-
-          for (( s=MIN_ID; s<=MAX_ID; s+=BATCH )); do
-            e=$((s + BATCH))
-            rows=$(psql_retry_capture "$CONNSTR" -t -A -c "
-              SET session_replication_role = 'replica';
-              SET statement_timeout = 0;
-              INSERT INTO musicbrainz.l_artist_release (id, entity0, entity1, link_type)
-              SELECT lar.id, lar.entity0, lar.entity1, l.link_type
-              FROM mb_staging.l_artist_release lar
-              JOIN mb_staging.link l ON l.id = lar.link
-              WHERE lar.id >= $s AND lar.id < $e
-              ON CONFLICT (id) DO NOTHING;
-            ")
-            count=$(echo "$rows" | tail -1 | grep -oE '[0-9]+' | tail -1 || echo 0)
-            TOTAL=$((TOTAL + count))
-            echo "    ✅ id [$s, $e) — $count rows (cumulative: $TOTAL)"
-            sleep 2
-          done
-          echo "  ✅ l_artist_release done — $TOTAL total rows"
-
+      - name: "Transform: l_artist_release"
+        run: |
+          source /tmp/psql_retry.sh
+          CONNSTR="${{ steps.pg.outputs.connstr }}"
+          echo "🔄 l_artist_release — Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          batch_insert_resumable "$CONNSTR" 500000 l_artist_release l_artist_release id \
+            "INSERT INTO musicbrainz.l_artist_release (id, entity0, entity1, link_type)
+             SELECT lar.id, lar.entity0, lar.entity1, l.link_type
+             FROM mb_staging.l_artist_release lar
+             JOIN mb_staging.link l ON l.id = lar.link
+             WHERE lar.id >= __START__ AND lar.id < __END__
+             ON CONFLICT (id) DO NOTHING;"
           psql_retry "$CONNSTR" -c "
             SELECT setval(pg_get_serial_sequence('musicbrainz.l_artist_release', 'id'),
                           COALESCE((SELECT MAX(id) FROM musicbrainz.l_artist_release), 1));"
+          echo "✅ l_artist_release done at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        env:
+          PGCONNECT_TIMEOUT: '30'
 
-          # ── l_artist_work (batch by id) ──
-          MIN_ID=$(psql_retry_capture "$CONNSTR" -t -A -c "SELECT COALESCE(min(id), 0) FROM mb_staging.l_artist_work")
-          MAX_ID=$(psql_retry_capture "$CONNSTR" -t -A -c "SELECT COALESCE(max(id), 0) FROM mb_staging.l_artist_work")
-          echo "  📥 Batch-inserting l_artist_work (id $MIN_ID → $MAX_ID) …"
-          TOTAL=0
-
-          for (( s=MIN_ID; s<=MAX_ID; s+=BATCH )); do
-            e=$((s + BATCH))
-            rows=$(psql_retry_capture "$CONNSTR" -t -A -c "
-              SET session_replication_role = 'replica';
-              SET statement_timeout = 0;
-              INSERT INTO musicbrainz.l_artist_work (id, entity0, entity1, link_type)
-              SELECT law.id, law.entity0, law.entity1, l.link_type
-              FROM mb_staging.l_artist_work law
-              JOIN mb_staging.link l ON l.id = law.link
-              WHERE law.id >= $s AND law.id < $e
-              ON CONFLICT (id) DO NOTHING;
-            ")
-            count=$(echo "$rows" | tail -1 | grep -oE '[0-9]+' | tail -1 || echo 0)
-            TOTAL=$((TOTAL + count))
-            echo "    ✅ id [$s, $e) — $count rows (cumulative: $TOTAL)"
-            sleep 2
-          done
-          echo "  ✅ l_artist_work done — $TOTAL total rows"
-
+      - name: "Transform: l_artist_work"
+        run: |
+          source /tmp/psql_retry.sh
+          CONNSTR="${{ steps.pg.outputs.connstr }}"
+          echo "🔄 l_artist_work — Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          batch_insert_resumable "$CONNSTR" 500000 l_artist_work l_artist_work id \
+            "INSERT INTO musicbrainz.l_artist_work (id, entity0, entity1, link_type)
+             SELECT law.id, law.entity0, law.entity1, l.link_type
+             FROM mb_staging.l_artist_work law
+             JOIN mb_staging.link l ON l.id = law.link
+             WHERE law.id >= __START__ AND law.id < __END__
+             ON CONFLICT (id) DO NOTHING;"
           psql_retry "$CONNSTR" -c "
             SELECT setval(pg_get_serial_sequence('musicbrainz.l_artist_work', 'id'),
                           COALESCE((SELECT MAX(id) FROM musicbrainz.l_artist_work), 1));"
+          echo "✅ l_artist_work done at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        env:
+          PGCONNECT_TIMEOUT: '30'
 
-          # ── Re-enable triggers ──
-          psql_retry "$CONNSTR" -c "SET session_replication_role = 'origin';"
-
-          # ── Drop staging schema ──
-          psql_retry "$CONNSTR" -c "DROP SCHEMA mb_staging CASCADE;"
-
-          echo "✅ Transform complete at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+      - name: "Transform: re-enable triggers"
+        run: |
+          source /tmp/psql_retry.sh
+          psql_retry "${{ steps.pg.outputs.connstr }}" -c "SET session_replication_role = 'origin';"
+          echo "✅ Triggers re-enabled"
         env:
           PGCONNECT_TIMEOUT: '30'
 
@@ -780,7 +792,18 @@ jobs:
           PGCONNECT_TIMEOUT: '30'
 
       # ────────────────────────────────────────────────────────────────────────
-      # 11. Clean up workspace
+      # 11. Drop staging schema (separate step so verify failure preserves staging)
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Drop staging schema
+        run: |
+          source /tmp/psql_retry.sh
+          psql_retry "${{ steps.pg.outputs.connstr }}" -c "DROP SCHEMA IF EXISTS mb_staging CASCADE;"
+          echo "✅ Staging schema dropped"
+        env:
+          PGCONNECT_TIMEOUT: '30'
+
+      # ────────────────────────────────────────────────────────────────────────
+      # 12. Clean up workspace
       # ────────────────────────────────────────────────────────────────────────
       - name: Clean up
         if: always()
