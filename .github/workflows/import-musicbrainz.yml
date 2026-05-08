@@ -28,7 +28,7 @@ env:
 jobs:
   import:
     runs-on: ubuntu-latest
-    timeout-minutes: 360            # full dump can take a while
+    timeout-minutes: 720            # full dump can take a while
 
     steps:
       # ────────────────────────────────────────────────────────────────────────
@@ -96,12 +96,18 @@ jobs:
           DUMP_BASE="${{ env.BASE_URL }}/${{ steps.latest.outputs.dump }}"
 
           echo "⬇️  Downloading mbdump.tar.bz2 …"
-          curl -sSfL -o mbdump.tar.bz2 "$DUMP_BASE/mbdump.tar.bz2"
+          echo "   URL: $DUMP_BASE/mbdump.tar.bz2"
+          echo "   Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          curl -fL --progress-bar -o mbdump.tar.bz2 "$DUMP_BASE/mbdump.tar.bz2"
+          echo "   Finished at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           ls -lh mbdump.tar.bz2
 
           # tag and artist_tag live in the derived dump
           echo "⬇️  Downloading mbdump-derived.tar.bz2 …"
-          curl -sSfL -o mbdump-derived.tar.bz2 "$DUMP_BASE/mbdump-derived.tar.bz2"
+          echo "   URL: $DUMP_BASE/mbdump-derived.tar.bz2"
+          echo "   Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          curl -fL --progress-bar -o mbdump-derived.tar.bz2 "$DUMP_BASE/mbdump-derived.tar.bz2"
+          echo "   Finished at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           ls -lh mbdump-derived.tar.bz2
 
       - name: Extract required table files
@@ -141,7 +147,9 @@ jobs:
             PATHS+=("mbdump/$t")
           done
           echo "📂 Extracting ${#PATHS[@]} core table files …"
-          tar -xjf mbdump.tar.bz2 "${PATHS[@]}"
+          echo "   Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          tar -xjvf mbdump.tar.bz2 "${PATHS[@]}"
+          echo "   Finished at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 
           # Extract derived tables
           PATHS=()
@@ -149,12 +157,18 @@ jobs:
             PATHS+=("mbdump/$t")
           done
           echo "📂 Extracting ${#PATHS[@]} derived table files …"
-          tar -xjf mbdump-derived.tar.bz2 "${PATHS[@]}"
+          echo "   Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          tar -xjvf mbdump-derived.tar.bz2 "${PATHS[@]}"
+          echo "   Finished at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 
-          ls -lh mbdump/
+          echo ""
+          echo "📊 Extracted file sizes:"
+          ls -lhS mbdump/
 
           # Free disk space
           rm -f mbdump.tar.bz2 mbdump-derived.tar.bz2
+          echo "🗑️  Removed archive files to free disk space"
+          df -h . | tail -1 | awk '{print "💾 Available disk space: " $4}'
 
       # ────────────────────────────────────────────────────────────────────────
       # 5. Ensure demo schema exists
@@ -204,20 +218,38 @@ jobs:
             link_type
           )
 
+          TOTAL=${#TABLES[@]}
+          CURRENT=0
+          IMPORT_START=$(date +%s)
+          echo "🚀 Starting import of $TOTAL tables at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo ""
+
           for t in "${TABLES[@]}"; do
+            CURRENT=$((CURRENT + 1))
             FILE="mbdump/$t"
             if [ ! -f "$FILE" ]; then
-              echo "⚠️  Skipping $t — file not found"
+              echo "⚠️  [$CURRENT/$TOTAL] Skipping $t — file not found"
               continue
             fi
 
+            FILE_SIZE=$(ls -lh "$FILE" | awk '{print $5}')
             ROW_COUNT=$(wc -l < "$FILE")
-            echo "📥 Loading $t ($ROW_COUNT rows) …"
+            echo "📥 [$CURRENT/$TOTAL] Loading $t ($ROW_COUNT rows, $FILE_SIZE) …"
+            TABLE_START=$(date +%s)
 
             psql "$CONNSTR" -c "\\copy mb_staging.$t FROM '$FILE'"
 
-            echo "   ✅ $t loaded"
+            TABLE_END=$(date +%s)
+            TABLE_ELAPSED=$((TABLE_END - TABLE_START))
+            TOTAL_ELAPSED=$((TABLE_END - IMPORT_START))
+            DB_ROWS=$(psql "$CONNSTR" -t -A -c "SELECT COUNT(*) FROM mb_staging.$t")
+            echo "   ✅ $t loaded — $DB_ROWS rows in DB — took ${TABLE_ELAPSED}s (total elapsed: ${TOTAL_ELAPSED}s)"
           done
+
+          IMPORT_END=$(date +%s)
+          TOTAL_TIME=$((IMPORT_END - IMPORT_START))
+          echo ""
+          echo "🏁 All tables loaded in ${TOTAL_TIME}s (finished at $(date -u '+%Y-%m-%d %H:%M:%S UTC'))"
         env:
           PGCONNECT_TIMEOUT: '30'
 
@@ -227,8 +259,14 @@ jobs:
       - name: Transform staging data into demo schema
         run: |
           echo "🔄 Transforming staging data into demo tables …"
-          psql "${{ steps.pg.outputs.connstr }}" -f server/src/db/mb_staging_load.sql
-          echo "✅ Import complete"
+          echo "   Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          TRANSFORM_START=$(date +%s)
+
+          psql "${{ steps.pg.outputs.connstr }}" -e -f server/src/db/mb_staging_load.sql
+
+          TRANSFORM_END=$(date +%s)
+          TRANSFORM_ELAPSED=$((TRANSFORM_END - TRANSFORM_START))
+          echo "✅ Transform complete — took ${TRANSFORM_ELAPSED}s (finished at $(date -u '+%Y-%m-%d %H:%M:%S UTC'))"
         env:
           PGCONNECT_TIMEOUT: '30'
 
