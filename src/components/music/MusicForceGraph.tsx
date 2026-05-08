@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useRef, useState } from 'react';
+import React, { useMemo, useCallback, useRef, useState, useEffect } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import type { MusicRelationshipPath } from '../../types/music';
 
@@ -48,6 +48,35 @@ const getColor = (type: string): string =>
 const MusicForceGraph: React.FC<Props> = ({ paths }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
+  const [containerWidth, setContainerWidth] = useState(900);
+
+  // Measure container width and force a canvas resize after mount.
+  // react-force-graph-2d uses direct DOM manipulation via react-kapsule,
+  // which can fail to render the canvas properly under React 19's rendering
+  // pipeline. Dispatching a resize event after mount forces the library to
+  // recalculate canvas dimensions and redraw.
+  useEffect(() => {
+    if (containerRef.current) {
+      const w = containerRef.current.clientWidth;
+      if (w > 0) setContainerWidth(w);
+    }
+
+    const timer = setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 100);
+
+    const handleResize = () => {
+      if (containerRef.current) {
+        const w = containerRef.current.clientWidth;
+        if (w > 0) setContainerWidth(w);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   const graphData = useMemo(() => {
     const nodeMap = new Map<string, GraphNode>();
@@ -139,7 +168,7 @@ const MusicForceGraph: React.FC<Props> = ({ paths }) => {
       <div ref={containerRef} className="music-fg-canvas">
         <ForceGraph2D
           graphData={graphData as any}
-          width={containerRef.current?.clientWidth ?? 900}
+          width={containerWidth}
           height={500}
           nodeCanvasObject={paintNode as any}
           nodePointerAreaPaint={(node: any, color: string, ctx: CanvasRenderingContext2D) => {
