@@ -256,17 +256,96 @@ jobs:
       # ────────────────────────────────────────────────────────────────────────
       # 8. Transform staging → demo tables
       # ────────────────────────────────────────────────────────────────────────
-      - name: Transform staging data into demo schema
+      - name: "Transform: setup & core tables"
         run: |
-          echo "🔄 Transforming staging data into demo tables …"
+          echo "🔄 Part 1 — Truncate + load artist / artist_type / area …"
           echo "   Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-          TRANSFORM_START=$(date +%s)
+          psql "${{ steps.pg.outputs.connstr }}" -e --set=ON_ERROR_STOP=1 \
+            -f server/src/db/mb_staging_load_setup.sql
+          echo "✅ Part 1 done at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        env:
+          PGCONNECT_TIMEOUT: '30'
 
-          psql "${{ steps.pg.outputs.connstr }}" -e --set=ON_ERROR_STOP=1 -f server/src/db/mb_staging_load.sql
+      - name: "Transform: batch-insert recording"
+        run: |
+          CONNSTR="${{ steps.pg.outputs.connstr }}"
+          BATCH=500000
 
-          TRANSFORM_END=$(date +%s)
-          TRANSFORM_ELAPSED=$((TRANSFORM_END - TRANSFORM_START))
-          echo "✅ Transform complete — took ${TRANSFORM_ELAPSED}s (finished at $(date -u '+%Y-%m-%d %H:%M:%S UTC'))"
+          MIN_ID=$(psql "$CONNSTR" -t -A -c "SELECT COALESCE(min(id), 0) FROM mb_staging.recording")
+          MAX_ID=$(psql "$CONNSTR" -t -A -c "SELECT COALESCE(max(id), 0) FROM mb_staging.recording")
+
+          echo "📥 Batch-inserting recording rows (id $MIN_ID → $MAX_ID, batch size $BATCH) …"
+          echo "   Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          TOTAL=0
+
+          for (( start=MIN_ID; start<=MAX_ID; start+=BATCH )); do
+            END=$((start + BATCH))
+            ROWS=$(psql "$CONNSTR" -t -A -c "
+              SET session_replication_role = 'replica';
+              SET statement_timeout = 0;
+              INSERT INTO musicbrainz.recording (id, gid, name, artist_credit, length, comment)
+              SELECT id, gid, name, artist_credit, length, COALESCE(comment, '')
+              FROM mb_staging.recording
+              WHERE id >= $start AND id < $END;
+            ")
+            COUNT=$(echo "$ROWS" | grep -oE '[0-9]+' || echo 0)
+            TOTAL=$((TOTAL + COUNT))
+            echo "   ✅ id [$start, $END) — $COUNT rows (cumulative: $TOTAL)"
+          done
+
+          echo "✅ Recording done — $TOTAL total rows at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        env:
+          PGCONNECT_TIMEOUT: '30'
+
+      - name: "Transform: remaining entity & link tables"
+        run: |
+          echo "🔄 Part 2 — release_group … artist_tag … link_type … l_artist_artist …"
+          echo "   Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          psql "${{ steps.pg.outputs.connstr }}" -e --set=ON_ERROR_STOP=1 \
+            -f server/src/db/mb_staging_load_tables.sql
+          echo "✅ Part 2 done at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        env:
+          PGCONNECT_TIMEOUT: '30'
+
+      - name: "Transform: batch-insert l_artist_recording"
+        run: |
+          CONNSTR="${{ steps.pg.outputs.connstr }}"
+          BATCH=500000
+
+          MIN_ID=$(psql "$CONNSTR" -t -A -c "SELECT COALESCE(min(id), 0) FROM mb_staging.l_artist_recording")
+          MAX_ID=$(psql "$CONNSTR" -t -A -c "SELECT COALESCE(max(id), 0) FROM mb_staging.l_artist_recording")
+
+          echo "📥 Batch-inserting l_artist_recording rows (id $MIN_ID → $MAX_ID, batch size $BATCH) …"
+          echo "   Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          TOTAL=0
+
+          for (( start=MIN_ID; start<=MAX_ID; start+=BATCH )); do
+            END=$((start + BATCH))
+            ROWS=$(psql "$CONNSTR" -t -A -c "
+              SET session_replication_role = 'replica';
+              SET statement_timeout = 0;
+              INSERT INTO musicbrainz.l_artist_recording (id, entity0, entity1, link_type)
+              SELECT lar.id, lar.entity0, lar.entity1, l.link_type
+              FROM mb_staging.l_artist_recording lar
+              JOIN mb_staging.link l ON l.id = lar.link
+              WHERE lar.id >= $start AND lar.id < $END;
+            ")
+            COUNT=$(echo "$ROWS" | grep -oE '[0-9]+' || echo 0)
+            TOTAL=$((TOTAL + COUNT))
+            echo "   ✅ id [$start, $END) — $COUNT rows (cumulative: $TOTAL)"
+          done
+
+          echo "✅ l_artist_recording done — $TOTAL total rows at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        env:
+          PGCONNECT_TIMEOUT: '30'
+
+      - name: "Transform: final link tables & cleanup"
+        run: |
+          echo "🔄 Part 3 — l_artist_release … l_artist_work … drop staging …"
+          echo "   Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          psql "${{ steps.pg.outputs.connstr }}" -e --set=ON_ERROR_STOP=1 \
+            -f server/src/db/mb_staging_load_finish.sql
+          echo "✅ Transform complete at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
         env:
           PGCONNECT_TIMEOUT: '30'
 

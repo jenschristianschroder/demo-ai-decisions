@@ -4,7 +4,7 @@
 -- These tables mirror the exact column order of the MusicBrainz full-export
 -- dump files so that raw tab-separated data can be loaded with COPY FROM STDIN.
 --
--- After loading, run mb_staging_load.sql to transform into the demo schema.
+-- After loading, run the transform steps — see import-musicbrainz.yml workflow.
 -- ============================================================================
 
 DROP SCHEMA IF EXISTS mb_staging CASCADE;
