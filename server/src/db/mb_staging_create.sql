@@ -7,8 +7,26 @@
 -- After loading, run the transform steps — see import-musicbrainz.yml workflow.
 -- ============================================================================
 
+-- Terminate any sessions that might be holding locks on the staging schema
+-- (e.g. zombie connections from a previous cancelled/failed import run).
+-- We target sessions holding locks on objects within the mb_staging schema.
+SELECT pg_terminate_backend(sa.pid)
+FROM pg_stat_activity sa
+JOIN pg_locks l ON l.pid = sa.pid
+JOIN pg_class c ON c.oid = l.relation
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE sa.pid <> pg_backend_pid()
+  AND n.nspname = 'mb_staging';
+
+-- Prevent this session from hanging indefinitely if a lock cannot be acquired.
+SET lock_timeout = '60s';
+
 DROP SCHEMA IF EXISTS mb_staging CASCADE;
 CREATE SCHEMA mb_staging;
+
+-- Reset to a generous timeout for the CREATE TABLE statements that follow.
+-- These should be fast but we keep a safety net.
+SET lock_timeout = '5m';
 
 -- ── artist ───────────────────────────────────────────────────────────────────
 CREATE TABLE mb_staging.artist (

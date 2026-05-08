@@ -184,7 +184,11 @@ jobs:
       # ────────────────────────────────────────────────────────────────────────
       - name: Create staging tables
         run: |
-          psql "${{ steps.pg.outputs.connstr }}" -f server/src/db/mb_staging_create.sql
+          echo "🗄️  Creating staging tables …"
+          echo "   Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          psql "${{ steps.pg.outputs.connstr }}" -e --set=ON_ERROR_STOP=1 \
+            -f server/src/db/mb_staging_create.sql
+          echo "   Finished at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
         env:
           PGCONNECT_TIMEOUT: '30'
 
