@@ -288,7 +288,7 @@ jobs:
               FROM mb_staging.recording
               WHERE id >= $start AND id < $END;
             ")
-            COUNT=$(echo "$ROWS" | grep -oE '[0-9]+' || echo 0)
+            COUNT=$(echo "$ROWS" | tail -1 | grep -oE '[0-9]+' | tail -1 || echo 0)
             TOTAL=$((TOTAL + COUNT))
             echo "   ✅ id [$start, $END) — $COUNT rows (cumulative: $TOTAL)"
           done
@@ -330,7 +330,7 @@ jobs:
               JOIN mb_staging.link l ON l.id = lar.link
               WHERE lar.id >= $start AND lar.id < $END;
             ")
-            COUNT=$(echo "$ROWS" | grep -oE '[0-9]+' || echo 0)
+            COUNT=$(echo "$ROWS" | tail -1 | grep -oE '[0-9]+' | tail -1 || echo 0)
             TOTAL=$((TOTAL + COUNT))
             echo "   ✅ id [$start, $END) — $COUNT rows (cumulative: $TOTAL)"
           done
