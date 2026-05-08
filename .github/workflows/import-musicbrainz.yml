@@ -72,8 +72,11 @@ jobs:
 
           # Build a connection string with TCP keepalive parameters to prevent
           # the server / load-balancer from closing idle connections.
+          # Also set statement_timeout and idle_in_transaction_session_timeout to 0
+          # at the connection level so Azure PostgreSQL does not kill long-running
+          # batch operations.
           echo "::add-mask::$RESOLVED_PGPASSWORD"
-          CONNSTR="host=$RESOLVED_PGHOST dbname=$RESOLVED_PGDATABASE user=$RESOLVED_PGUSER password=$RESOLVED_PGPASSWORD sslmode=$RESOLVED_PGSSLMODE keepalives=1 keepalives_idle=30 keepalives_interval=10 keepalives_count=5"
+          CONNSTR="host=$RESOLVED_PGHOST dbname=$RESOLVED_PGDATABASE user=$RESOLVED_PGUSER password=$RESOLVED_PGPASSWORD sslmode=$RESOLVED_PGSSLMODE keepalives=1 keepalives_idle=30 keepalives_interval=10 keepalives_count=5 options='-c statement_timeout=0 -c idle_in_transaction_session_timeout=0'"
           echo "connstr=$CONNSTR" >> "$GITHUB_OUTPUT"
 
           echo "✅ PostgreSQL: host=$RESOLVED_PGHOST db=$RESOLVED_PGDATABASE user=$RESOLVED_PGUSER ssl=$RESOLVED_PGSSLMODE (keepalives enabled)"
@@ -183,13 +186,13 @@ jobs:
           #        psql_retry <connstr> [psql args ...]
           #
           # Environment:
-          #   RETRY_MAX   — max attempts (default 5)
-          #   RETRY_DELAY — initial delay in seconds (default 5)
+          #   RETRY_MAX   — max attempts (default 8)
+          #   RETRY_DELAY — initial delay in seconds (default 10)
 
           psql_retry() {
             local connstr="$1"; shift
-            local max_attempts="${RETRY_MAX:-5}"
-            local delay="${RETRY_DELAY:-5}"
+            local max_attempts="${RETRY_MAX:-8}"
+            local delay="${RETRY_DELAY:-10}"
 
             for (( attempt=1; attempt<=max_attempts; attempt++ )); do
               set +e
@@ -212,8 +215,8 @@ jobs:
           # Variant that captures stdout while still retrying.
           psql_retry_capture() {
             local connstr="$1"; shift
-            local max_attempts="${RETRY_MAX:-5}"
-            local delay="${RETRY_DELAY:-5}"
+            local max_attempts="${RETRY_MAX:-8}"
+            local delay="${RETRY_DELAY:-10}"
             local tmpfile
             tmpfile=$(mktemp)
 
@@ -334,7 +337,7 @@ jobs:
       - name: "Transform: setup & core tables"
         run: |
           source /tmp/psql_retry.sh
-          echo "🔄 Part 1 — Truncate + load artist / artist_type / area …"
+          echo "🔄 Part 1 — Upsert artist / artist_type / area …"
           echo "   Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           psql_retry "${{ steps.pg.outputs.connstr }}" -e --set=ON_ERROR_STOP=1 \
             -f server/src/db/mb_staging_load_setup.sql
@@ -346,16 +349,31 @@ jobs:
         run: |
           source /tmp/psql_retry.sh
           CONNSTR="${{ steps.pg.outputs.connstr }}"
-          BATCH=500000
+          BATCH=200000
 
           MIN_ID=$(psql_retry_capture "$CONNSTR" -t -A -c "SELECT COALESCE(min(id), 0) FROM mb_staging.recording")
           MAX_ID=$(psql_retry_capture "$CONNSTR" -t -A -c "SELECT COALESCE(max(id), 0) FROM mb_staging.recording")
 
-          echo "📥 Batch-inserting recording rows (id $MIN_ID → $MAX_ID, batch size $BATCH) …"
+          # Resume from where a previous run left off
+          LAST_LOADED=$(psql_retry_capture "$CONNSTR" -t -A -c "SELECT COALESCE(max(id), 0) FROM musicbrainz.recording")
+          if [ "$LAST_LOADED" -gt "$MIN_ID" ]; then
+            # Round down to the nearest batch boundary so we re-check the
+            # last partial batch (ON CONFLICT DO NOTHING keeps it safe).
+            RESUME_FROM=$(( (LAST_LOADED / BATCH) * BATCH ))
+            # Ensure we don't go below the min staging id
+            if [ "$RESUME_FROM" -lt "$MIN_ID" ]; then
+              RESUME_FROM=$MIN_ID
+            fi
+            echo "♻️  Resuming recording import — last loaded id $LAST_LOADED, restarting from batch boundary $RESUME_FROM"
+          else
+            RESUME_FROM=$MIN_ID
+          fi
+
+          echo "📥 Batch-inserting recording rows (id $RESUME_FROM → $MAX_ID, batch size $BATCH) …"
           echo "   Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           TOTAL=0
 
-          for (( start=MIN_ID; start<=MAX_ID; start+=BATCH )); do
+          for (( start=RESUME_FROM; start<=MAX_ID; start+=BATCH )); do
             END=$((start + BATCH))
             ROWS=$(psql_retry_capture "$CONNSTR" -t -A -c "
               SET session_replication_role = 'replica';
@@ -369,6 +387,7 @@ jobs:
             COUNT=$(echo "$ROWS" | tail -1 | grep -oE '[0-9]+' | tail -1 || echo 0)
             TOTAL=$((TOTAL + COUNT))
             echo "   ✅ id [$start, $END) — $COUNT rows (cumulative: $TOTAL)"
+            sleep 2
           done
 
           echo "✅ Recording done — $TOTAL total rows at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
@@ -415,6 +434,7 @@ jobs:
               count=$(echo "$rows" | tail -1 | grep -oE '[0-9]+' | tail -1 || echo 0)
               total=$((total + count))
               echo "    ✅ id [$s, $e) — $count rows (cumulative: $total)"
+              sleep 2
             done
 
             echo "  ✅ $table_name done — $total total rows"
@@ -517,6 +537,7 @@ jobs:
             count=$(echo "$rows" | tail -1 | grep -oE '[0-9]+' | tail -1 || echo 0)
             ACN_TOTAL=$((ACN_TOTAL + count))
             echo "    ✅ artist_credit [$s, $e) — $count rows (cumulative: $ACN_TOTAL)"
+            sleep 2
           done
           echo "  ✅ artist_credit_name done — $ACN_TOTAL total rows"
 
@@ -563,6 +584,7 @@ jobs:
             count=$(echo "$rows" | tail -1 | grep -oE '[0-9]+' | tail -1 || echo 0)
             AT_TOTAL=$((AT_TOTAL + count))
             echo "    ✅ artist [$s, $e) — $count rows (cumulative: $AT_TOTAL)"
+            sleep 2
           done
           echo "  ✅ artist_tag done — $AT_TOTAL total rows"
 
@@ -625,6 +647,7 @@ jobs:
             COUNT=$(echo "$ROWS" | tail -1 | grep -oE '[0-9]+' | tail -1 || echo 0)
             TOTAL=$((TOTAL + COUNT))
             echo "   ✅ id [$start, $END) — $COUNT rows (cumulative: $TOTAL)"
+            sleep 2
           done
 
           echo "✅ l_artist_recording done — $TOTAL total rows at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
@@ -666,6 +689,7 @@ jobs:
             count=$(echo "$rows" | tail -1 | grep -oE '[0-9]+' | tail -1 || echo 0)
             TOTAL=$((TOTAL + count))
             echo "    ✅ id [$s, $e) — $count rows (cumulative: $TOTAL)"
+            sleep 2
           done
           echo "  ✅ l_artist_release done — $TOTAL total rows"
 
@@ -694,6 +718,7 @@ jobs:
             count=$(echo "$rows" | tail -1 | grep -oE '[0-9]+' | tail -1 || echo 0)
             TOTAL=$((TOTAL + count))
             echo "    ✅ id [$s, $e) — $count rows (cumulative: $TOTAL)"
+            sleep 2
           done
           echo "  ✅ l_artist_work done — $TOTAL total rows"
 
