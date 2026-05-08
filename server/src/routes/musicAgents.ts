@@ -61,11 +61,21 @@ musicAgentsRouter.get('/music/table-counts', async (_req: Request, res: Response
   }
 
   try {
+    const ALLOWED_TABLES = new Set([
+      'artist', 'recording', 'release_group', 'release', 'work', 'label', 'area', 'genre',
+      'l_artist_artist', 'l_artist_recording', 'l_artist_release', 'l_artist_work',
+      'artist_credit', 'artist_credit_name', 'artist_tag',
+    ]);
+
     const coreTables = ['artist', 'recording', 'release_group', 'release', 'work', 'label', 'area', 'genre'];
     const relationshipTables = ['l_artist_artist', 'l_artist_recording', 'l_artist_release', 'l_artist_work', 'artist_credit', 'artist_credit_name', 'artist_tag'];
 
     const countTable = async (table: string): Promise<TableCount> => {
-      const rows = await pgQuery<{ count: string }>(`SELECT COUNT(*)::text AS count FROM musicbrainz.${table}`);
+      if (!ALLOWED_TABLES.has(table)) return { table, count: 0 };
+      const rows = await pgQuery<{ count: string }>(
+        `SELECT reltuples::bigint::text AS count FROM pg_class WHERE relname = $1 AND relnamespace = 'musicbrainz'::regnamespace`,
+        [table],
+      );
       return { table, count: parseInt(rows[0]?.count ?? '0', 10) };
     };
 
