@@ -44,6 +44,44 @@ musicAgentsRouter.get('/music/data-source', (_req: Request, res: Response) => {
 });
 
 // ---------------------------------------------------------------------------
+// Table record counts endpoint — returns row counts for core entity tables
+// and relationship tables so the landing page can display data volume.
+// ---------------------------------------------------------------------------
+
+interface TableCount {
+  table: string;
+  count: number;
+}
+
+musicAgentsRouter.get('/music/table-counts', async (_req: Request, res: Response) => {
+  console.log('[Music Table-Counts] /music/table-counts endpoint hit');
+  if (!isPgAvailable()) {
+    res.json({ coreEntities: [], relationships: [] });
+    return;
+  }
+
+  try {
+    const coreTables = ['artist', 'recording', 'release_group', 'release', 'work', 'label', 'area', 'genre'];
+    const relationshipTables = ['l_artist_artist', 'l_artist_recording', 'l_artist_release', 'l_artist_work', 'artist_credit', 'artist_credit_name', 'artist_tag'];
+
+    const countTable = async (table: string): Promise<TableCount> => {
+      const rows = await pgQuery<{ count: string }>(`SELECT COUNT(*)::text AS count FROM musicbrainz.${table}`);
+      return { table, count: parseInt(rows[0]?.count ?? '0', 10) };
+    };
+
+    const [coreEntities, relationships] = await Promise.all([
+      Promise.all(coreTables.map(countTable)),
+      Promise.all(relationshipTables.map(countTable)),
+    ]);
+
+    res.json({ coreEntities, relationships });
+  } catch (err) {
+    console.error('[Music Table-Counts] Error:', err);
+    res.json({ coreEntities: [], relationships: [] });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Helper
 // ---------------------------------------------------------------------------
 

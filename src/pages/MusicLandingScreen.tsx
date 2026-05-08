@@ -2,8 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { runMusicWorkflow } from '../lib/musicAi';
 import { SAMPLE_QUERIES, setMusicData, resetMusicData } from '../data/mockMusicData';
-import type { MusicProgressStep, DataSourceInfo } from '../types/music';
+import type { MusicProgressStep, DataSourceInfo, TableCounts } from '../types/music';
 import './MusicLandingScreen.css';
+
+/** Format large numbers with locale-aware separators (e.g. 1,234,567). */
+const fmt = (n: number) => n.toLocaleString();
+
+/** Convert a snake_case table name to a readable label. */
+const tableLabel = (name: string) =>
+  name.replace(/^l_/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
 const MusicLandingScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -14,6 +21,7 @@ const MusicLandingScreen: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [progressSteps, setProgressSteps] = useState<MusicProgressStep[]>([]);
   const [dataSource, setDataSource] = useState<DataSourceInfo | null>(null);
+  const [tableCounts, setTableCounts] = useState<TableCounts | null>(null);
 
   useEffect(() => {
     console.log('[MusicLanding] Fetching data source status...');
@@ -25,6 +33,12 @@ const MusicLandingScreen: React.FC = () => {
       .then((info: DataSourceInfo) => {
         console.log('[MusicLanding] Data source info received:', JSON.stringify(info));
         setDataSource(info);
+        if (info.source === 'postgresql') {
+          fetch('/api/ai/music/table-counts')
+            .then((r) => r.json())
+            .then((counts: TableCounts) => setTableCounts(counts))
+            .catch((err) => console.warn('[MusicLanding] Failed to fetch table counts:', err));
+        }
       })
       .catch((err) => {
         console.warn('[MusicLanding] Failed to fetch data source status:', err);
@@ -129,7 +143,7 @@ const MusicLandingScreen: React.FC = () => {
           <div className="music-landing-title-block">
             <h1 className="music-landing-title">Music Intelligence Graph</h1>
             <p className="music-landing-subtitle">
-              Discover hidden relationships across artists, recordings, releases, labels, and genres using PostgreSQL graph capabilities, semantic search, and AI-powered natural language queries.
+              Turn complex, interconnected data into actionable intelligence. This demo showcases how graph databases, vector search, and AI agents work together to surface hidden relationships, deliver explainable recommendations, and drive smarter decisions from your enterprise knowledge graph.
             </p>
           </div>
         </div>
@@ -138,10 +152,10 @@ const MusicLandingScreen: React.FC = () => {
           <div className="music-landing-shift-from">
             <div className="music-landing-shift-label">From</div>
             <div className="music-landing-shift-items">
-              <span>Keyword-only catalog search</span>
-              <span>Manual relationship research</span>
-              <span>Opaque recommendations</span>
-              <span>Reactive metadata fixes</span>
+              <span>Siloed data with no connections</span>
+              <span>Manual, time-consuming research</span>
+              <span>Black-box recommendations</span>
+              <span>Reactive data quality management</span>
             </div>
           </div>
           <div className="music-landing-shift-arrow">{'\u2192'}</div>
@@ -149,9 +163,9 @@ const MusicLandingScreen: React.FC = () => {
             <div className="music-landing-shift-label">To</div>
             <div className="music-landing-shift-items">
               <span>Graph-powered relationship discovery</span>
-              <span>AI-assisted catalog intelligence</span>
-              <span>Explainable graph-backed recommendations</span>
-              <span>Proactive metadata enrichment</span>
+              <span>Natural language knowledge exploration</span>
+              <span>Transparent, evidence-based insights</span>
+              <span>Proactive data enrichment &amp; quality</span>
             </div>
           </div>
         </div>
@@ -161,35 +175,35 @@ const MusicLandingScreen: React.FC = () => {
             <span className="music-landing-feature-icon">{'\uD83D\uDD17'}</span>
             <div>
               <div className="music-landing-feature-title">Relationship Discovery</div>
-              <div className="music-landing-feature-desc">Traverse artist collaborations, shared releases, labels, locations, and genre connections through graph paths</div>
+              <div className="music-landing-feature-desc">Traverse multi-hop connections across entities to uncover hidden links, clusters, and influence networks within your data</div>
             </div>
           </div>
           <div className="music-landing-feature">
-            <span className="music-landing-feature-icon">{'\uD83C\uDFB5'}</span>
+            <span className="music-landing-feature-icon">{'\uD83D\uDCAC'}</span>
             <div>
-              <div className="music-landing-feature-title">Scene Intelligence</div>
-              <div className="music-landing-feature-desc">Map music scenes like 1990s Bristol trip-hop by following graph clusters of artists, labels, and releases</div>
+              <div className="music-landing-feature-title">Natural Language Queries</div>
+              <div className="music-landing-feature-desc">Ask questions in plain English and let AI agents translate intent into graph traversals and semantic searches</div>
             </div>
           </div>
           <div className="music-landing-feature">
             <span className="music-landing-feature-icon">{'\uD83D\uDCA1'}</span>
             <div>
               <div className="music-landing-feature-title">Explainable Recommendations</div>
-              <div className="music-landing-feature-desc">Every recommendation includes the graph path and relationship evidence that supports it</div>
+              <div className="music-landing-feature-desc">Every insight includes the graph path and evidence trail that supports it — full transparency, no black boxes</div>
             </div>
           </div>
           <div className="music-landing-feature">
             <span className="music-landing-feature-icon">{'\uD83D\uDD0D'}</span>
             <div>
-              <div className="music-landing-feature-title">Catalog Quality</div>
-              <div className="music-landing-feature-desc">Detect duplicates, missing relationships, and enrichment opportunities across the music knowledge graph</div>
+              <div className="music-landing-feature-title">Data Quality Intelligence</div>
+              <div className="music-landing-feature-desc">Proactively detect duplicates, missing connections, and enrichment opportunities across your knowledge graph</div>
             </div>
           </div>
         </div>
 
         <div className="music-landing-scenario">
           <div className="music-landing-scenario-label">Demo Scenario</div>
-          <div className="music-landing-scenario-text">MusicBrainz Knowledge Graph &middot; 5 agents &middot; Graph + AI workflow</div>
+          <div className="music-landing-scenario-text">Enterprise Knowledge Graph &middot; 5 AI Agents &middot; Graph + Vector + AI workflow</div>
         </div>
 
         <div className="music-landing-outcomes">
@@ -218,10 +232,42 @@ const MusicLandingScreen: React.FC = () => {
           </div>
         </div>
 
+        {tableCounts && (tableCounts.coreEntities.length > 0 || tableCounts.relationships.length > 0) && (
+          <div className="music-landing-table-counts">
+            <div className="music-landing-table-counts-title">Knowledge Graph Data Volume</div>
+            {tableCounts.coreEntities.length > 0 && (
+              <div className="music-landing-table-group">
+                <div className="music-landing-table-group-label">Core Entities</div>
+                <div className="music-landing-table-grid">
+                  {tableCounts.coreEntities.map((t) => (
+                    <div key={t.table} className="music-landing-table-item">
+                      <span className="music-landing-table-count">{fmt(t.count)}</span>
+                      <span className="music-landing-table-name">{tableLabel(t.table)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {tableCounts.relationships.length > 0 && (
+              <div className="music-landing-table-group">
+                <div className="music-landing-table-group-label">Relationships</div>
+                <div className="music-landing-table-grid">
+                  {tableCounts.relationships.map((t) => (
+                    <div key={t.table} className="music-landing-table-item">
+                      <span className="music-landing-table-count">{fmt(t.count)}</span>
+                      <span className="music-landing-table-name">{tableLabel(t.table)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="music-landing-generate">
-          <div className="music-landing-generate-label">Ask the Music Graph</div>
+          <div className="music-landing-generate-label">Ask the Knowledge Graph</div>
           <p className="music-landing-generate-hint">
-            Select a sample query or type your own question to explore the music knowledge graph.
+            Select a sample query or type your own question to explore relationships and insights across the knowledge graph.
           </p>
 
           <select
