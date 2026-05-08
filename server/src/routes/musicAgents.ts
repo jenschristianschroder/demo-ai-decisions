@@ -771,7 +771,7 @@ musicAgentsRouter.post('/music/run-agents-sse', async (req: Request, res: Respon
 
     const combinedResult = {
       queryResult: {
-        query: parsedQuery ?? {},
+        query: { naturalLanguageQuery: query, queryType: queryType ?? 'general', ...(parsedQuery ?? {}) },
         artists: [
           ...((graphData?.artists as unknown[]) ?? []),
           ...((semanticData?.additionalArtists as unknown[]) ?? []),

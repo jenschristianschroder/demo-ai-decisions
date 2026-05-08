@@ -12,7 +12,7 @@ const MusicQueryResults: React.FC<Props> = ({ queryResult }) => {
 
       <div className="music-qr-query-box">
         <span className="music-qr-query-label">Query</span>
-        <span className="music-qr-query-text">{queryResult.query.naturalLanguageQuery}</span>
+        <span className="music-qr-query-text">{queryResult.query?.naturalLanguageQuery ?? ''}</span>
       </div>
 
       <p className="music-qr-summary">{queryResult.summary}</p>
