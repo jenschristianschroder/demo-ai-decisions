@@ -109,9 +109,16 @@ export async function runMusicWorkflow(
   onProgress: (step: MusicProgressStep) => void,
 ): Promise<MusicAgentOutputs> {
   // Initialize all phases as pending
+  const PHASE_PENDING_MESSAGES: Record<string, string> = {
+    'query-parse': 'Query Parser Agent — waiting…',
+    'graph-traversal': 'Graph Traversal Agent — waiting…',
+    'semantic-search': 'Semantic Search Agent — waiting…',
+    'recommendation': 'Recommendation Engine — waiting…',
+    'explanation': 'Explanation Builder — waiting…',
+  };
   const phases = ['query-parse', 'graph-traversal', 'semantic-search', 'recommendation', 'explanation'];
   for (const phase of phases) {
-    onProgress({ phase: phase as MusicProgressStep['phase'], status: 'pending', message: '' });
+    onProgress({ phase: phase as MusicProgressStep['phase'], status: 'pending', message: PHASE_PENDING_MESSAGES[phase] ?? 'Waiting…' });
   }
 
   let finalOutputs: Record<string, unknown> = {};

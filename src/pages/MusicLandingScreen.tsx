@@ -320,6 +320,7 @@ const MusicLandingScreen: React.FC = () => {
                   className={`music-landing-progress-step music-landing-progress-${step.status}`}
                 >
                   <span className="music-landing-progress-icon">
+                    {step.status === 'pending' && '\u25CB'}
                     {step.status === 'running' && <span className="music-landing-spinner-sm" />}
                     {step.status === 'done' && '\u2713'}
                     {step.status === 'error' && '\u2717'}

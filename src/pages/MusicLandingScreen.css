@@ -451,6 +451,12 @@
   transition: background 0.2s, border-color 0.2s;
 }
 
+.music-landing-progress-pending {
+  background: #f9fafb;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+}
+
 .music-landing-progress-running {
   background: #f0f9ff;
   color: #0369a1;
