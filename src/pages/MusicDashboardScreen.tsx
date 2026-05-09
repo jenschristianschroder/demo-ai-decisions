@@ -117,7 +117,7 @@ const MusicDashboardScreen: React.FC = () => {
               <MusicQueryResults queryResult={outputs.queryResult} />
             )}
             {activeTab === 'graph' && (
-              <MusicRelationshipPaths paths={outputs.queryResult.relationshipPaths} />
+              <MusicRelationshipPaths paths={outputs.queryResult.relationshipPaths ?? []} />
             )}
             {activeTab === 'recommendations' && (
               <MusicRecommendations recommendations={outputs.recommendations} />

@@ -167,8 +167,20 @@ export async function runMusicWorkflow(
   onProgress({ phase: 'complete', status: 'done', message: 'All agents complete. Music intelligence results ready.' });
 
   // Map outputs to typed structure with safe defaults
+  const rawQueryResult = (finalOutputs.queryResult ?? {}) as Partial<MusicQueryResult>;
+  const queryResult: MusicQueryResult = {
+    query: rawQueryResult.query ?? { naturalLanguageQuery: query, queryType: queryType as MusicQueryResult['query']['queryType'] },
+    artists: rawQueryResult.artists ?? [],
+    recordings: rawQueryResult.recordings ?? [],
+    releases: rawQueryResult.releases ?? [],
+    works: rawQueryResult.works ?? [],
+    labels: rawQueryResult.labels ?? [],
+    relationshipPaths: rawQueryResult.relationshipPaths ?? [],
+    summary: rawQueryResult.summary ?? '',
+    reasoning: rawQueryResult.reasoning,
+  };
   return {
-    queryResult: (finalOutputs.queryResult ?? {}) as MusicQueryResult,
+    queryResult,
     recommendations: (finalOutputs.recommendations ?? []) as MusicRecommendation[],
     catalogInsights: (finalOutputs.catalogInsights ?? []) as MusicCatalogInsight[],
     graphStats: (finalOutputs.graphStats ?? {

@@ -53,9 +53,9 @@ const MusicCatalogInsights: React.FC<Props> = ({ insights }) => {
                 <span className="music-ci-action-text">{insight.suggestedAction}</span>
               </div>
 
-              {insight.evidence.length > 0 && (
+              {(insight.evidence ?? []).length > 0 && (
                 <ul className="music-ci-evidence">
-                  {insight.evidence.map((e, ei) => (
+                  {(insight.evidence ?? []).map((e, ei) => (
                     <li key={ei} className="music-ci-evidence-item">{e}</li>
                   ))}
                 </ul>
