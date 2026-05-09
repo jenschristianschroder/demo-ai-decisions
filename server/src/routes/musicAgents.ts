@@ -63,12 +63,13 @@ musicAgentsRouter.get('/music/table-counts', async (_req: Request, res: Response
   try {
     const ALLOWED_TABLES = new Set([
       'artist', 'recording', 'release_group', 'release', 'work', 'label', 'area', 'genre',
+      'release_country', 'release_label', 'link',
       'l_artist_artist', 'l_artist_recording', 'l_artist_release', 'l_artist_work',
       'artist_credit', 'artist_credit_name', 'artist_tag',
     ]);
 
     const coreTables = ['artist', 'recording', 'release_group', 'release', 'work', 'label', 'area', 'genre'];
-    const relationshipTables = ['l_artist_artist', 'l_artist_recording', 'l_artist_release', 'l_artist_work', 'artist_credit', 'artist_credit_name', 'artist_tag'];
+    const relationshipTables = ['l_artist_artist', 'l_artist_recording', 'l_artist_release', 'l_artist_work', 'link', 'release_country', 'release_label', 'artist_credit', 'artist_credit_name', 'artist_tag'];
 
     const countTable = async (table: string): Promise<TableCount> => {
       if (!ALLOWED_TABLES.has(table)) return { table, count: 0 };
@@ -167,7 +168,7 @@ OUTPUT FORMAT — respond with ONLY valid JSON:
   "recordings": [{"id": "<uuid>", "title": "<title>", "artistCredits": ["<artist name>"], "year": "<year>"}],
   "releases": [{"id": "<uuid>", "title": "<title>", "type": "<Album|Single|EP>", "date": "<date>", "label": "<label>", "country": "<country>", "artistCredits": ["<artist name>"]}],
   "works": [{"id": "<uuid>", "title": "<title>", "composers": ["<composer>"]}],
-  "labels": [{"id": "<uuid>", "name": "<name>", "type": "<Original Production|Distributor>", "area": "<country>"}],
+  "labels": [{"id": "<uuid>", "name": "<name>", "type": "<Original Production|Distribution>", "area": "<country>"}],
   "relationshipPaths": [{"nodes": [{"id": "<uuid>", "label": "<name>", "type": "<Artist|Recording|Release|Label>"}], "edges": [{"type": "<relationship type>", "sourceId": "<uuid>", "sourceLabel": "<name>", "targetId": "<uuid>", "targetLabel": "<name>"}], "description": "<path description>"}],
   "reasoning": "<your detailed reasoning about the graph traversal>"
 }

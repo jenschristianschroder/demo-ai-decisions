@@ -18,19 +18,19 @@ SELECT setval(pg_get_serial_sequence('musicbrainz.l_artist_recording', 'id'),
               COALESCE((SELECT MAX(id) FROM musicbrainz.l_artist_recording), 1));
 
 -- l_artist_release
-INSERT INTO musicbrainz.l_artist_release (id, entity0, entity1, link_type)
-SELECT lar.id, lar.entity0, lar.entity1, l.link_type
-FROM mb_staging.l_artist_release lar
-JOIN mb_staging.link l ON l.id = lar.link;
+INSERT INTO musicbrainz.l_artist_release (id, link, entity0, entity1, edits_pending, link_order, entity0_credit, entity1_credit)
+SELECT id, link, entity0, entity1, COALESCE(edits_pending, 0), COALESCE(link_order, 0),
+       COALESCE(entity0_credit, ''), COALESCE(entity1_credit, '')
+FROM mb_staging.l_artist_release;
 
 SELECT setval(pg_get_serial_sequence('musicbrainz.l_artist_release', 'id'),
               COALESCE((SELECT MAX(id) FROM musicbrainz.l_artist_release), 1));
 
 -- l_artist_work
-INSERT INTO musicbrainz.l_artist_work (id, entity0, entity1, link_type)
-SELECT law.id, law.entity0, law.entity1, l.link_type
-FROM mb_staging.l_artist_work law
-JOIN mb_staging.link l ON l.id = law.link;
+INSERT INTO musicbrainz.l_artist_work (id, link, entity0, entity1, edits_pending, link_order, entity0_credit, entity1_credit)
+SELECT id, link, entity0, entity1, COALESCE(edits_pending, 0), COALESCE(link_order, 0),
+       COALESCE(entity0_credit, ''), COALESCE(entity1_credit, '')
+FROM mb_staging.l_artist_work;
 
 SELECT setval(pg_get_serial_sequence('musicbrainz.l_artist_work', 'id'),
               COALESCE((SELECT MAX(id) FROM musicbrainz.l_artist_work), 1));

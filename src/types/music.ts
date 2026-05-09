@@ -46,7 +46,7 @@ export interface MusicProgressStep {
 export interface MusicArtist {
   id: string;
   name: string;
-  type: 'person' | 'group' | 'orchestra' | 'choir' | 'character';
+  type: 'person' | 'group' | 'orchestra' | 'choir' | 'other';
   area?: string;
   beginDate?: string;
   endDate?: string;
