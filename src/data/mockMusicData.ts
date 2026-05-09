@@ -14,6 +14,7 @@ export interface GeneratedMusicData {
 
 export const SAMPLE_QUERIES: { label: string; query: string; type: MusicQuery['queryType'] }[] = [
   { label: 'Bristol Trip-Hop Network', query: 'Find artists connected to 1990s UK trip-hop through collaborations, labels, or shared releases, and explain the relationship paths.', type: 'scene-analysis' },
+  { label: 'Supergroup & Solo Connections', query: 'Map the full network of artists who have been members of Cream, The Yardbirds, Led Zeppelin, Derek and the Dominos, and Blind Faith — show all their solo careers, side projects, collaborations, and shared session musicians, and explain how these classic rock groups are interconnected through their members.', type: 'collaboration-network' },
   { label: 'Brian Eno Collaborations', query: 'Find artists within two relationship hops of Brian Eno who are connected through production, collaboration, or shared releases.', type: 'collaboration-network' },
   { label: 'Talking Heads Recommendations', query: 'Recommend artists related to Talking Heads and explain the graph path for each recommendation.', type: 'recommendation' },
   { label: 'UK Electronic Labels', query: 'Which labels are most connected to early UK electronic music?', type: 'label-intelligence' },
@@ -21,6 +22,9 @@ export const SAMPLE_QUERIES: { label: string; query: string; type: MusicQuery['q
   { label: 'Berlin Electronic 1970s', query: 'Find albums connected to Berlin electronic music in the 1970s.', type: 'scene-analysis' },
   { label: 'Catalog Quality Check', query: 'Which recordings have strong evidence of being connected to a work but are missing that relationship?', type: 'catalog-quality' },
   { label: 'International Collaborations', query: 'Which releases connect artists from Japan, Germany, and the United States?', type: 'collaboration-network' },
+  { label: 'Motown Family Tree', query: 'Trace the full collaboration network across Motown Records artists in the 1960s and 1970s — show songwriters, producers, session musicians (The Funk Brothers), and how artists like Stevie Wonder, Marvin Gaye, The Supremes, The Temptations, and The Jackson 5 are connected through shared recordings, co-writers, and backing musicians.', type: 'scene-analysis' },
+  { label: 'Hip-Hop Producer Web', query: 'Show the collaboration network around producers Dr. Dre, Timbaland, Pharrell Williams, and Kanye West — include all artists they have produced for, featured on tracks with, or co-written songs with, and trace how these producers connect different eras and subgenres of hip-hop.', type: 'collaboration-network' },
+  { label: 'Jazz to Rock Bridge', query: 'Find all paths connecting Miles Davis to David Bowie through shared collaborators, session musicians, and genre crossover projects, and identify the key bridge artists who connect the jazz and rock worlds.', type: 'artist-discovery' },
 ];
 
 // ---------------------------------------------------------------------------
