@@ -6,6 +6,12 @@ interface Props {
 }
 
 const MusicQueryResults: React.FC<Props> = ({ queryResult }) => {
+  const artists = queryResult.artists ?? [];
+  const recordings = queryResult.recordings ?? [];
+  const releases = queryResult.releases ?? [];
+  const works = queryResult.works ?? [];
+  const labels = queryResult.labels ?? [];
+
   return (
     <div className="music-qr-root">
       <h3 className="music-qr-title">Query Results</h3>
@@ -21,20 +27,20 @@ const MusicQueryResults: React.FC<Props> = ({ queryResult }) => {
         <p className="music-qr-reasoning">{queryResult.reasoning}</p>
       )}
 
-      {queryResult.artists.length > 0 && (
+      {artists.length > 0 && (
         <>
-          <h4 className="music-qr-section-title">Artists ({queryResult.artists.length})</h4>
+          <h4 className="music-qr-section-title">Artists ({artists.length})</h4>
           <div className="music-qr-grid">
-            {queryResult.artists.map((a) => (
+            {artists.map((a) => (
               <div key={a.id} className="music-qr-card">
                 <div className="music-qr-card-name">{a.name}</div>
                 <div className="music-qr-card-meta">
                   <span className="music-qr-badge">{a.type}</span>
                   {a.area && <span className="music-qr-meta-text">{a.area}</span>}
                 </div>
-                {a.genres.length > 0 && (
+                {(a.genres ?? []).length > 0 && (
                   <div className="music-qr-tags">
-                    {a.genres.map((g) => (
+                    {(a.genres ?? []).map((g) => (
                       <span key={g} className="music-qr-tag">{g}</span>
                     ))}
                   </div>
@@ -45,15 +51,15 @@ const MusicQueryResults: React.FC<Props> = ({ queryResult }) => {
         </>
       )}
 
-      {queryResult.recordings.length > 0 && (
+      {recordings.length > 0 && (
         <>
-          <h4 className="music-qr-section-title">Recordings ({queryResult.recordings.length})</h4>
+          <h4 className="music-qr-section-title">Recordings ({recordings.length})</h4>
           <div className="music-qr-grid">
-            {queryResult.recordings.map((r) => (
+            {recordings.map((r) => (
               <div key={r.id} className="music-qr-card">
                 <div className="music-qr-card-name">{r.title}</div>
                 <div className="music-qr-card-meta">
-                  <span className="music-qr-meta-text">{r.artistCredits.join(', ')}</span>
+                  <span className="music-qr-meta-text">{(r.artistCredits ?? []).join(', ')}</span>
                   {r.year && <span className="music-qr-meta-text">{r.year}</span>}
                   {r.duration && <span className="music-qr-meta-text">{Math.floor(r.duration / 60)}:{String(r.duration % 60).padStart(2, '0')}</span>}
                 </div>
@@ -63,11 +69,11 @@ const MusicQueryResults: React.FC<Props> = ({ queryResult }) => {
         </>
       )}
 
-      {queryResult.releases.length > 0 && (
+      {releases.length > 0 && (
         <>
-          <h4 className="music-qr-section-title">Releases ({queryResult.releases.length})</h4>
+          <h4 className="music-qr-section-title">Releases ({releases.length})</h4>
           <div className="music-qr-grid">
-            {queryResult.releases.map((r) => (
+            {releases.map((r) => (
               <div key={r.id} className="music-qr-card">
                 <div className="music-qr-card-name">{r.title}</div>
                 <div className="music-qr-card-meta">
@@ -81,15 +87,15 @@ const MusicQueryResults: React.FC<Props> = ({ queryResult }) => {
         </>
       )}
 
-      {queryResult.works.length > 0 && (
+      {works.length > 0 && (
         <>
-          <h4 className="music-qr-section-title">Works ({queryResult.works.length})</h4>
+          <h4 className="music-qr-section-title">Works ({works.length})</h4>
           <div className="music-qr-grid">
-            {queryResult.works.map((w) => (
+            {works.map((w) => (
               <div key={w.id} className="music-qr-card">
                 <div className="music-qr-card-name">{w.title}</div>
                 <div className="music-qr-card-meta">
-                  <span className="music-qr-meta-text">{w.composers.join(', ')}</span>
+                  <span className="music-qr-meta-text">{(w.composers ?? []).join(', ')}</span>
                   {w.type && <span className="music-qr-badge">{w.type}</span>}
                 </div>
               </div>
@@ -98,11 +104,11 @@ const MusicQueryResults: React.FC<Props> = ({ queryResult }) => {
         </>
       )}
 
-      {queryResult.labels.length > 0 && (
+      {labels.length > 0 && (
         <>
-          <h4 className="music-qr-section-title">Labels ({queryResult.labels.length})</h4>
+          <h4 className="music-qr-section-title">Labels ({labels.length})</h4>
           <div className="music-qr-grid">
-            {queryResult.labels.map((l) => (
+            {labels.map((l) => (
               <div key={l.id} className="music-qr-card">
                 <div className="music-qr-card-name">{l.name}</div>
                 <div className="music-qr-card-meta">

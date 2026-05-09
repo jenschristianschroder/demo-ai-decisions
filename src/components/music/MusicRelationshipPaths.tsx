@@ -12,17 +12,18 @@ const MusicRelationshipPaths: React.FC<Props> = ({ paths }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
 
   // Debug: log incoming relationship path data so we can inspect the shape
-  console.debug('[MusicRelationshipPaths] paths received:', paths);
-  console.debug('[MusicRelationshipPaths] paths count:', paths.length);
-  if (paths.length > 0) {
-    console.debug('[MusicRelationshipPaths] first path sample:', JSON.stringify(paths[0], null, 2));
+  const safePaths = paths ?? [];
+  console.debug('[MusicRelationshipPaths] paths received:', safePaths);
+  console.debug('[MusicRelationshipPaths] paths count:', safePaths.length);
+  if (safePaths.length > 0) {
+    console.debug('[MusicRelationshipPaths] first path sample:', JSON.stringify(safePaths[0], null, 2));
   }
 
   return (
     <div className="music-rp-root">
       <div className="music-rp-header">
         <h3 className="music-rp-title">Relationship Graph</h3>
-        {paths.length > 0 && (
+        {safePaths.length > 0 && (
           <div className="music-rp-toggle">
             <button
               className={`music-rp-toggle-btn ${viewMode === 'graph' ? 'music-rp-toggle-btn--active' : ''}`}
@@ -40,13 +41,13 @@ const MusicRelationshipPaths: React.FC<Props> = ({ paths }) => {
         )}
       </div>
 
-      {paths.length === 0 ? (
+      {safePaths.length === 0 ? (
         <p className="music-rp-empty">No relationship paths found.</p>
       ) : viewMode === 'graph' ? (
-        <MusicForceGraph paths={paths} />
+        <MusicForceGraph paths={safePaths} />
       ) : (
         <div className="music-rp-list">
-          {paths.map((path, idx) => (
+          {safePaths.map((path, idx) => (
             <div key={idx} className="music-rp-card">
               <div className="music-rp-chain">
                 {path.nodes.map((node, ni) => (
