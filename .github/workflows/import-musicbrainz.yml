@@ -516,31 +516,50 @@ jobs:
           echo "🔄 release — Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           batch_insert_resumable "$CONNSTR" 500000 release release id \
             "INSERT INTO musicbrainz.release (id, gid, name, artist_credit, release_group,
-                                              date_year, date_month, date_day, country, label, comment)
+                                              status, packaging, language, script, barcode, comment)
              SELECT r.id, r.gid, r.name, r.artist_credit, r.release_group,
-                    rc.date_year, rc.date_month, rc.date_day, rc.country,
-                    rl.label,
+                    r.status, r.packaging, r.language, r.script, r.barcode,
                     COALESCE(r.comment, '')
              FROM mb_staging.release r
-             LEFT JOIN LATERAL (
-               SELECT country, date_year, date_month, date_day
-               FROM mb_staging.release_country
-               WHERE release = r.id
-               ORDER BY date_year NULLS LAST
-               LIMIT 1
-             ) rc ON true
-             LEFT JOIN LATERAL (
-               SELECT label
-               FROM mb_staging.release_label
-               WHERE release = r.id
-               LIMIT 1
-             ) rl ON true
              WHERE r.id >= __START__ AND r.id < __END__
              ON CONFLICT (id) DO NOTHING;"
           psql_retry "$CONNSTR" -c "
             SELECT setval(pg_get_serial_sequence('musicbrainz.release', 'id'),
                           COALESCE((SELECT MAX(id) FROM musicbrainz.release), 1));"
           echo "✅ release done at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        env:
+          PGCONNECT_TIMEOUT: '30'
+
+      - name: "Transform: release_country"
+        run: |
+          source /tmp/psql_retry.sh
+          CONNSTR="${{ steps.pg.outputs.connstr }}"
+          echo "🔄 release_country — Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          batch_insert_resumable "$CONNSTR" 500000 release_country release_country release \
+            "INSERT INTO musicbrainz.release_country (release, country, date_year, date_month, date_day)
+             SELECT release, country, date_year, date_month, date_day
+             FROM mb_staging.release_country
+             WHERE release >= __START__ AND release < __END__
+             ON CONFLICT DO NOTHING;"
+          echo "✅ release_country done at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        env:
+          PGCONNECT_TIMEOUT: '30'
+
+      - name: "Transform: release_label"
+        run: |
+          source /tmp/psql_retry.sh
+          CONNSTR="${{ steps.pg.outputs.connstr }}"
+          echo "🔄 release_label — Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          batch_insert_resumable "$CONNSTR" 500000 release_label release_label id \
+            "INSERT INTO musicbrainz.release_label (id, release, label, catalog_number)
+             SELECT id, release, label, catalog_number
+             FROM mb_staging.release_label
+             WHERE id >= __START__ AND id < __END__
+             ON CONFLICT (id) DO NOTHING;"
+          psql_retry "$CONNSTR" -c "
+            SELECT setval(pg_get_serial_sequence('musicbrainz.release_label', 'id'),
+                          COALESCE((SELECT MAX(id) FROM musicbrainz.release_label), 1));"
+          echo "✅ release_label done at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
         env:
           PGCONNECT_TIMEOUT: '30'
 
@@ -650,6 +669,26 @@ jobs:
         env:
           PGCONNECT_TIMEOUT: '30'
 
+      - name: "Transform: link"
+        run: |
+          source /tmp/psql_retry.sh
+          CONNSTR="${{ steps.pg.outputs.connstr }}"
+          echo "🔄 link — Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          batch_insert_resumable "$CONNSTR" 500000 link link id \
+            "INSERT INTO musicbrainz.link (id, link_type, begin_date_year, begin_date_month, begin_date_day,
+                                            end_date_year, end_date_month, end_date_day, attribute_count)
+             SELECT id, link_type, begin_date_year, begin_date_month, begin_date_day,
+                    end_date_year, end_date_month, end_date_day, attribute_count
+             FROM mb_staging.link
+             WHERE id >= __START__ AND id < __END__
+             ON CONFLICT (id) DO NOTHING;"
+          psql_retry "$CONNSTR" -c "
+            SELECT setval(pg_get_serial_sequence('musicbrainz.link', 'id'),
+                          COALESCE((SELECT MAX(id) FROM musicbrainz.link), 1));"
+          echo "✅ link done at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        env:
+          PGCONNECT_TIMEOUT: '30'
+
       - name: "Transform: artist_tag"
         run: |
           source /tmp/psql_retry.sh
@@ -670,11 +709,11 @@ jobs:
           CONNSTR="${{ steps.pg.outputs.connstr }}"
           echo "🔄 l_artist_artist — Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           batch_insert_resumable "$CONNSTR" 500000 l_artist_artist l_artist_artist id \
-            "INSERT INTO musicbrainz.l_artist_artist (id, entity0, entity1, link_type, begin_date_year, end_date_year)
-             SELECT laa.id, laa.entity0, laa.entity1, l.link_type, l.begin_date_year, l.end_date_year
-             FROM mb_staging.l_artist_artist laa
-             JOIN mb_staging.link l ON l.id = laa.link
-             WHERE laa.id >= __START__ AND laa.id < __END__
+            "INSERT INTO musicbrainz.l_artist_artist (id, link, entity0, entity1, edits_pending, link_order, entity0_credit, entity1_credit)
+             SELECT id, link, entity0, entity1, COALESCE(edits_pending, 0), COALESCE(link_order, 0),
+                    COALESCE(entity0_credit, ''), COALESCE(entity1_credit, '')
+             FROM mb_staging.l_artist_artist
+             WHERE id >= __START__ AND id < __END__
              ON CONFLICT (id) DO NOTHING;"
           psql_retry "$CONNSTR" -c "
             SELECT setval(pg_get_serial_sequence('musicbrainz.l_artist_artist', 'id'),
@@ -689,11 +728,11 @@ jobs:
           CONNSTR="${{ steps.pg.outputs.connstr }}"
           echo "🔄 l_artist_recording — Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           batch_insert_resumable "$CONNSTR" 500000 l_artist_recording l_artist_recording id \
-            "INSERT INTO musicbrainz.l_artist_recording (id, entity0, entity1, link_type)
-             SELECT lar.id, lar.entity0, lar.entity1, l.link_type
-             FROM mb_staging.l_artist_recording lar
-             JOIN mb_staging.link l ON l.id = lar.link
-             WHERE lar.id >= __START__ AND lar.id < __END__
+            "INSERT INTO musicbrainz.l_artist_recording (id, link, entity0, entity1, edits_pending, link_order, entity0_credit, entity1_credit)
+             SELECT id, link, entity0, entity1, COALESCE(edits_pending, 0), COALESCE(link_order, 0),
+                    COALESCE(entity0_credit, ''), COALESCE(entity1_credit, '')
+             FROM mb_staging.l_artist_recording
+             WHERE id >= __START__ AND id < __END__
              ON CONFLICT (id) DO NOTHING;"
           psql_retry "$CONNSTR" -c "
             SELECT setval(pg_get_serial_sequence('musicbrainz.l_artist_recording', 'id'),
@@ -708,11 +747,11 @@ jobs:
           CONNSTR="${{ steps.pg.outputs.connstr }}"
           echo "🔄 l_artist_release — Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           batch_insert_resumable "$CONNSTR" 500000 l_artist_release l_artist_release id \
-            "INSERT INTO musicbrainz.l_artist_release (id, entity0, entity1, link_type)
-             SELECT lar.id, lar.entity0, lar.entity1, l.link_type
-             FROM mb_staging.l_artist_release lar
-             JOIN mb_staging.link l ON l.id = lar.link
-             WHERE lar.id >= __START__ AND lar.id < __END__
+            "INSERT INTO musicbrainz.l_artist_release (id, link, entity0, entity1, edits_pending, link_order, entity0_credit, entity1_credit)
+             SELECT id, link, entity0, entity1, COALESCE(edits_pending, 0), COALESCE(link_order, 0),
+                    COALESCE(entity0_credit, ''), COALESCE(entity1_credit, '')
+             FROM mb_staging.l_artist_release
+             WHERE id >= __START__ AND id < __END__
              ON CONFLICT (id) DO NOTHING;"
           psql_retry "$CONNSTR" -c "
             SELECT setval(pg_get_serial_sequence('musicbrainz.l_artist_release', 'id'),
@@ -727,11 +766,11 @@ jobs:
           CONNSTR="${{ steps.pg.outputs.connstr }}"
           echo "🔄 l_artist_work — Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           batch_insert_resumable "$CONNSTR" 500000 l_artist_work l_artist_work id \
-            "INSERT INTO musicbrainz.l_artist_work (id, entity0, entity1, link_type)
-             SELECT law.id, law.entity0, law.entity1, l.link_type
-             FROM mb_staging.l_artist_work law
-             JOIN mb_staging.link l ON l.id = law.link
-             WHERE law.id >= __START__ AND law.id < __END__
+            "INSERT INTO musicbrainz.l_artist_work (id, link, entity0, entity1, edits_pending, link_order, entity0_credit, entity1_credit)
+             SELECT id, link, entity0, entity1, COALESCE(edits_pending, 0), COALESCE(link_order, 0),
+                    COALESCE(entity0_credit, ''), COALESCE(entity1_credit, '')
+             FROM mb_staging.l_artist_work
+             WHERE id >= __START__ AND id < __END__
              ON CONFLICT (id) DO NOTHING;"
           psql_retry "$CONNSTR" -c "
             SELECT setval(pg_get_serial_sequence('musicbrainz.l_artist_work', 'id'),
@@ -778,6 +817,12 @@ jobs:
           SELECT 'artist_credit',    COUNT(*) FROM musicbrainz.artist_credit
           UNION ALL
           SELECT 'link_type',        COUNT(*) FROM musicbrainz.link_type
+          UNION ALL
+          SELECT 'link',             COUNT(*) FROM musicbrainz.link
+          UNION ALL
+          SELECT 'release_country',  COUNT(*) FROM musicbrainz.release_country
+          UNION ALL
+          SELECT 'release_label',    COUNT(*) FROM musicbrainz.release_label
           UNION ALL
           SELECT 'l_artist_artist',  COUNT(*) FROM musicbrainz.l_artist_artist
           UNION ALL

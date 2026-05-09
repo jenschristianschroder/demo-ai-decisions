@@ -168,7 +168,7 @@ export async function getArtistRecordings(artistGid: string, limit = 20) {
 /** Get releases for an artist */
 export async function getArtistReleases(artistGid: string, limit = 20) {
   return query(
-    `SELECT rel.gid, rel.name, rg.type, rel.date_year, rel.date_month,
+    `SELECT rel.gid, rel.name, rg.type, rc.date_year, rc.date_month,
             l.name AS label_name, ar.name AS country_name,
             ac.name AS artist_credit_name
      FROM musicbrainz.release rel
@@ -176,10 +176,23 @@ export async function getArtistReleases(artistGid: string, limit = 20) {
      JOIN musicbrainz.artist_credit_name acn ON acn.artist_credit = ac.id
      JOIN musicbrainz.artist a ON a.id = acn.artist
      LEFT JOIN musicbrainz.release_group rg ON rg.id = rel.release_group
-     LEFT JOIN musicbrainz.label l ON l.id = rel.label
-     LEFT JOIN musicbrainz.area ar ON ar.id = rel.country
+     LEFT JOIN LATERAL (
+       SELECT country, date_year, date_month, date_day
+       FROM musicbrainz.release_country
+       WHERE release = rel.id
+       ORDER BY date_year NULLS LAST
+       LIMIT 1
+     ) rc ON true
+     LEFT JOIN LATERAL (
+       SELECT label
+       FROM musicbrainz.release_label
+       WHERE release = rel.id
+       LIMIT 1
+     ) rl ON true
+     LEFT JOIN musicbrainz.label l ON l.id = rl.label
+     LEFT JOIN musicbrainz.area ar ON ar.id = rc.country
      WHERE a.gid = $1
-     ORDER BY rel.date_year DESC NULLS LAST
+     ORDER BY rc.date_year DESC NULLS LAST
      LIMIT $2`,
     [artistGid, limit],
   );

@@ -25,30 +25,30 @@ FROM mb_staging.release_group;
 SELECT setval(pg_get_serial_sequence('musicbrainz.release_group', 'id'),
               COALESCE((SELECT MAX(id) FROM musicbrainz.release_group), 1));
 
--- release (join with release_country and release_label for country/label/date)
+-- release (direct load — country/label via release_country/release_label tables)
 INSERT INTO musicbrainz.release (id, gid, name, artist_credit, release_group,
-                                  date_year, date_month, date_day, country, label, comment)
+                                  status, packaging, language, script, barcode, comment)
 SELECT r.id, r.gid, r.name, r.artist_credit, r.release_group,
-       rc.date_year, rc.date_month, rc.date_day, rc.country,
-       rl.label,
+       r.status, r.packaging, r.language, r.script, r.barcode,
        COALESCE(r.comment, '')
-FROM mb_staging.release r
-LEFT JOIN LATERAL (
-  SELECT country, date_year, date_month, date_day
-  FROM mb_staging.release_country
-  WHERE release = r.id
-  ORDER BY date_year NULLS LAST
-  LIMIT 1
-) rc ON true
-LEFT JOIN LATERAL (
-  SELECT label
-  FROM mb_staging.release_label
-  WHERE release = r.id
-  LIMIT 1
-) rl ON true;
+FROM mb_staging.release r;
 
 SELECT setval(pg_get_serial_sequence('musicbrainz.release', 'id'),
               COALESCE((SELECT MAX(id) FROM musicbrainz.release), 1));
+
+-- release_country
+INSERT INTO musicbrainz.release_country (release, country, date_year, date_month, date_day)
+SELECT release, country, date_year, date_month, date_day
+FROM mb_staging.release_country
+ON CONFLICT DO NOTHING;
+
+-- release_label
+INSERT INTO musicbrainz.release_label (id, release, label, catalog_number)
+SELECT id, release, label, catalog_number
+FROM mb_staging.release_label;
+
+SELECT setval(pg_get_serial_sequence('musicbrainz.release_label', 'id'),
+              COALESCE((SELECT MAX(id) FROM musicbrainz.release_label), 1));
 
 -- label
 INSERT INTO musicbrainz.label (id, gid, name, type, area, begin_date_year, end_date_year, comment)
@@ -108,11 +108,21 @@ FROM mb_staging.link_type;
 SELECT setval(pg_get_serial_sequence('musicbrainz.link_type', 'id'),
               COALESCE((SELECT MAX(id) FROM musicbrainz.link_type), 1));
 
--- l_artist_artist  (resolve link → link_type via staging link table)
-INSERT INTO musicbrainz.l_artist_artist (id, entity0, entity1, link_type, begin_date_year, end_date_year)
-SELECT laa.id, laa.entity0, laa.entity1, l.link_type, l.begin_date_year, l.end_date_year
-FROM mb_staging.l_artist_artist laa
-JOIN mb_staging.link l ON l.id = laa.link;
+-- link (connects l_* tables to link_type)
+INSERT INTO musicbrainz.link (id, link_type, begin_date_year, begin_date_month, begin_date_day,
+                               end_date_year, end_date_month, end_date_day, attribute_count)
+SELECT id, link_type, begin_date_year, begin_date_month, begin_date_day,
+       end_date_year, end_date_month, end_date_day, attribute_count
+FROM mb_staging.link;
+
+SELECT setval(pg_get_serial_sequence('musicbrainz.link', 'id'),
+              COALESCE((SELECT MAX(id) FROM musicbrainz.link), 1));
+
+-- l_artist_artist  (load with link FK directly)
+INSERT INTO musicbrainz.l_artist_artist (id, link, entity0, entity1, edits_pending, link_order, entity0_credit, entity1_credit)
+SELECT id, link, entity0, entity1, COALESCE(edits_pending, 0), COALESCE(link_order, 0),
+       COALESCE(entity0_credit, ''), COALESCE(entity1_credit, '')
+FROM mb_staging.l_artist_artist;
 
 SELECT setval(pg_get_serial_sequence('musicbrainz.l_artist_artist', 'id'),
               COALESCE((SELECT MAX(id) FROM musicbrainz.l_artist_artist), 1));

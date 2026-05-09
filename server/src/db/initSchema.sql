@@ -83,12 +83,32 @@ CREATE TABLE IF NOT EXISTS musicbrainz.release (
   name            TEXT NOT NULL,
   artist_credit   INT,
   release_group   INT REFERENCES musicbrainz.release_group(id),
-  date_year       INT,
-  date_month      INT,
-  date_day        INT,
-  country         INT,
+  status          INT,
+  packaging       INT,
+  language        INT,
+  script          INT,
+  barcode         TEXT,
+  comment         TEXT DEFAULT '',
+  edits_pending   INT NOT NULL DEFAULT 0,
+  quality         SMALLINT NOT NULL DEFAULT -1,
+  last_updated    TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS musicbrainz.release_country (
+  release         INT NOT NULL,
+  country         INT NOT NULL,
+  date_year       SMALLINT,
+  date_month      SMALLINT,
+  date_day        SMALLINT,
+  PRIMARY KEY (release, country)
+);
+
+CREATE TABLE IF NOT EXISTS musicbrainz.release_label (
+  id              SERIAL PRIMARY KEY,
+  release         INT NOT NULL,
   label           INT,
-  comment         TEXT DEFAULT ''
+  catalog_number  TEXT,
+  last_updated    TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS musicbrainz.label (
@@ -142,35 +162,68 @@ CREATE TABLE IF NOT EXISTS musicbrainz.tag (
   name  TEXT NOT NULL
 );
 
+-- Relationship link table (connects l_* tables to link_type)
+CREATE TABLE IF NOT EXISTS musicbrainz.link (
+  id              SERIAL PRIMARY KEY,
+  link_type       INT NOT NULL,
+  begin_date_year SMALLINT,
+  begin_date_month SMALLINT,
+  begin_date_day  SMALLINT,
+  end_date_year   SMALLINT,
+  end_date_month  SMALLINT,
+  end_date_day    SMALLINT,
+  attribute_count INT NOT NULL DEFAULT 0,
+  created         TIMESTAMPTZ DEFAULT NOW(),
+  ended           BOOLEAN NOT NULL DEFAULT FALSE
+);
+
 -- Relationship tables (link types between entities)
 CREATE TABLE IF NOT EXISTS musicbrainz.l_artist_artist (
   id        SERIAL PRIMARY KEY,
+  link      INT NOT NULL REFERENCES musicbrainz.link(id),
   entity0   INT NOT NULL REFERENCES musicbrainz.artist(id),
   entity1   INT NOT NULL REFERENCES musicbrainz.artist(id),
-  link_type INT NOT NULL,
-  begin_date_year INT,
-  end_date_year   INT
+  edits_pending INT NOT NULL DEFAULT 0,
+  last_updated  TIMESTAMPTZ DEFAULT NOW(),
+  link_order    INT NOT NULL DEFAULT 0,
+  entity0_credit TEXT NOT NULL DEFAULT '',
+  entity1_credit TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS musicbrainz.l_artist_recording (
   id        SERIAL PRIMARY KEY,
+  link      INT NOT NULL REFERENCES musicbrainz.link(id),
   entity0   INT NOT NULL REFERENCES musicbrainz.artist(id),
   entity1   INT NOT NULL REFERENCES musicbrainz.recording(id),
-  link_type INT NOT NULL
+  edits_pending INT NOT NULL DEFAULT 0,
+  last_updated  TIMESTAMPTZ DEFAULT NOW(),
+  link_order    INT NOT NULL DEFAULT 0,
+  entity0_credit TEXT NOT NULL DEFAULT '',
+  entity1_credit TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS musicbrainz.l_artist_release (
   id        SERIAL PRIMARY KEY,
+  link      INT NOT NULL REFERENCES musicbrainz.link(id),
   entity0   INT NOT NULL REFERENCES musicbrainz.artist(id),
   entity1   INT NOT NULL,
-  link_type INT NOT NULL
+  edits_pending INT NOT NULL DEFAULT 0,
+  last_updated  TIMESTAMPTZ DEFAULT NOW(),
+  link_order    INT NOT NULL DEFAULT 0,
+  entity0_credit TEXT NOT NULL DEFAULT '',
+  entity1_credit TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS musicbrainz.l_artist_work (
   id        SERIAL PRIMARY KEY,
+  link      INT NOT NULL REFERENCES musicbrainz.link(id),
   entity0   INT NOT NULL REFERENCES musicbrainz.artist(id),
   entity1   INT NOT NULL REFERENCES musicbrainz.work(id),
-  link_type INT NOT NULL
+  edits_pending INT NOT NULL DEFAULT 0,
+  last_updated  TIMESTAMPTZ DEFAULT NOW(),
+  link_order    INT NOT NULL DEFAULT 0,
+  entity0_credit TEXT NOT NULL DEFAULT '',
+  entity1_credit TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS musicbrainz.link_type (
@@ -239,9 +292,10 @@ BEGIN
   FOR r IN
     SELECT a1.gid AS gid1, a2.gid AS gid2, lt.name AS link_name
     FROM musicbrainz.l_artist_artist laa
+    JOIN musicbrainz.link lk ON lk.id = laa.link
     JOIN musicbrainz.artist a1 ON a1.id = laa.entity0
     JOIN musicbrainz.artist a2 ON a2.id = laa.entity1
-    LEFT JOIN musicbrainz.link_type lt ON lt.id = laa.link_type
+    LEFT JOIN musicbrainz.link_type lt ON lt.id = lk.link_type
   LOOP
     EXECUTE format(
       $cypher$SELECT * FROM cypher('music_graph', $$
@@ -256,6 +310,7 @@ BEGIN
   FOR r IN
     SELECT a.gid AS artist_gid, rec.gid AS recording_gid
     FROM musicbrainz.l_artist_recording lar
+    JOIN musicbrainz.link lk ON lk.id = lar.link
     JOIN musicbrainz.artist a ON a.id = lar.entity0
     JOIN musicbrainz.recording rec ON rec.id = lar.entity1
     LIMIT 100000
