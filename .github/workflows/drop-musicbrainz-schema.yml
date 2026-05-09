@@ -1,0 +1,93 @@
+name: Drop MusicBrainz Schema
+
+# Drops the MusicBrainz database schema (graph, functions, tables, and schema)
+# so that the database can be re-imported from a fresh dump.
+#
+# Required secrets (same as deploy / import workflows):
+#   PG_HOST  /  PG_DATABASE  /  PG_USER  /  PG_PASSWORD  /  PG_SSLMODE
+#   — or —
+#   PG_ADMIN_PASSWORD  (uses defaults: db=musicbrainz, user=pgadmin, sslmode=require)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drop-schema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # ──────────────────────────────────────────────────────────────────────
+      # 1. Resolve PostgreSQL connection
+      # ──────────────────────────────────────────────────────────────────────
+      - name: Resolve PostgreSQL connection settings
+        id: pg
+        run: |
+          RESOLVED_PGHOST="${{ secrets.PG_HOST }}"
+          RESOLVED_PGDATABASE="${{ secrets.PG_DATABASE }}"
+          if [ -z "$RESOLVED_PGDATABASE" ]; then
+            RESOLVED_PGDATABASE="musicbrainz"
+          fi
+          RESOLVED_PGUSER="${{ secrets.PG_USER }}"
+          if [ -z "$RESOLVED_PGUSER" ]; then
+            RESOLVED_PGUSER="pgadmin"
+          fi
+          RESOLVED_PGPASSWORD="${{ secrets.PG_PASSWORD }}"
+          if [ -z "$RESOLVED_PGPASSWORD" ]; then
+            RESOLVED_PGPASSWORD="${{ secrets.PG_ADMIN_PASSWORD }}"
+          fi
+          RESOLVED_PGSSLMODE="${{ secrets.PG_SSLMODE }}"
+          if [ -z "$RESOLVED_PGSSLMODE" ]; then
+            RESOLVED_PGSSLMODE="require"
+          fi
+
+          if [ -z "$RESOLVED_PGHOST" ]; then
+            echo "::error::PG_HOST secret is not set. Cannot connect to PostgreSQL."
+            exit 1
+          fi
+          if [ -z "$RESOLVED_PGPASSWORD" ]; then
+            echo "::error::PG_PASSWORD (or PG_ADMIN_PASSWORD) secret is not set."
+            exit 1
+          fi
+
+          echo "::add-mask::$RESOLVED_PGPASSWORD"
+          CONNSTR="host=$RESOLVED_PGHOST dbname=$RESOLVED_PGDATABASE user=$RESOLVED_PGUSER password=$RESOLVED_PGPASSWORD sslmode=$RESOLVED_PGSSLMODE"
+          echo "connstr=$CONNSTR" >> "$GITHUB_OUTPUT"
+
+          echo "✅ PostgreSQL: host=$RESOLVED_PGHOST db=$RESOLVED_PGDATABASE user=$RESOLVED_PGUSER ssl=$RESOLVED_PGSSLMODE"
+
+      # ──────────────────────────────────────────────────────────────────────
+      # 2. Drop the MusicBrainz schema and AGE graph
+      # ──────────────────────────────────────────────────────────────────────
+      - name: Drop MusicBrainz schema
+        run: |
+          echo "🗑️  Dropping MusicBrainz schema and AGE graph …"
+
+          psql "${{ steps.pg.outputs.connstr }}" <<'SQL'
+          -- Drop the Apache AGE graph if it exists
+          DO $$
+          BEGIN
+            IF EXISTS (SELECT 1 FROM ag_catalog.ag_graph WHERE name = 'music_graph') THEN
+              PERFORM ag_catalog.drop_graph('music_graph', true);
+              RAISE NOTICE 'Dropped AGE graph: music_graph';
+            ELSE
+              RAISE NOTICE 'AGE graph music_graph does not exist — skipping';
+            END IF;
+          EXCEPTION
+            WHEN undefined_table THEN
+              RAISE NOTICE 'ag_catalog not available — skipping graph drop';
+            WHEN invalid_schema_name THEN
+              RAISE NOTICE 'ag_catalog schema not found — skipping graph drop';
+          END
+          $$;
+
+          -- Drop the entire musicbrainz schema (tables, functions, types, etc.)
+          DROP SCHEMA IF EXISTS musicbrainz CASCADE;
+
+          SELECT '✅ MusicBrainz schema dropped successfully';
+          SQL
+
+          echo "✅ Done"
