@@ -162,6 +162,11 @@ REASONING INSTRUCTIONS:
 5. Generate realistic MusicBrainz-style UUIDs and metadata
 6. Explain your traversal strategy in the reasoning field
 
+CONSISTENCY REQUIREMENTS (critical for graph visualization):
+- Use STABLE IDs: when the same entity appears in multiple relationship paths or in the top-level entity arrays, you MUST reuse the EXACT SAME UUID for it everywhere. Do not invent a new UUID for the same conceptual entity in a different path.
+- Be EXHAUSTIVE about band membership: if a Group entity (e.g. "The Beatles") and any of its members (e.g. John Lennon, Paul McCartney, Ringo Starr, George Harrison) both appear in the result, you MUST include an explicit member-of edge connecting EACH member to the group in the relationshipPaths. Do not omit a member's connection to their band just because that member also has other collaborations.
+- Cross-reference entities by id between top-level arrays (artists, recordings, releases, etc.) and relationshipPaths nodes/edges. Every node referenced by an edge must exist as a node in the same path.
+
 OUTPUT FORMAT — respond with ONLY valid JSON:
 {
   "artists": [{"id": "<uuid>", "name": "<name>", "type": "<Person|Group>", "area": "<country/region>", "genres": ["<genre>"], "description": "<brief bio>"}],
@@ -188,6 +193,10 @@ REASONING INSTRUCTIONS:
 4. Group discovered entities into semantic clusters (e.g., scenes, movements, styles)
 5. Assign similarity scores based on semantic relevance (0-1)
 6. Explain your search strategy in the reasoning field
+
+CONSISTENCY REQUIREMENTS (critical for graph visualization):
+- Use STABLE IDs: when an entity already appears in the prior Graph Traversal Results, REUSE its existing UUID rather than minting a new one. When an entity appears in multiple of your own additionalRelationshipPaths, also reuse the same UUID for it across those paths.
+- Every node referenced by an edge must exist as a node in the same path's nodes array.
 
 OUTPUT FORMAT — respond with ONLY valid JSON:
 {

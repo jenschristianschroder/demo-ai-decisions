@@ -80,9 +80,37 @@ const MusicForceGraph: React.FC<Props> = ({ paths }) => {
 
   const graphData = useMemo(() => {
     console.debug('[MusicForceGraph] Building graph from paths:', paths);
+    // nodeMap is keyed by a *canonical* identifier (type + normalized label)
+    // rather than the raw id from the path payload. The LLM-generated paths
+    // often assign different UUIDs to the same conceptual entity (e.g. "The
+    // Beatles" appears with one id in John Lennon's path and another in Paul
+    // McCartney's path). Deduplicating by canonical identity merges these
+    // duplicates into a single node so all incoming edges connect properly.
     const nodeMap = new Map<string, GraphNode>();
+    // Maps every original id seen in the input to its canonical id so we can
+    // rewrite edge endpoints consistently.
+    const idAlias = new Map<string, string>();
     const links: GraphLink[] = [];
     const linkSet = new Set<string>();
+
+    const canonicalKey = (label: string, type: string): string =>
+      `${type.toLowerCase()}::${label.trim().toLowerCase()}`;
+
+    const resolveId = (rawId: string, fallbackLabel?: string, fallbackType?: string): string => {
+      const aliased = idAlias.get(rawId);
+      if (aliased) return aliased;
+      // Edge references an id we never saw in any path's nodes — register a
+      // placeholder canonical entry so the edge still renders rather than
+      // creating an orphan node implicitly.
+      const label = fallbackLabel ?? rawId;
+      const type = (fallbackType ?? 'unknown').toLowerCase();
+      const key = canonicalKey(label, type);
+      idAlias.set(rawId, key);
+      if (!nodeMap.has(key)) {
+        nodeMap.set(key, { id: key, label, type, connections: 0 });
+      }
+      return key;
+    };
 
     for (const path of paths) {
       console.debug('[MusicForceGraph] Processing path:', {
@@ -101,9 +129,12 @@ const MusicForceGraph: React.FC<Props> = ({ paths }) => {
           console.warn('[MusicForceGraph] Skipping node with missing id or label:', node);
           continue;
         }
-        if (!nodeMap.has(node.id)) {
-          // Normalize type to lowercase for consistent color mapping
-          nodeMap.set(node.id, { id: node.id, label: node.label, type: (node.type ?? 'unknown').toLowerCase(), connections: 0 });
+        // Normalize type to lowercase for consistent color mapping
+        const type = (node.type ?? 'unknown').toLowerCase();
+        const key = canonicalKey(node.label, type);
+        idAlias.set(node.id, key);
+        if (!nodeMap.has(key)) {
+          nodeMap.set(key, { id: key, label: node.label, type, connections: 0 });
         }
       }
       for (const edge of path.edges) {
@@ -111,12 +142,17 @@ const MusicForceGraph: React.FC<Props> = ({ paths }) => {
           console.warn('[MusicForceGraph] Skipping edge with missing sourceId or targetId:', edge);
           continue;
         }
-        const key = `${edge.sourceId}-${edge.type}-${edge.targetId}`;
+        const srcId = resolveId(edge.sourceId, edge.sourceLabel);
+        const tgtId = resolveId(edge.targetId, edge.targetLabel);
+        // Drop self-loops introduced by the canonical merge (e.g. when the
+        // source and target are the same conceptual entity).
+        if (srcId === tgtId) continue;
+        const key = `${srcId}-${edge.type}-${tgtId}`;
         if (!linkSet.has(key)) {
           linkSet.add(key);
-          links.push({ source: edge.sourceId, target: edge.targetId, type: edge.type });
-          const src = nodeMap.get(edge.sourceId);
-          const tgt = nodeMap.get(edge.targetId);
+          links.push({ source: srcId, target: tgtId, type: edge.type });
+          const src = nodeMap.get(srcId);
+          const tgt = nodeMap.get(tgtId);
           if (src) src.connections++;
           if (tgt) tgt.connections++;
         }
