@@ -31,6 +31,8 @@ permissions:
 env:
   BASE_URL: ${{ inputs.base_url || 'https://data.metabrainz.org/pub/musicbrainz/data/fullexport' }}
   HAS_AZURE_OIDC: ${{ secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_SUBSCRIPTION_ID != '' && secrets.AZURE_RESOURCE_GROUP != '' }}
+  REQUIRED_AZURE_EXTENSIONS: 'age,vector'
+  REQUIRED_SHARED_PRELOAD_LIBRARIES: 'age'
 
 jobs:
   import:
@@ -330,12 +332,12 @@ jobs:
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
             --server-name "${{ steps.pg.outputs.pgServer }}" \
             --name azure.extensions \
-            --value "age,vector"
+            --value "${{ env.REQUIRED_AZURE_EXTENSIONS }}"
           az postgres flexible-server parameter set \
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
             --server-name "${{ steps.pg.outputs.pgServer }}" \
             --name shared_preload_libraries \
-            --value "age"
+            --value "${{ env.REQUIRED_SHARED_PRELOAD_LIBRARIES }}"
 
       - name: Verify required extension allow-list settings
         run: |
@@ -345,11 +347,13 @@ jobs:
             DECLARE
               ext_setting text := lower(coalesce(current_setting('azure.extensions', true), ''));
               preload_setting text := lower(coalesce(current_setting('shared_preload_libraries', true), ''));
+              ext_values text[] := regexp_split_to_array(replace(ext_setting, ' ', ''), ',');
+              preload_values text[] := regexp_split_to_array(replace(preload_setting, ' ', ''), ',');
             BEGIN
-              IF position('age' in ext_setting) = 0 OR position('vector' in ext_setting) = 0 THEN
+              IF NOT ('age' = ANY (ext_values) AND 'vector' = ANY (ext_values)) THEN
                 RAISE EXCEPTION 'Required extensions are not allow-listed. azure.extensions=%', ext_setting;
               END IF;
-              IF position('age' in preload_setting) = 0 THEN
+              IF NOT ('age' = ANY (preload_values)) THEN
                 RAISE EXCEPTION 'Apache AGE is not preloaded. shared_preload_libraries=%', preload_setting;
               END IF;
             END
