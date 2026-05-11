@@ -346,10 +346,24 @@ jobs:
       - name: Verify required extension allow-list settings
         run: |
           source /tmp/psql_retry.sh
+          # NOTE: psql variable substitution (:'var') is NOT performed inside
+          # dollar-quoted blocks ($$ ... $$), so the required values must be
+          # interpolated by the shell directly into the SQL text. Validate the
+          # inputs against a strict allow-list of characters (PostgreSQL
+          # extension/library names: alphanumerics, underscore, separators)
+          # before embedding them in the SQL string to guard against injection.
+          REQUIRED_EXT_LITERAL="${REQUIRED_AZURE_EXTENSIONS}"
+          REQUIRED_PRELOAD_LITERAL="${REQUIRED_SHARED_PRELOAD_LIBRARIES}"
+          if [[ ! "$REQUIRED_EXT_LITERAL" =~ ^[A-Za-z0-9_,[:space:]]*$ ]]; then
+            echo "❌ REQUIRED_AZURE_EXTENSIONS contains unexpected characters: $REQUIRED_EXT_LITERAL" >&2
+            exit 1
+          fi
+          if [[ ! "$REQUIRED_PRELOAD_LITERAL" =~ ^[A-Za-z0-9_,[:space:]]*$ ]]; then
+            echo "❌ REQUIRED_SHARED_PRELOAD_LIBRARIES contains unexpected characters: $REQUIRED_PRELOAD_LITERAL" >&2
+            exit 1
+          fi
           psql_retry "${{ steps.pg.outputs.connstr }}" \
             -v ON_ERROR_STOP=1 \
-            --set=required_extensions="${{ env.REQUIRED_AZURE_EXTENSIONS }}" \
-            --set=required_preload="${{ env.REQUIRED_SHARED_PRELOAD_LIBRARIES }}" \
             -c "
             DO \$\$
             DECLARE
@@ -357,8 +371,8 @@ jobs:
               preload_setting text := lower(coalesce(current_setting('shared_preload_libraries', true), ''));
               ext_values text[] := array_remove(regexp_split_to_array(ext_setting, '[,[:space:]]+'), '');
               preload_values text[] := array_remove(regexp_split_to_array(preload_setting, '[,[:space:]]+'), '');
-              required_ext_values text[] := array_remove(regexp_split_to_array(lower(:'required_extensions'), '[,[:space:]]+'), '');
-              required_preload_values text[] := array_remove(regexp_split_to_array(lower(:'required_preload'), '[,[:space:]]+'), '');
+              required_ext_values text[] := array_remove(regexp_split_to_array(lower('${REQUIRED_EXT_LITERAL}'), '[,[:space:]]+'), '');
+              required_preload_values text[] := array_remove(regexp_split_to_array(lower('${REQUIRED_PRELOAD_LITERAL}'), '[,[:space:]]+'), '');
               required_name text;
             BEGIN
               FOREACH required_name IN ARRAY required_ext_values LOOP
