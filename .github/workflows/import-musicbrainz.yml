@@ -25,10 +25,14 @@ on:
         default: false
 
 permissions:
+  id-token: write
   contents: read
 
 env:
   BASE_URL: ${{ inputs.base_url || 'https://data.metabrainz.org/pub/musicbrainz/data/fullexport' }}
+  AZURE_SECRETS_CONFIGURED: ${{ secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_SUBSCRIPTION_ID != '' && secrets.AZURE_RESOURCE_GROUP != '' }}
+  REQUIRED_AZURE_EXTENSIONS: 'age,vector'
+  REQUIRED_SHARED_PRELOAD_LIBRARIES: 'age'
 
 jobs:
   import:
@@ -65,6 +69,13 @@ jobs:
           if [ -z "$RESOLVED_PGSSLMODE" ]; then
             RESOLVED_PGSSLMODE="require"
           fi
+          # Extract Azure PostgreSQL server name from FQDN
+          # (e.g. "myserver" from "myserver.postgres.database.azure.com").
+          if [[ "$RESOLVED_PGHOST" == *.postgres.database.azure.com ]]; then
+            RESOLVED_PGSERVER="${RESOLVED_PGHOST%%.*}"
+          else
+            RESOLVED_PGSERVER="$RESOLVED_PGHOST"
+          fi
 
           if [ -z "$RESOLVED_PGHOST" ]; then
             echo "::error::PG_HOST secret is not set. Cannot connect to PostgreSQL."
@@ -83,8 +94,9 @@ jobs:
           echo "::add-mask::$RESOLVED_PGPASSWORD"
           CONNSTR="host=$RESOLVED_PGHOST dbname=$RESOLVED_PGDATABASE user=$RESOLVED_PGUSER password=$RESOLVED_PGPASSWORD sslmode=$RESOLVED_PGSSLMODE keepalives=1 keepalives_idle=30 keepalives_interval=10 keepalives_count=5 options='-c statement_timeout=0 -c idle_in_transaction_session_timeout=0'"
           echo "connstr=$CONNSTR" >> "$GITHUB_OUTPUT"
+          echo "pgServer=$RESOLVED_PGSERVER" >> "$GITHUB_OUTPUT"
 
-          echo "✅ PostgreSQL: host=$RESOLVED_PGHOST db=$RESOLVED_PGDATABASE user=$RESOLVED_PGUSER ssl=$RESOLVED_PGSSLMODE (keepalives enabled)"
+          echo "✅ PostgreSQL: host=$RESOLVED_PGHOST server=$RESOLVED_PGSERVER db=$RESOLVED_PGDATABASE user=$RESOLVED_PGUSER ssl=$RESOLVED_PGSSLMODE (keepalives enabled)"
 
       # ────────────────────────────────────────────────────────────────────────
       # 3. Discover the latest dump
@@ -307,17 +319,75 @@ jobs:
           echo "✅ Retry helper created"
 
       # ────────────────────────────────────────────────────────────────────────
-      # 6. Ensure demo schema exists
+      # 6. Ensure required PostgreSQL extensions are allow-listed
       # ────────────────────────────────────────────────────────────────────────
-      - name: Ensure demo schema exists
+      - name: Azure Login (OIDC)
+        if: ${{ fromJSON(env.AZURE_SECRETS_CONFIGURED) }}
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Configure extension allow-list (Azure PostgreSQL)
+        if: ${{ fromJSON(env.AZURE_SECRETS_CONFIGURED) }}
+        run: |
+          az postgres flexible-server parameter set \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --server-name "${{ steps.pg.outputs.pgServer }}" \
+            --name azure.extensions \
+            --value "${{ env.REQUIRED_AZURE_EXTENSIONS }}"
+          az postgres flexible-server parameter set \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --server-name "${{ steps.pg.outputs.pgServer }}" \
+            --name shared_preload_libraries \
+            --value "${{ env.REQUIRED_SHARED_PRELOAD_LIBRARIES }}"
+
+      - name: Verify required extension allow-list settings
         run: |
           source /tmp/psql_retry.sh
-          psql_retry "${{ steps.pg.outputs.connstr }}" -f server/src/db/initSchema.sql
+          psql_retry "${{ steps.pg.outputs.connstr }}" \
+            -v ON_ERROR_STOP=1 \
+            --set=required_extensions="${{ env.REQUIRED_AZURE_EXTENSIONS }}" \
+            --set=required_preload="${{ env.REQUIRED_SHARED_PRELOAD_LIBRARIES }}" \
+            -c "
+            DO \$\$
+            DECLARE
+              ext_setting text := lower(coalesce(current_setting('azure.extensions', true), ''));
+              preload_setting text := lower(coalesce(current_setting('shared_preload_libraries', true), ''));
+              ext_values text[] := array_remove(regexp_split_to_array(ext_setting, '[,[:space:]]+'), '');
+              preload_values text[] := array_remove(regexp_split_to_array(preload_setting, '[,[:space:]]+'), '');
+              required_ext_values text[] := array_remove(regexp_split_to_array(lower(:'required_extensions'), '[,[:space:]]+'), '');
+              required_preload_values text[] := array_remove(regexp_split_to_array(lower(:'required_preload'), '[,[:space:]]+'), '');
+              required_name text;
+            BEGIN
+              FOREACH required_name IN ARRAY required_ext_values LOOP
+                IF required_name <> '' AND NOT (required_name = ANY (ext_values)) THEN
+                  RAISE EXCEPTION 'Required extension % is not in the allow-list. Current azure.extensions=%', required_name, ext_setting;
+                END IF;
+              END LOOP;
+              FOREACH required_name IN ARRAY required_preload_values LOOP
+                IF required_name <> '' AND NOT (required_name = ANY (preload_values)) THEN
+                  RAISE EXCEPTION 'Required preload library % is not enabled in shared_preload_libraries. Current value=%', required_name, preload_setting;
+                END IF;
+              END LOOP;
+            END
+            \$\$;"
         env:
           PGCONNECT_TIMEOUT: '30'
 
       # ────────────────────────────────────────────────────────────────────────
-      # 7. Create staging tables
+      # 7. Ensure demo schema exists
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Ensure demo schema exists
+        run: |
+          source /tmp/psql_retry.sh
+          psql_retry "${{ steps.pg.outputs.connstr }}" -v ON_ERROR_STOP=1 -f server/src/db/initSchema.sql
+        env:
+          PGCONNECT_TIMEOUT: '30'
+
+      # ────────────────────────────────────────────────────────────────────────
+      # 8. Create staging tables
       # ────────────────────────────────────────────────────────────────────────
       - name: Create staging tables
         if: ${{ !inputs.skip_download }}
@@ -328,7 +398,7 @@ jobs:
           PGCONNECT_TIMEOUT: '30'
 
       # ────────────────────────────────────────────────────────────────────────
-      # 8. COPY dump data into staging tables
+      # 9. COPY dump data into staging tables
       # ────────────────────────────────────────────────────────────────────────
       - name: Load dump files into staging tables
         if: ${{ !inputs.skip_download }}
@@ -395,7 +465,7 @@ jobs:
           PGCONNECT_TIMEOUT: '30'
 
       # ────────────────────────────────────────────────────────────────────────
-      # 8b. Create staging indexes for transform performance
+      # 9b. Create staging indexes for transform performance
       # ────────────────────────────────────────────────────────────────────────
       - name: Create staging indexes for transform performance
         if: ${{ !inputs.skip_download }}
@@ -420,7 +490,7 @@ jobs:
           PGCONNECT_TIMEOUT: '30'
 
       # ────────────────────────────────────────────────────────────────────────
-      # 9. Transform staging → demo tables
+      # 10. Transform staging → demo tables
       # ────────────────────────────────────────────────────────────────────────
       - name: "Transform: setup & core tables"
         run: |
@@ -788,7 +858,7 @@ jobs:
           PGCONNECT_TIMEOUT: '30'
 
       # ────────────────────────────────────────────────────────────────────────
-      # 10. Verify import
+      # 11. Verify import
       # ────────────────────────────────────────────────────────────────────────
       - name: Verify row counts
         run: |
@@ -837,7 +907,7 @@ jobs:
           PGCONNECT_TIMEOUT: '30'
 
       # ────────────────────────────────────────────────────────────────────────
-      # 11. Drop staging schema (separate step so verify failure preserves staging)
+      # 12. Drop staging schema (separate step so verify failure preserves staging)
       # ────────────────────────────────────────────────────────────────────────
       - name: Drop staging schema
         run: |
@@ -848,7 +918,7 @@ jobs:
           PGCONNECT_TIMEOUT: '30'
 
       # ────────────────────────────────────────────────────────────────────────
-      # 12. Clean up workspace
+      # 13. Clean up workspace
       # ────────────────────────────────────────────────────────────────────────
       - name: Clean up
         if: always()

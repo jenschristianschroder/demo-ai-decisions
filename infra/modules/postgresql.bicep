@@ -69,7 +69,7 @@ resource azureExtensions 'Microsoft.DBforPostgreSQL/flexibleServers/configuratio
   parent: pgServer
   name: 'azure.extensions'
   properties: {
-    value: 'AGE,VECTOR'
+    value: 'age,vector'
     source: 'user-override'
   }
 }
