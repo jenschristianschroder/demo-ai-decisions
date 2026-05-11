@@ -30,6 +30,7 @@ permissions:
 
 env:
   BASE_URL: ${{ inputs.base_url || 'https://data.metabrainz.org/pub/musicbrainz/data/fullexport' }}
+  HAS_AZURE_OIDC: ${{ secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_SUBSCRIPTION_ID != '' && secrets.AZURE_RESOURCE_GROUP != '' }}
 
 jobs:
   import:
@@ -66,6 +67,8 @@ jobs:
           if [ -z "$RESOLVED_PGSSLMODE" ]; then
             RESOLVED_PGSSLMODE="require"
           fi
+          # Extract Azure PostgreSQL server name from FQDN
+          # (e.g. "myserver" from "myserver.postgres.database.azure.com").
           RESOLVED_PGSERVER="${RESOLVED_PGHOST%%.*}"
 
           if [ -z "$RESOLVED_PGHOST" ]; then
@@ -313,7 +316,7 @@ jobs:
       # 6. Ensure required PostgreSQL extensions are allow-listed
       # ────────────────────────────────────────────────────────────────────────
       - name: Azure Login (OIDC)
-        if: ${{ secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_SUBSCRIPTION_ID != '' && secrets.AZURE_RESOURCE_GROUP != '' }}
+        if: ${{ env.HAS_AZURE_OIDC == 'true' }}
         uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -321,7 +324,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Configure extension allow-list (Azure PostgreSQL)
-        if: ${{ secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_SUBSCRIPTION_ID != '' && secrets.AZURE_RESOURCE_GROUP != '' }}
+        if: ${{ env.HAS_AZURE_OIDC == 'true' }}
         run: |
           az postgres flexible-server parameter set \
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
