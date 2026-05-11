@@ -322,7 +322,7 @@ jobs:
       # 6. Ensure required PostgreSQL extensions are allow-listed
       # ────────────────────────────────────────────────────────────────────────
       - name: Azure Login (OIDC)
-        if: ${{ env.HAS_AZURE_OIDC == 'true' }}
+        if: ${{ fromJSON(env.HAS_AZURE_OIDC) }}
         uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -330,7 +330,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Configure extension allow-list (Azure PostgreSQL)
-        if: ${{ env.HAS_AZURE_OIDC == 'true' }}
+        if: ${{ fromJSON(env.HAS_AZURE_OIDC) }}
         run: |
           az postgres flexible-server parameter set \
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
