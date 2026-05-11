@@ -30,7 +30,7 @@ permissions:
 
 env:
   BASE_URL: ${{ inputs.base_url || 'https://data.metabrainz.org/pub/musicbrainz/data/fullexport' }}
-  HAS_AZURE_OIDC: ${{ secrets.AZURE_CLIENT_ID != null && secrets.AZURE_TENANT_ID != null && secrets.AZURE_SUBSCRIPTION_ID != null && secrets.AZURE_RESOURCE_GROUP != null }}
+  HAS_AZURE_OIDC: ${{ secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_SUBSCRIPTION_ID != '' && secrets.AZURE_RESOURCE_GROUP != '' }}
   REQUIRED_AZURE_EXTENSIONS: 'age,vector'
   REQUIRED_SHARED_PRELOAD_LIBRARIES: 'age'
 
@@ -71,7 +71,11 @@ jobs:
           fi
           # Extract Azure PostgreSQL server name from FQDN
           # (e.g. "myserver" from "myserver.postgres.database.azure.com").
-          RESOLVED_PGSERVER="${RESOLVED_PGHOST%%.*}"
+          if [[ "$RESOLVED_PGHOST" == *.postgres.database.azure.com ]]; then
+            RESOLVED_PGSERVER="${RESOLVED_PGHOST%%.*}"
+          else
+            RESOLVED_PGSERVER="$RESOLVED_PGHOST"
+          fi
 
           if [ -z "$RESOLVED_PGHOST" ]; then
             echo "::error::PG_HOST secret is not set. Cannot connect to PostgreSQL."
@@ -351,10 +355,10 @@ jobs:
             DECLARE
               ext_setting text := lower(coalesce(current_setting('azure.extensions', true), ''));
               preload_setting text := lower(coalesce(current_setting('shared_preload_libraries', true), ''));
-              ext_values text[] := regexp_split_to_array(ext_setting, '[,[:space:]]+');
-              preload_values text[] := regexp_split_to_array(preload_setting, '[,[:space:]]+');
-              required_ext_values text[] := regexp_split_to_array(lower(:'required_extensions'), '[,[:space:]]+');
-              required_preload_values text[] := regexp_split_to_array(lower(:'required_preload'), '[,[:space:]]+');
+              ext_values text[] := array_remove(regexp_split_to_array(ext_setting, '[,[:space:]]+'), '');
+              preload_values text[] := array_remove(regexp_split_to_array(preload_setting, '[,[:space:]]+'), '');
+              required_ext_values text[] := array_remove(regexp_split_to_array(lower(:'required_extensions'), '[,[:space:]]+'), '');
+              required_preload_values text[] := array_remove(regexp_split_to_array(lower(:'required_preload'), '[,[:space:]]+'), '');
               required_name text;
             BEGIN
               FOREACH required_name IN ARRAY required_ext_values LOOP
