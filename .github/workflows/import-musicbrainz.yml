@@ -343,6 +343,32 @@ jobs:
             --name shared_preload_libraries \
             --value "${{ env.REQUIRED_SHARED_PRELOAD_LIBRARIES }}"
 
+      - name: Restart PostgreSQL server (shared_preload_libraries requires restart)
+        if: ${{ fromJSON(env.AZURE_SECRETS_CONFIGURED) }}
+        run: |
+          echo "🔄 Restarting PostgreSQL server to apply shared_preload_libraries change…"
+          az postgres flexible-server restart \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ steps.pg.outputs.pgServer }}"
+          INITIAL_WAIT=30
+          MAX_ATTEMPTS=30
+          POLL_INTERVAL=10
+          echo "⏳ Waiting ${INITIAL_WAIT}s for server to begin restarting…"
+          sleep "$INITIAL_WAIT"
+          # Poll until the server accepts connections
+          for i in $(seq 1 "$MAX_ATTEMPTS"); do
+            if PGCONNECT_TIMEOUT=10 psql "${{ steps.pg.outputs.connstr }}" -c "SELECT 1" >/dev/null 2>&1; then
+              echo "✅ Server is back online."
+              break
+            fi
+            if [ "$i" -eq "$MAX_ATTEMPTS" ]; then
+              echo "❌ Server did not come back online after $MAX_ATTEMPTS poll attempts." >&2
+              exit 1
+            fi
+            echo "  …still waiting (attempt $i/$MAX_ATTEMPTS)"
+            sleep "$POLL_INTERVAL"
+          done
+
       - name: Verify required extension allow-list settings
         run: |
           source /tmp/psql_retry.sh
