@@ -30,7 +30,7 @@ permissions:
 
 env:
   BASE_URL: ${{ inputs.base_url || 'https://data.metabrainz.org/pub/musicbrainz/data/fullexport' }}
-  HAS_AZURE_OIDC: ${{ secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_SUBSCRIPTION_ID != '' && secrets.AZURE_RESOURCE_GROUP != '' }}
+  HAS_AZURE_OIDC: ${{ secrets.AZURE_CLIENT_ID != null && secrets.AZURE_TENANT_ID != null && secrets.AZURE_SUBSCRIPTION_ID != null && secrets.AZURE_RESOURCE_GROUP != null }}
   REQUIRED_AZURE_EXTENSIONS: 'age,vector'
   REQUIRED_SHARED_PRELOAD_LIBRARIES: 'age'
 
@@ -342,20 +342,31 @@ jobs:
       - name: Verify required extension allow-list settings
         run: |
           source /tmp/psql_retry.sh
-          psql_retry "${{ steps.pg.outputs.connstr }}" -v ON_ERROR_STOP=1 -c "
+          psql_retry "${{ steps.pg.outputs.connstr }}" \
+            -v ON_ERROR_STOP=1 \
+            --set=required_extensions="${{ env.REQUIRED_AZURE_EXTENSIONS }}" \
+            --set=required_preload="${{ env.REQUIRED_SHARED_PRELOAD_LIBRARIES }}" \
+            -c "
             DO \$\$
             DECLARE
               ext_setting text := lower(coalesce(current_setting('azure.extensions', true), ''));
               preload_setting text := lower(coalesce(current_setting('shared_preload_libraries', true), ''));
-              ext_values text[] := regexp_split_to_array(replace(ext_setting, ' ', ''), ',');
-              preload_values text[] := regexp_split_to_array(replace(preload_setting, ' ', ''), ',');
+              ext_values text[] := regexp_split_to_array(ext_setting, '[,[:space:]]+');
+              preload_values text[] := regexp_split_to_array(preload_setting, '[,[:space:]]+');
+              required_ext_values text[] := regexp_split_to_array(lower(:'required_extensions'), '[,[:space:]]+');
+              required_preload_values text[] := regexp_split_to_array(lower(:'required_preload'), '[,[:space:]]+');
+              required_name text;
             BEGIN
-              IF NOT ('age' = ANY (ext_values) AND 'vector' = ANY (ext_values)) THEN
-                RAISE EXCEPTION 'Required extensions are not allow-listed. azure.extensions=%', ext_setting;
-              END IF;
-              IF NOT ('age' = ANY (preload_values)) THEN
-                RAISE EXCEPTION 'Apache AGE is not preloaded. shared_preload_libraries=%', preload_setting;
-              END IF;
+              FOREACH required_name IN ARRAY required_ext_values LOOP
+                IF required_name <> '' AND NOT (required_name = ANY (ext_values)) THEN
+                  RAISE EXCEPTION 'Required extension % is not allow-listed. azure.extensions=%', required_name, ext_setting;
+                END IF;
+              END LOOP;
+              FOREACH required_name IN ARRAY required_preload_values LOOP
+                IF required_name <> '' AND NOT (required_name = ANY (preload_values)) THEN
+                  RAISE EXCEPTION 'Required preload library % is not enabled. shared_preload_libraries=%', required_name, preload_setting;
+                END IF;
+              END LOOP;
             END
             \$\$;"
         env:
