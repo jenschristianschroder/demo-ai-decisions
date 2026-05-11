@@ -30,7 +30,7 @@ permissions:
 
 env:
   BASE_URL: ${{ inputs.base_url || 'https://data.metabrainz.org/pub/musicbrainz/data/fullexport' }}
-  HAS_AZURE_OIDC: ${{ secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_SUBSCRIPTION_ID != '' && secrets.AZURE_RESOURCE_GROUP != '' }}
+  AZURE_SECRETS_CONFIGURED: ${{ secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_SUBSCRIPTION_ID != '' && secrets.AZURE_RESOURCE_GROUP != '' }}
   REQUIRED_AZURE_EXTENSIONS: 'age,vector'
   REQUIRED_SHARED_PRELOAD_LIBRARIES: 'age'
 
@@ -322,7 +322,7 @@ jobs:
       # 6. Ensure required PostgreSQL extensions are allow-listed
       # ────────────────────────────────────────────────────────────────────────
       - name: Azure Login (OIDC)
-        if: ${{ fromJSON(env.HAS_AZURE_OIDC) }}
+        if: ${{ fromJSON(env.AZURE_SECRETS_CONFIGURED) }}
         uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -330,7 +330,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Configure extension allow-list (Azure PostgreSQL)
-        if: ${{ fromJSON(env.HAS_AZURE_OIDC) }}
+        if: ${{ fromJSON(env.AZURE_SECRETS_CONFIGURED) }}
         run: |
           az postgres flexible-server parameter set \
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
@@ -363,12 +363,12 @@ jobs:
             BEGIN
               FOREACH required_name IN ARRAY required_ext_values LOOP
                 IF required_name <> '' AND NOT (required_name = ANY (ext_values)) THEN
-                  RAISE EXCEPTION 'Required extension % is not allow-listed. azure.extensions=%', required_name, ext_setting;
+                  RAISE EXCEPTION 'Required extension % is not in the allow-list. Current azure.extensions=%', required_name, ext_setting;
                 END IF;
               END LOOP;
               FOREACH required_name IN ARRAY required_preload_values LOOP
                 IF required_name <> '' AND NOT (required_name = ANY (preload_values)) THEN
-                  RAISE EXCEPTION 'Required preload library % is not enabled. shared_preload_libraries=%', required_name, preload_setting;
+                  RAISE EXCEPTION 'Required preload library % is not enabled in shared_preload_libraries. Current value=%', required_name, preload_setting;
                 END IF;
               END LOOP;
             END
