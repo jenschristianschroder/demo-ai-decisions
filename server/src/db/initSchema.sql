@@ -260,7 +260,7 @@ WHERE NOT EXISTS (
 CREATE OR REPLACE FUNCTION musicbrainz.sync_graph()
 RETURNS void
 LANGUAGE plpgsql
-AS $$
+AS $func$
 DECLARE
   r RECORD;
 BEGIN
@@ -326,7 +326,7 @@ BEGIN
 
   RAISE NOTICE 'Music graph sync complete';
 END;
-$$;
+$func$;
 
 -- ── Helper function: vector search for similar artists ───────────────────────
 
