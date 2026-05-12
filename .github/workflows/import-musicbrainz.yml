@@ -329,6 +329,42 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Ensure PostgreSQL server is running
+        if: ${{ fromJSON(env.AZURE_SECRETS_CONFIGURED) }}
+        run: |
+          SERVER_STATE=$(az postgres flexible-server show \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ steps.pg.outputs.pgServer }}" \
+            --query "state" -o tsv 2>/dev/null || echo "Unknown")
+          echo "Current server state: $SERVER_STATE"
+          if [ "$SERVER_STATE" != "Ready" ]; then
+            echo "🔄 Starting PostgreSQL server…"
+            az postgres flexible-server start \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --name "${{ steps.pg.outputs.pgServer }}"
+            echo "⏳ Waiting for server to become ready…"
+            MAX_ATTEMPTS=30
+            POLL_INTERVAL=10
+            for i in $(seq 1 "$MAX_ATTEMPTS"); do
+              STATE=$(az postgres flexible-server show \
+                --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+                --name "${{ steps.pg.outputs.pgServer }}" \
+                --query "state" -o tsv 2>/dev/null || echo "Unknown")
+              if [ "$STATE" = "Ready" ]; then
+                echo "✅ Server is ready."
+                break
+              fi
+              if [ "$i" -eq "$MAX_ATTEMPTS" ]; then
+                echo "❌ Server did not become ready after $MAX_ATTEMPTS attempts." >&2
+                exit 1
+              fi
+              echo "  …still waiting (attempt $i/$MAX_ATTEMPTS, state: $STATE)"
+              sleep "$POLL_INTERVAL"
+            done
+          else
+            echo "✅ Server is already running."
+          fi
+
       - name: Configure extension allow-list (Azure PostgreSQL)
         if: ${{ fromJSON(env.AZURE_SECRETS_CONFIGURED) }}
         run: |
