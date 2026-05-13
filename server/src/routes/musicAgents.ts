@@ -328,11 +328,61 @@ async function mapWithConcurrency<T, R>(
 }
 
 /**
+ * User-configurable graph traversal limits (received from the UI). All
+ * fields optional — {@link normalizeTraversalOptions} applies defaults
+ * and clamps to safe ranges to bound PostgreSQL load.
+ */
+interface MusicGraphTraversalOptions {
+  maxHops?: number;
+  maxArtistsPerEntity?: number;
+  maxRecordingsPerArtist?: number;
+  maxReleasesPerArtist?: number;
+  maxCollaborators?: number;
+  maxBandMembers?: number;
+}
+
+interface NormalizedTraversalOptions {
+  maxHops: number;
+  maxArtistsPerEntity: number;
+  maxRecordingsPerArtist: number;
+  maxReleasesPerArtist: number;
+  maxCollaborators: number;
+  maxBandMembers: number;
+}
+
+/**
+ * Normalize user-supplied traversal options against sane defaults and
+ * clamp each field to a safe range. These caps bound the worst-case
+ * number of DB round-trips per query so the PG connection pool and AGE
+ * graph traversals stay responsive.
+ *
+ * Keep defaults in sync with `DEFAULT_MUSIC_TRAVERSAL_OPTIONS` in
+ * `src/types/music.ts`.
+ */
+function normalizeTraversalOptions(
+  opts: MusicGraphTraversalOptions | undefined,
+): NormalizedTraversalOptions {
+  const clamp = (v: number | undefined, min: number, max: number, fallback: number) => {
+    const n = typeof v === 'number' && Number.isFinite(v) ? Math.floor(v) : fallback;
+    return Math.min(Math.max(n, min), max);
+  };
+  return {
+    maxHops: clamp(opts?.maxHops, 1, 3, 2),
+    maxArtistsPerEntity: clamp(opts?.maxArtistsPerEntity, 1, 10, 3),
+    maxRecordingsPerArtist: clamp(opts?.maxRecordingsPerArtist, 0, 50, 8),
+    maxReleasesPerArtist: clamp(opts?.maxReleasesPerArtist, 0, 50, 6),
+    maxCollaborators: clamp(opts?.maxCollaborators, 0, 25, 5),
+    maxBandMembers: clamp(opts?.maxBandMembers, 0, 100, 30),
+  };
+}
+
+/**
  * Fetch real graph data from PostgreSQL + Apache AGE for a parsed query.
  * Returns structured data matching the graph traversal agent output format.
  */
 async function fetchGraphDataFromPg(
   parsedQuery: Record<string, unknown>,
+  traversal: NormalizedTraversalOptions,
 ): Promise<Record<string, unknown> | null> {
   if (!isPgAvailable()) return null;
 
@@ -363,7 +413,7 @@ async function fetchGraphDataFromPg(
       // exact (case-insensitive, diacritic-insensitive) matches first,
       // ranked by popularity; we restrict the per-entity sub-pipeline to
       // the top match (plus a couple of close fuzzy matches).
-      const artists = await searchArtists(entity, 3);
+      const artists = await searchArtists(entity, traversal.maxArtistsPerEntity);
 
       // Record the top seed artist for the later collaborator pass.
       if (artists.length > 0) {
@@ -390,9 +440,9 @@ async function fetchGraphDataFromPg(
 
         // Run the per-artist sub-queries in parallel (bounded above).
         const [recordings, releases, members] = await Promise.all([
-          getArtistRecordings(a.gid as string, 8),
-          getArtistReleases(a.gid as string, 6),
-          findBandMembers(a.gid as string, 30).catch((err) => {
+          getArtistRecordings(a.gid as string, traversal.maxRecordingsPerArtist),
+          getArtistReleases(a.gid as string, traversal.maxReleasesPerArtist),
+          findBandMembers(a.gid as string, traversal.maxBandMembers).catch((err) => {
             console.error(
               `[Music Graph] findBandMembers failed for ${a.name} (${a.gid as string}):`,
               err,
@@ -486,18 +536,19 @@ async function fetchGraphDataFromPg(
     // (many distinct MB artists share names — "John Williams" etc.).
     await mapWithConcurrency(resolvedSeeds, ENTITY_CONCURRENCY, async (seed) => {
       try {
-        const collabs = await findCollaborators(seed.gid, 2);
+        const collabs = await findCollaborators(seed.gid, traversal.maxHops);
         if (collabs.length > 0) {
+          const limitedCollabs = collabs.slice(0, traversal.maxCollaborators);
           relationshipPaths.push({
             nodes: [
               { id: seed.gid, label: seed.name, type: 'Artist' },
-              ...collabs.slice(0, 5).map((c) => ({
+              ...limitedCollabs.map((c) => ({
                 id: c.gid ?? c.name,
                 label: c.name,
                 type: 'Artist',
               })),
             ],
-            edges: collabs.slice(0, 5).map((c) => ({
+            edges: limitedCollabs.map((c) => ({
               type: 'COLLABORATED_WITH',
               sourceId: seed.gid,
               sourceLabel: seed.name,
@@ -901,16 +952,19 @@ const PHASE_TO_KEY: Record<string, string> = {
 
 musicAgentsRouter.post('/music/run-agents-sse', async (req: Request, res: Response) => {
   try {
-    const { query, queryType, filters } = req.body as {
+    const { query, queryType, filters, traversal } = req.body as {
       query: string;
       queryType?: string;
       filters?: Record<string, string>;
+      traversal?: MusicGraphTraversalOptions;
     };
 
     if (!query) {
       res.status(400).json({ error: 'query is required' });
       return;
     }
+
+    const normalizedTraversal = normalizeTraversalOptions(traversal);
 
     // Set up SSE
     res.setHeader('Content-Type', 'text/event-stream');
@@ -941,7 +995,7 @@ musicAgentsRouter.post('/music/run-agents-sse', async (req: Request, res: Respon
         // ── PostgreSQL fast-path for graph-traversal and semantic-search ──
         if (agent.phase === 'graph-traversal' && isPgAvailable()) {
           const parsedQuery = (context.priorOutputs.parsedQuery as Record<string, unknown>) ?? {};
-          const pgData = await fetchGraphDataFromPg(parsedQuery);
+          const pgData = await fetchGraphDataFromPg(parsedQuery, normalizedTraversal);
           if (pgData) {
             agentInput = `[PostgreSQL graph fast-path]\nParsed query:\n${JSON.stringify(parsedQuery, null, 2)}`;
             reasoning = pgData.reasoning as string;

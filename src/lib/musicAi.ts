@@ -12,6 +12,7 @@ import type {
   MusicQueryResult,
   MusicRecommendation,
   MusicCatalogInsight,
+  MusicGraphTraversalOptions,
 } from '../types/music';
 
 // ---------------------------------------------------------------------------
@@ -108,6 +109,7 @@ export async function runMusicWorkflow(
   queryType: string,
   filters: Record<string, string | number | undefined>,
   onProgress: (step: MusicProgressStep) => void,
+  traversal?: MusicGraphTraversalOptions,
 ): Promise<MusicAgentOutputs> {
   // Initialize all phases as pending
   const PHASE_PENDING_MESSAGES: Record<string, string> = {
@@ -131,6 +133,7 @@ export async function runMusicWorkflow(
       query,
       queryType,
       filters,
+      traversal,
     },
     (event) => {
       if (event.type === 'agent-start' && event.phase) {

@@ -145,6 +145,43 @@ export interface MusicRelationshipPath {
 }
 
 // ---------------------------------------------------------------------------
+// Graph traversal options
+// ---------------------------------------------------------------------------
+
+/**
+ * User-configurable knobs that control how deep/wide the graph traversal
+ * agent walks the knowledge graph for a single query. All fields are
+ * optional — the backend applies defaults and clamps to safe ranges.
+ */
+export interface MusicGraphTraversalOptions {
+  /** Collaborator search depth via the AGE graph (COLLABORATED_WITH*1..N). */
+  maxHops?: number;
+  /** Max seed artists resolved per target entity name. */
+  maxArtistsPerEntity?: number;
+  /** Max recordings fetched per resolved artist. */
+  maxRecordingsPerArtist?: number;
+  /** Max releases fetched per resolved artist. */
+  maxReleasesPerArtist?: number;
+  /** Max collaborators returned per resolved seed artist. */
+  maxCollaborators?: number;
+  /** Max band-member relationships fetched per resolved artist. */
+  maxBandMembers?: number;
+}
+
+/**
+ * Default values for {@link MusicGraphTraversalOptions}. Kept in sync
+ * with the backend defaults in `server/src/routes/musicAgents.ts`.
+ */
+export const DEFAULT_MUSIC_TRAVERSAL_OPTIONS: Required<MusicGraphTraversalOptions> = {
+  maxHops: 2,
+  maxArtistsPerEntity: 3,
+  maxRecordingsPerArtist: 8,
+  maxReleasesPerArtist: 6,
+  maxCollaborators: 5,
+  maxBandMembers: 30,
+};
+
+// ---------------------------------------------------------------------------
 // Query & results
 // ---------------------------------------------------------------------------
 
