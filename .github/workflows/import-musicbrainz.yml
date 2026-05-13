@@ -31,7 +31,7 @@ permissions:
 env:
   BASE_URL: ${{ inputs.base_url || 'https://data.metabrainz.org/pub/musicbrainz/data/fullexport' }}
   AZURE_SECRETS_CONFIGURED: ${{ secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_SUBSCRIPTION_ID != '' && secrets.AZURE_RESOURCE_GROUP != '' }}
-  REQUIRED_AZURE_EXTENSIONS: 'age,vector'
+  REQUIRED_AZURE_EXTENSIONS: 'age,vector,pg_trgm,unaccent'
   REQUIRED_SHARED_PRELOAD_LIBRARIES: 'age'
 
 jobs:
@@ -990,6 +990,28 @@ jobs:
           source /tmp/psql_retry.sh
           psql_retry "${{ steps.pg.outputs.connstr }}" -c "DROP SCHEMA IF EXISTS mb_staging CASCADE;"
           echo "✅ Staging schema dropped"
+        env:
+          PGCONNECT_TIMEOUT: '30'
+
+      # ────────────────────────────────────────────────────────────────────────
+      # 12b. Build query-optimization indexes & refresh statistics
+      # ────────────────────────────────────────────────────────────────────────
+      # Adds the trigram / unaccent / popularity / link-table indexes used by
+      # pgClient.ts and refreshes planner statistics. Uses CREATE INDEX
+      # CONCURRENTLY so it doesn't lock the imported tables and can be re-run
+      # standalone against an existing database via the
+      # `Optimize MusicBrainz Indexes` workflow.
+      - name: Build query-optimization indexes and ANALYZE
+        run: |
+          source /tmp/psql_retry.sh
+          echo "🔧 Building optimization indexes — this can take a while on the larger tables…"
+          echo "   Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          # Run WITHOUT ON_ERROR_STOP so a single CONCURRENTLY conflict
+          # (e.g. deadlock with autovacuum) doesn't abort the whole script;
+          # subsequent runs will pick up any missing indexes.
+          psql_retry "${{ steps.pg.outputs.connstr }}" \
+            -f server/src/db/optimize_indexes.sql
+          echo "✅ Optimization indexes built at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
         env:
           PGCONNECT_TIMEOUT: '30'
 

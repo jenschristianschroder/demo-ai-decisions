@@ -1,0 +1,184 @@
+name: Optimize MusicBrainz Indexes
+
+# Adds (or rebuilds) the query-optimization indexes, extensions, helper
+# functions and statistics for the Music Intelligence Graph demo against an
+# ALREADY-POPULATED database — i.e. without re-importing the MusicBrainz
+# dump.
+#
+# The script `server/src/db/optimize_indexes.sql` is fully idempotent and
+# uses `CREATE INDEX CONCURRENTLY IF NOT EXISTS` so it can be run any number
+# of times on a live database.
+#
+# Required secrets (same as import-musicbrainz / deploy):
+#   PG_HOST  /  PG_DATABASE  /  PG_USER  /  PG_PASSWORD  /  PG_SSLMODE
+#   — or —
+#   PG_ADMIN_PASSWORD  (uses defaults: db=musicbrainz, user=pgadmin,
+#                       sslmode=require)
+#
+# If AZURE_* secrets are configured this workflow will also ensure that
+# `pg_trgm` and `unaccent` are in the Azure extension allow-list before
+# running the script.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AZURE_SECRETS_CONFIGURED: ${{ secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_SUBSCRIPTION_ID != '' && secrets.AZURE_RESOURCE_GROUP != '' }}
+  REQUIRED_AZURE_EXTENSIONS: 'age,vector,pg_trgm,unaccent'
+  REQUIRED_SHARED_PRELOAD_LIBRARIES: 'age'
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # ────────────────────────────────────────────────────────────────────────
+      # Resolve PostgreSQL connection (mirrors import-musicbrainz.yml)
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Resolve PostgreSQL connection settings
+        id: pg
+        run: |
+          RESOLVED_PGHOST="${{ secrets.PG_HOST }}"
+          RESOLVED_PGDATABASE="${{ secrets.PG_DATABASE }}"
+          if [ -z "$RESOLVED_PGDATABASE" ]; then
+            RESOLVED_PGDATABASE="musicbrainz"
+          fi
+          RESOLVED_PGUSER="${{ secrets.PG_USER }}"
+          if [ -z "$RESOLVED_PGUSER" ]; then
+            RESOLVED_PGUSER="pgadmin"
+          fi
+          RESOLVED_PGPASSWORD="${{ secrets.PG_PASSWORD }}"
+          if [ -z "$RESOLVED_PGPASSWORD" ]; then
+            RESOLVED_PGPASSWORD="${{ secrets.PG_ADMIN_PASSWORD }}"
+          fi
+          RESOLVED_PGSSLMODE="${{ secrets.PG_SSLMODE }}"
+          if [ -z "$RESOLVED_PGSSLMODE" ]; then
+            RESOLVED_PGSSLMODE="require"
+          fi
+          if [[ "$RESOLVED_PGHOST" == *.postgres.database.azure.com ]]; then
+            RESOLVED_PGSERVER="${RESOLVED_PGHOST%%.*}"
+          else
+            RESOLVED_PGSERVER="$RESOLVED_PGHOST"
+          fi
+
+          if [ -z "$RESOLVED_PGHOST" ]; then
+            echo "::error::PG_HOST secret is not set."
+            exit 1
+          fi
+          if [ -z "$RESOLVED_PGPASSWORD" ]; then
+            echo "::error::PG_PASSWORD (or PG_ADMIN_PASSWORD) secret is not set."
+            exit 1
+          fi
+
+          echo "::add-mask::$RESOLVED_PGPASSWORD"
+          CONNSTR="host=$RESOLVED_PGHOST dbname=$RESOLVED_PGDATABASE user=$RESOLVED_PGUSER password=$RESOLVED_PGPASSWORD sslmode=$RESOLVED_PGSSLMODE keepalives=1 keepalives_idle=30 keepalives_interval=10 keepalives_count=5 options='-c statement_timeout=0 -c idle_in_transaction_session_timeout=0'"
+          echo "connstr=$CONNSTR" >> "$GITHUB_OUTPUT"
+          echo "pgServer=$RESOLVED_PGSERVER" >> "$GITHUB_OUTPUT"
+
+          echo "✅ PostgreSQL: host=$RESOLVED_PGHOST db=$RESOLVED_PGDATABASE user=$RESOLVED_PGUSER"
+
+      # ────────────────────────────────────────────────────────────────────────
+      # Make sure the Azure extension allow-list includes pg_trgm and unaccent
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Azure Login (OIDC)
+        if: ${{ fromJSON(env.AZURE_SECRETS_CONFIGURED) }}
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Ensure PostgreSQL server is running
+        if: ${{ fromJSON(env.AZURE_SECRETS_CONFIGURED) }}
+        run: |
+          SERVER_STATE=$(az postgres flexible-server show \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ steps.pg.outputs.pgServer }}" \
+            --query "state" -o tsv 2>/dev/null || echo "Unknown")
+          echo "Current server state: $SERVER_STATE"
+          if [ "$SERVER_STATE" != "Ready" ]; then
+            echo "🔄 Starting PostgreSQL server…"
+            az postgres flexible-server start \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --name "${{ steps.pg.outputs.pgServer }}"
+            for i in $(seq 1 30); do
+              STATE=$(az postgres flexible-server show \
+                --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+                --name "${{ steps.pg.outputs.pgServer }}" \
+                --query "state" -o tsv 2>/dev/null || echo "Unknown")
+              if [ "$STATE" = "Ready" ]; then
+                echo "✅ Server is ready."
+                break
+              fi
+              echo "  …waiting (attempt $i/30, state: $STATE)"
+              sleep 10
+            done
+          fi
+
+      - name: Ensure pg_trgm + unaccent are in the Azure extension allow-list
+        if: ${{ fromJSON(env.AZURE_SECRETS_CONFIGURED) }}
+        run: |
+          CURRENT=$(az postgres flexible-server parameter show \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --server-name "${{ steps.pg.outputs.pgServer }}" \
+            --name azure.extensions \
+            --query "value" -o tsv 2>/dev/null || echo "")
+          NEEDS_UPDATE=0
+          for needed in age vector pg_trgm unaccent; do
+            if ! echo ",$CURRENT," | tr -d ' ' | grep -q ",$needed,"; then
+              NEEDS_UPDATE=1
+              break
+            fi
+          done
+          if [ "$NEEDS_UPDATE" = "1" ]; then
+            echo "🔧 Updating azure.extensions allow-list to: ${REQUIRED_AZURE_EXTENSIONS}"
+            az postgres flexible-server parameter set \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --server-name "${{ steps.pg.outputs.pgServer }}" \
+              --name azure.extensions \
+              --value "${REQUIRED_AZURE_EXTENSIONS}"
+          else
+            echo "✅ Allow-list already contains all required extensions"
+          fi
+
+      # ────────────────────────────────────────────────────────────────────────
+      # Run the optimize script
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Apply optimization indexes
+        run: |
+          echo "🔧 Applying optimization indexes — uses CREATE INDEX CONCURRENTLY"
+          echo "   Started at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          # Don't use ON_ERROR_STOP — a single CONCURRENTLY conflict should
+          # not abort the rest of the script. The script is idempotent so a
+          # subsequent run will pick up any missed indexes.
+          psql "${{ steps.pg.outputs.connstr }}" \
+            -f server/src/db/optimize_indexes.sql
+          echo "✅ Done at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        env:
+          PGCONNECT_TIMEOUT: '30'
+
+      # ────────────────────────────────────────────────────────────────────────
+      # Report any indexes left in INVALID state (rare, but easy to retry)
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Report invalid indexes
+        if: always()
+        run: |
+          echo "📋 Checking for INVALID indexes (a CONCURRENTLY build that didn't finish)…"
+          psql "${{ steps.pg.outputs.connstr }}" -c "
+            SELECT n.nspname AS schema, c.relname AS index
+            FROM pg_index i
+            JOIN pg_class c ON c.oid = i.indexrelid
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE NOT i.indisvalid
+              AND n.nspname = 'musicbrainz';"
+          echo "ℹ️  Any INVALID index above can be dropped and re-built by re-running this workflow."
+        env:
+          PGCONNECT_TIMEOUT: '30'
