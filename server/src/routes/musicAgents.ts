@@ -343,7 +343,13 @@ async function fetchGraphDataFromPg(
               // For a Group this surfaces band members; for a Person it
               // surfaces the bands they belong to. This is what was
               // previously missing for queries like "members of The Beatles".
-              findBandMembers(a.gid as string, 30).catch(() => [] as Awaited<ReturnType<typeof findBandMembers>>),
+              findBandMembers(a.gid as string, 30).catch((err) => {
+                console.error(
+                  `[Music Graph] findBandMembers failed for ${a.name} (${a.gid as string}):`,
+                  err,
+                );
+                return [] as Awaited<ReturnType<typeof findBandMembers>>;
+              }),
             ]);
 
             for (const rec of recordings) {
