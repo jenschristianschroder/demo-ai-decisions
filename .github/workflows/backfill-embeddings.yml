@@ -61,15 +61,28 @@ on:
         required: false
         type: boolean
         default: false
+      chain_run:
+        description: 'Internal: current chain index (do not set manually)'
+        required: false
+        default: '0'
+      max_chain_runs:
+        description: 'Max number of automatic continuation runs (safety cap)'
+        required: false
+        default: '50'
 
 permissions:
   id-token: write
   contents: read
+  # Needed so the job can re-dispatch itself via `gh workflow run` when
+  # the backfill is interrupted (timeout/cancel) or rows still remain.
+  actions: write
 
 jobs:
   backfill:
     runs-on: ubuntu-latest
-    timeout-minutes: 720
+    # GitHub-hosted job runs are capped at 6h (360m). Cap below that so
+    # the "continue if work remains" step has time to re-dispatch.
+    timeout-minutes: 340
 
     steps:
       - name: Checkout
@@ -206,9 +219,17 @@ jobs:
 
       # ────────────────────────────────────────────────────────────────────────
       # Run the backfill script
+      #
+      # The script is resumable: it queries `WHERE embedding IS NULL ORDER BY id`,
+      # so any re-run picks up where a previous run left off. We use
+      # `continue-on-error` so that if the job is interrupted (timeout, a
+      # transient error from Azure, etc.) the "continue if work remains"
+      # step below still runs and re-dispatches the workflow.
       # ────────────────────────────────────────────────────────────────────────
       - name: Run backfill
+        id: backfill
         working-directory: server
+        continue-on-error: true
         env:
           PGHOST: ${{ steps.pg.outputs.PGHOST }}
           PGDATABASE: ${{ steps.pg.outputs.PGDATABASE }}
@@ -232,3 +253,106 @@ jobs:
           fi
           echo "Running: npm run backfill:embeddings -- ${ARGS[*]}"
           npm run backfill:embeddings -- "${ARGS[@]}"
+
+      # ────────────────────────────────────────────────────────────────────────
+      # Continue if work remains
+      #
+      # The backfill is resumable but a single GitHub Actions job is capped
+      # at 6 hours, and large MusicBrainz tables (millions of artists /
+      # recordings) can easily exceed that. After the backfill step finishes
+      # (whether it succeeded, timed out, or errored), count how many rows
+      # still have NULL embeddings for the requested entity. If any remain
+      # and we haven't hit the chain cap, re-dispatch this workflow with
+      # the same inputs and an incremented `chain_run` counter.
+      #
+      # We always pass --min-id=0 to the next run so we don't miss any rows
+      # that became NULL since the previous run; the index makes the scan
+      # cheap and the script just picks up the next un-embedded id.
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Check remaining work and chain next run
+        if: ${{ always() && inputs.dry_run != true && !cancelled() }}
+        env:
+          PGHOST: ${{ steps.pg.outputs.PGHOST }}
+          PGDATABASE: ${{ steps.pg.outputs.PGDATABASE }}
+          PGUSER: ${{ steps.pg.outputs.PGUSER }}
+          PGPASSWORD: ${{ steps.pg.outputs.PGPASSWORD }}
+          PGSSLMODE: ${{ steps.pg.outputs.PGSSLMODE }}
+          GH_TOKEN: ${{ github.token }}
+          ENTITY: ${{ inputs.entity }}
+          CHAIN_RUN: ${{ inputs.chain_run }}
+          MAX_CHAIN_RUNS: ${{ inputs.max_chain_runs }}
+          BACKFILL_OUTCOME: ${{ steps.backfill.outcome }}
+        run: |
+          set -euo pipefail
+          echo "Backfill step outcome: $BACKFILL_OUTCOME"
+
+          # Install psql client (kept out of earlier steps so we don't slow
+          # down the happy path; apt is cached on the runner image).
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client >/dev/null
+          fi
+
+          # Build the list of tables to check based on --entity.
+          case "$ENTITY" in
+            artist)    TABLES=("artist") ;;
+            recording) TABLES=("recording") ;;
+            all)       TABLES=("artist" "recording") ;;
+            *)
+              echo "::error::Unknown entity: $ENTITY"
+              exit 1
+              ;;
+          esac
+
+          TOTAL_REMAINING=0
+          for t in "${TABLES[@]}"; do
+            REMAINING=$(PGPASSWORD="$PGPASSWORD" psql \
+              -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" \
+              -v ON_ERROR_STOP=1 -At \
+              -c "SELECT COUNT(*) FROM musicbrainz.$t WHERE embedding IS NULL;")
+            echo "musicbrainz.$t rows with NULL embedding: $REMAINING"
+            TOTAL_REMAINING=$((TOTAL_REMAINING + REMAINING))
+          done
+          echo "Total remaining: $TOTAL_REMAINING"
+
+          if [ "$TOTAL_REMAINING" -eq 0 ]; then
+            echo "✅ No remaining rows for entity=$ENTITY. Backfill is complete."
+            # Surface the original backfill exit code as the job result.
+            if [ "$BACKFILL_OUTCOME" != "success" ]; then
+              echo "::warning::Backfill step outcome was '$BACKFILL_OUTCOME' but no rows remain."
+            fi
+            exit 0
+          fi
+
+          NEXT_CHAIN=$((CHAIN_RUN + 1))
+          if [ "$NEXT_CHAIN" -gt "$MAX_CHAIN_RUNS" ]; then
+            echo "::error::Reached max_chain_runs=$MAX_CHAIN_RUNS with $TOTAL_REMAINING rows still pending. Stopping auto-continuation; re-run the workflow manually to keep going."
+            exit 1
+          fi
+
+          echo "Chaining next run ($NEXT_CHAIN / $MAX_CHAIN_RUNS) with $TOTAL_REMAINING rows still to embed."
+          # Re-dispatch this workflow with the same inputs. We deliberately
+          # reset --min-id to 0 so we never skip rows that became NULL since
+          # the previous run; the resumable query is index-driven and cheap.
+          GH_ARGS=(
+            "--ref" "${{ github.ref_name }}"
+            "-f" "entity=${{ inputs.entity }}"
+            "-f" "batch_size=${{ inputs.batch_size }}"
+            "-f" "concurrency=${{ inputs.concurrency }}"
+            "-f" "min_id=0"
+            "-f" "dry_run=false"
+            "-f" "chain_run=$NEXT_CHAIN"
+            "-f" "max_chain_runs=$MAX_CHAIN_RUNS"
+          )
+          if [ -n "${{ inputs.limit }}" ]; then
+            GH_ARGS+=("-f" "limit=${{ inputs.limit }}")
+          fi
+          gh workflow run "${{ github.workflow }}" "${GH_ARGS[@]}"
+          echo "✅ Dispatched continuation run."
+
+          # If the backfill step itself failed (vs. just ran out of time on
+          # a successful page-by-page run), surface that so the chained run
+          # is visibly recovering from an error.
+          if [ "$BACKFILL_OUTCOME" = "failure" ]; then
+            echo "::warning::Previous backfill step failed; continuation run dispatched to retry remaining rows."
+          fi
