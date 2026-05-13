@@ -2,7 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { runMusicWorkflow } from '../lib/musicAi';
 import { SAMPLE_QUERIES, setMusicData, resetMusicData } from '../data/mockMusicData';
-import type { MusicProgressStep, DataSourceInfo, TableCounts } from '../types/music';
+import type {
+  MusicProgressStep,
+  DataSourceInfo,
+  TableCounts,
+  MusicGraphTraversalOptions,
+} from '../types/music';
+import { DEFAULT_MUSIC_TRAVERSAL_OPTIONS } from '../types/music';
 import './MusicLandingScreen.css';
 
 /** Format large numbers with locale-aware separators (e.g. 1,234,567). */
@@ -11,6 +17,62 @@ const fmt = (n: number) => n.toLocaleString();
 /** Convert a snake_case table name to a readable label. */
 const tableLabel = (name: string) =>
   name.replace(/^l_/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+/**
+ * UI metadata for the configurable graph-traversal knobs. The min/max
+ * bounds here mirror the clamps applied server-side in
+ * `server/src/routes/musicAgents.ts::normalizeTraversalOptions`.
+ */
+const TRAVERSAL_FIELDS: {
+  key: keyof Required<MusicGraphTraversalOptions>;
+  label: string;
+  help: string;
+  min: number;
+  max: number;
+}[] = [
+  {
+    key: 'maxHops',
+    label: 'Max hops',
+    help: 'Depth of collaborator traversal in the graph (1–3).',
+    min: 1,
+    max: 3,
+  },
+  {
+    key: 'maxArtistsPerEntity',
+    label: 'Artists per entity',
+    help: 'How many candidate artists to resolve per name in the query.',
+    min: 1,
+    max: 10,
+  },
+  {
+    key: 'maxRecordingsPerArtist',
+    label: 'Recordings per artist',
+    help: 'Max recordings fetched for each resolved artist.',
+    min: 0,
+    max: 50,
+  },
+  {
+    key: 'maxReleasesPerArtist',
+    label: 'Releases per artist',
+    help: 'Max releases fetched for each resolved artist.',
+    min: 0,
+    max: 50,
+  },
+  {
+    key: 'maxCollaborators',
+    label: 'Collaborators per seed',
+    help: 'Max collaborators returned per seed artist.',
+    min: 0,
+    max: 25,
+  },
+  {
+    key: 'maxBandMembers',
+    label: 'Band members per artist',
+    help: 'Max band-member relationships per resolved artist.',
+    min: 0,
+    max: 100,
+  },
+];
 
 const MusicLandingScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -22,6 +84,10 @@ const MusicLandingScreen: React.FC = () => {
   const [progressSteps, setProgressSteps] = useState<MusicProgressStep[]>([]);
   const [dataSource, setDataSource] = useState<DataSourceInfo | null>(null);
   const [tableCounts, setTableCounts] = useState<TableCounts | null>(null);
+  const [traversal, setTraversal] = useState<Required<MusicGraphTraversalOptions>>({
+    ...DEFAULT_MUSIC_TRAVERSAL_OPTIONS,
+  });
+  const [traversalOpen, setTraversalOpen] = useState(false);
 
   useEffect(() => {
     console.log('[MusicLanding] Fetching data source status...');
@@ -77,6 +143,7 @@ const MusicLandingScreen: React.FC = () => {
           }
           setProgressSteps([...collectedSteps]);
         },
+        traversal,
       );
 
       setMusicData({
@@ -112,6 +179,7 @@ const MusicLandingScreen: React.FC = () => {
     setSuccessMsg('');
     setErrorMsg('');
     setProgressSteps([]);
+    setTraversal({ ...DEFAULT_MUSIC_TRAVERSAL_OPTIONS });
   };
 
   return (
@@ -291,6 +359,65 @@ const MusicLandingScreen: React.FC = () => {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
+
+          <div className="music-landing-traversal">
+            <button
+              type="button"
+              className="music-landing-traversal-toggle"
+              onClick={() => setTraversalOpen((v) => !v)}
+              aria-expanded={traversalOpen}
+            >
+              <span className="music-landing-traversal-caret">
+                {traversalOpen ? '\u25BE' : '\u25B8'}
+              </span>
+              Graph traversal settings
+              <span className="music-landing-traversal-summary">
+                hops {traversal.maxHops} &middot; artists {traversal.maxArtistsPerEntity} &middot;
+                {' '}recordings {traversal.maxRecordingsPerArtist} &middot; releases {traversal.maxReleasesPerArtist}
+              </span>
+            </button>
+            {traversalOpen && (
+              <div className="music-landing-traversal-panel">
+                <p className="music-landing-traversal-hint">
+                  Tune how deep and wide the graph traversal walks the knowledge graph. Higher values surface more relationships but take longer to run.
+                </p>
+                <div className="music-landing-traversal-grid">
+                  {TRAVERSAL_FIELDS.map((f) => (
+                    <label key={f.key} className="music-landing-traversal-field">
+                      <span className="music-landing-traversal-label">{f.label}</span>
+                      <input
+                        type="number"
+                        className="music-landing-traversal-input"
+                        min={f.min}
+                        max={f.max}
+                        step={1}
+                        value={traversal[f.key]}
+                        onChange={(e) => {
+                          const raw = parseInt(e.target.value, 10);
+                          const next = Number.isFinite(raw)
+                            ? Math.min(Math.max(raw, f.min), f.max)
+                            : DEFAULT_MUSIC_TRAVERSAL_OPTIONS[f.key];
+                          setTraversal((prev) => ({ ...prev, [f.key]: next }));
+                        }}
+                        disabled={generating}
+                      />
+                      <span className="music-landing-traversal-help">{f.help}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="music-landing-traversal-actions">
+                  <button
+                    type="button"
+                    className="music-landing-traversal-reset"
+                    onClick={() => setTraversal({ ...DEFAULT_MUSIC_TRAVERSAL_OPTIONS })}
+                    disabled={generating}
+                  >
+                    Reset to defaults
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="music-landing-generate-actions">
             <button
