@@ -342,6 +342,65 @@
   line-height: 1.4;
 }
 
+.music-at-empty {
+  font-size: 13px;
+  color: #666666;
+  background: #f9fafb;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 16px 20px;
+}
+
+.music-at-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.music-at-detail {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.music-at-detail-summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1d4ed8;
+  user-select: none;
+  outline: none;
+}
+
+.music-at-detail-summary:hover {
+  color: #1e40af;
+}
+
+.music-at-detail-body {
+  margin: 8px 0 4px;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #111111;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.music-at-detail-body--prose {
+  font-family: inherit;
+  font-style: italic;
+  color: #333333;
+  white-space: pre-wrap;
+}
+
 /* ==========================================================================
    Query Results (music-qr-)
    ========================================================================== */

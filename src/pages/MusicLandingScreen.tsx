@@ -61,20 +61,21 @@ const MusicLandingScreen: React.FC = () => {
     setErrorMsg('');
     setProgressSteps([]);
     try {
+      // Local accumulator – React state closures would be stale by the time
+      // we persist the scenario, so we keep our own list in sync with setProgressSteps.
+      const collectedSteps: MusicProgressStep[] = [];
       const outputs = await runMusicWorkflow(
         query,
         selectedQueryType,
         {},
         (step) => {
-          setProgressSteps(prev => {
-            const updated = [...prev];
-            const idx = updated.findIndex(s => s.phase === step.phase);
-            if (idx >= 0) {
-              updated[idx] = step;
-              return updated;
-            }
-            return [...updated, step];
-          });
+          const idx = collectedSteps.findIndex(s => s.phase === step.phase);
+          if (idx >= 0) {
+            collectedSteps[idx] = step;
+          } else {
+            collectedSteps.push(step);
+          }
+          setProgressSteps([...collectedSteps]);
         },
       );
 
@@ -88,7 +89,7 @@ const MusicLandingScreen: React.FC = () => {
             queryType: selectedQueryType as import('../types/music').MusicQuery['queryType'],
           },
           agentOutputs: outputs,
-          progressSteps: [],
+          progressSteps: collectedSteps,
         },
       });
       setSuccessMsg('Music graph query completed successfully');

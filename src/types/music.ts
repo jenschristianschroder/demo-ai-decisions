@@ -37,6 +37,10 @@ export interface MusicProgressStep {
   status: 'pending' | 'running' | 'done' | 'error';
   message: string;
   reasoning?: string;
+  /** The prompt/content sent to the agent (LLM user message or data-source description) */
+  input?: string;
+  /** The structured output produced by the agent */
+  output?: unknown;
 }
 
 // ---------------------------------------------------------------------------

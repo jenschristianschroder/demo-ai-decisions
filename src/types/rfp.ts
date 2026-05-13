@@ -22,6 +22,10 @@ export interface RfpProgressStep {
   status: 'pending' | 'running' | 'done' | 'error';
   message: string;
   reasoning?: string;
+  /** The prompt/content sent to the agent (LLM user message) */
+  input?: string;
+  /** The structured output produced by the agent */
+  output?: unknown;
 }
 
 // ---------------------------------------------------------------------------

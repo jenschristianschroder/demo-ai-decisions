@@ -33,19 +33,20 @@ const RfpLandingScreen: React.FC = () => {
 
       const demoData = await loadRfpDemoData();
 
+      // Local accumulator – React state closures would be stale by the time
+      // we persist the scenario, so we keep our own list in sync with setProgressSteps.
+      const collectedSteps: RfpProgressStep[] = [];
       const outputs = await runRfpWorkflow(
         rfpFile.extractedText,
         demoData,
         (step) => {
-          setProgressSteps(prev => {
-            const updated = [...prev];
-            const idx = updated.findIndex(s => s.phase === step.phase);
-            if (idx >= 0) {
-              updated[idx] = step;
-              return updated;
-            }
-            return [...updated, step];
-          });
+          const idx = collectedSteps.findIndex(s => s.phase === step.phase);
+          if (idx >= 0) {
+            collectedSteps[idx] = step;
+          } else {
+            collectedSteps.push(step);
+          }
+          setProgressSteps([...collectedSteps]);
         },
       );
 
@@ -56,7 +57,7 @@ const RfpLandingScreen: React.FC = () => {
           description: 'RFP response for Acme Public Services enterprise analytics and reporting platform procurement.',
           files,
           agentOutputs: outputs,
-          progressSteps: [],
+          progressSteps: collectedSteps,
         },
       });
       setSuccessMsg('RFP analysis completed successfully');
