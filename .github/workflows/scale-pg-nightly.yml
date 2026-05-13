@@ -34,9 +34,43 @@ jobs:
 
       - name: Scale PostgreSQL to Burstable B1ms
         run: |
-          az postgres flexible-server update \
-            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-            --name "${{ steps.pg.outputs.pgServer }}" \
-            --sku-name Standard_B1ms \
-            --tier Burstable \
-            --yes
+          set -u
+          # Target compute matches the Azure portal scale page:
+          #   Compute tier: Burstable (1-20 vCores)
+          #   Compute size: Standard_B1ms (1 vCore, 2 GiB memory, 640 max iops)
+          TARGET_TIER="Burstable"
+          TARGET_SKU="Standard_B1ms"
+
+          MAX_ATTEMPTS=6
+          SLEEP_SECONDS=120
+          attempt=1
+          while true ; do
+            echo "Attempt $attempt/$MAX_ATTEMPTS: scaling ${{ steps.pg.outputs.pgServer }} to $TARGET_TIER / $TARGET_SKU"
+            set +e
+            output=$(az postgres flexible-server update \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --name "${{ steps.pg.outputs.pgServer }}" \
+              --sku-name "$TARGET_SKU" \
+              --tier "$TARGET_TIER" \
+              --yes 2>&1)
+            status=$?
+            set -e
+            echo "$output"
+            if [[ $status -eq 0 ]]; then
+              echo "Scale succeeded."
+              exit 0
+            fi
+            # Retry on transient Azure capacity errors; fail fast otherwise.
+            if echo "$output" | grep -q "CapacityNotAvailable"; then
+              if [[ $attempt -ge $MAX_ATTEMPTS ]]; then
+                echo "Capacity still unavailable after $MAX_ATTEMPTS attempts; giving up."
+                exit 1
+              fi
+              echo "Capacity not available; sleeping ${SLEEP_SECONDS}s before retrying..."
+              sleep "$SLEEP_SECONDS"
+              attempt=$((attempt + 1))
+              continue
+            fi
+            echo "Non-retryable error from az CLI; failing."
+            exit $status
+          done
