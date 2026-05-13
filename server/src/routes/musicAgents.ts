@@ -655,10 +655,20 @@ async function fetchSemanticDataFromPg(
     const similar = await pgQuery<{
       gid: string;
       name: string;
+      type: string | null;
+      area: string | null;
       similarity: string | number;
     }>(
-      `SELECT gid, name, similarity
-         FROM musicbrainz.search_similar_artists($1::vector, $2)`,
+      `SELECT a.gid, a.name,
+              at.name AS type,
+              ar.name AS area,
+              1 - (a.embedding <=> $1::vector) AS similarity
+         FROM musicbrainz.artist a
+         LEFT JOIN musicbrainz.artist_type at ON at.id = a.type
+         LEFT JOIN musicbrainz.area ar ON ar.id = a.area
+         WHERE a.embedding IS NOT NULL
+         ORDER BY a.embedding <=> $1::vector
+         LIMIT $2`,
       [toPgVector(queryEmbedding), 20],
     );
 
@@ -670,7 +680,8 @@ async function fetchSemanticDataFromPg(
       additionalArtists.push({
         id: row.gid,
         name: row.name,
-        type: 'Group',
+        type: row.type ?? 'Artist',
+        area: row.area,
         genres: [],
         similarityScore: Math.max(0, Math.min(1, Number(row.similarity))),
       });

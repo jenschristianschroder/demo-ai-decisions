@@ -41,6 +41,18 @@ const { Pool } = pg;
 
 type Entity = 'artist' | 'recording';
 
+// Hard allowlist of table names that may be interpolated into SQL. Even
+// though the `Entity` type narrows callers at compile time, this explicit
+// runtime check is defence-in-depth so a future caller / refactor cannot
+// accidentally splice an attacker-controlled string into raw SQL.
+const ENTITY_TABLES: ReadonlySet<Entity> = new Set(['artist', 'recording']);
+
+function assertEntityTable(name: string): asserts name is Entity {
+  if (!ENTITY_TABLES.has(name as Entity)) {
+    throw new Error(`Refusing to use non-allowlisted entity table name: ${name}`);
+  }
+}
+
 interface Options {
   entities: Entity[];
   batchSize: number;
@@ -292,7 +304,9 @@ async function writeEmbeddings(
     ids.push(r.id);
     vecs.push(toPgVector(r.embedding));
   }
-  // `table` is a hard-coded literal from the Entity union; not user input.
+  // `table` is a hard-coded literal from the Entity union; the assertion
+  // is defence-in-depth against future callers passing arbitrary strings.
+  assertEntityTable(table);
   await pool.query(
     `UPDATE musicbrainz.${table} AS t
         SET embedding = v.embedding::vector
@@ -322,8 +336,10 @@ async function processEntity(
 ): Promise<void> {
   console.log(`\n=== Backfilling embeddings for musicbrainz.${entity} ===`);
 
+  // Defence-in-depth: validate the entity name before interpolating into SQL.
+  assertEntityTable(entity);
+
   // Count remaining rows (cheap estimate is fine; this is just for logging).
-  // `entity` is constrained to 'artist' | 'recording' by the type system.
   const { rows: countRows } = await pool.query<{ remaining: string }>(
     `SELECT COUNT(*)::text AS remaining
        FROM musicbrainz.${entity}
@@ -431,8 +447,17 @@ async function processBatch(
 
   try {
     const vectors = await embedBatch(textsToEmbed);
+    if (vectors.length !== idsToEmbed.length) {
+      throw new Error(
+        `embedBatch returned ${vectors.length} vectors for ${idsToEmbed.length} inputs`,
+      );
+    }
     for (let i = 0; i < idsToEmbed.length; i += 1) {
-      result.embedded.push({ id: idsToEmbed[i], embedding: vectors[i] });
+      const vec = vectors[i];
+      if (!vec) {
+        throw new Error(`embedBatch returned a missing vector at index ${i}`);
+      }
+      result.embedded.push({ id: idsToEmbed[i], embedding: vec });
     }
   } catch (err) {
     console.error(`  ✗ embeddings batch failed (${idsToEmbed.length} rows):`, err);
@@ -473,6 +498,7 @@ async function main(): Promise<void> {
     if (!opts.dryRun && stats.embedded > 0) {
       console.log('\nRunning ANALYZE on updated tables…');
       for (const entity of opts.entities) {
+        assertEntityTable(entity);
         await pool.query(`ANALYZE musicbrainz.${entity}`);
       }
     }

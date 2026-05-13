@@ -104,8 +104,11 @@ export async function embedBatch(inputs: string[]): Promise<number[][]> {
 
 /** Convenience helper for single-input embeddings. */
 export async function embedOne(input: string): Promise<number[]> {
-  const [vec] = await embedBatch([input]);
-  return vec;
+  const vectors = await embedBatch([input]);
+  if (vectors.length === 0 || !vectors[0]) {
+    throw new Error('Azure OpenAI embeddings returned no vector for single input.');
+  }
+  return vectors[0];
 }
 
 /**
