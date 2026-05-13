@@ -217,6 +217,10 @@ export async function getArtistRecordings(artistGid: string, limit = 20) {
      FROM credits c
      JOIN musicbrainz.recording r ON r.artist_credit = c.artist_credit
      JOIN musicbrainz.artist_credit ac ON ac.id = r.artist_credit
+     -- Exclude multi-artist credits ("Various Artists", split singles,
+     -- featured-guest collaborations). Those are legitimate recordings,
+     -- but they shouldn't drown out the artist's primary discography
+     -- in a top-N list.
      WHERE ac.artist_count = 1
      ORDER BY r.gid, r.name
      LIMIT $2`,
@@ -320,6 +324,27 @@ export async function getArtistReleases(artistGid: string, limit = 20) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Strict UUID validator used to sanitise inputs that are interpolated into
+ * Cypher query strings.
+ *
+ * Apache AGE's `cypher()` SQL wrapper takes the Cypher source as a single
+ * string literal and does NOT support bind parameters inside Cypher
+ * expressions. Interpolation is therefore unavoidable, so any value we
+ * splice into a Cypher literal MUST first be validated against a tight
+ * character set. A canonical lower/upper-case hex UUID contains only
+ * `0-9a-fA-F-` and cannot contain a closing quote or any Cypher syntax,
+ * so once it passes this regex it is safe to interpolate inside single
+ * quotes.
+ */
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function assertUuid(value: string, label: string): void {
+  if (!UUID_REGEX.test(value)) {
+    throw new Error(`Invalid ${label}: ${value}`);
+  }
+}
+
+/**
  * Find collaborators via the AGE graph.
  *
  * Matches the seed artist by `gid` (stable UUID) rather than free-text
@@ -327,10 +352,7 @@ export async function getArtistReleases(artistGid: string, limit = 20) {
  * MusicBrainz entries).
  */
 export async function findCollaborators(artistGid: string, maxHops = 2) {
-  // gid is a UUID — validate strictly to avoid Cypher injection.
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(artistGid)) {
-    throw new Error(`Invalid artist gid: ${artistGid}`);
-  }
+  assertUuid(artistGid, 'artist gid');
   const safeMaxHops = Math.min(Math.max(1, maxHops), 3);
   return cypherQuery(`
     MATCH (a:Artist {gid: '${artistGid}'})
@@ -437,10 +459,8 @@ export async function findBandMembers(artistGid: string, limit = 50): Promise<Ba
  * matcher.
  */
 export async function findPaths(artistGid1: string, artistGid2: string, maxHops = 4) {
-  const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!uuidRe.test(artistGid1) || !uuidRe.test(artistGid2)) {
-    throw new Error('findPaths requires UUID gids for both endpoints');
-  }
+  assertUuid(artistGid1, 'artist gid (endpoint 1)');
+  assertUuid(artistGid2, 'artist gid (endpoint 2)');
   const safeMaxHops = Math.min(Math.max(1, maxHops), 4);
   return cypherQuery(`
     MATCH path = (a:Artist {gid: '${artistGid1}'})-[*1..${safeMaxHops}]-(b:Artist {gid: '${artistGid2}'})
