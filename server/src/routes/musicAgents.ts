@@ -21,6 +21,7 @@ import {
   getArtistReleases,
   getAreaLabels,
   findCollaborators,
+  findBandMembers,
   query as pgQuery,
   cypherQuery,
 } from '../db/pgClient.js';
@@ -304,74 +305,157 @@ async function fetchGraphDataFromPg(
     const allReleases: Record<string, unknown>[] = [];
     const allLabels: Record<string, unknown>[] = [];
     const relationshipPaths: Record<string, unknown>[] = [];
+    // Track artists already added so member lookups don't insert duplicates
+    const seenArtistGids = new Set<string>();
 
-    for (const entity of targetEntities) {
-      // Search artists matching this entity name
-      const artists = await searchArtists(entity, 10);
-      for (const a of artists) {
-        allArtists.push({
-          id: a.gid,
-          name: a.name,
-          type: a.type ?? 'Group',
-          area: a.area,
-          genres: [],
-          description: a.comment ?? '',
-        });
+    // Process target entities in parallel — each entity drives an independent
+    // sub-pipeline (search → recordings/releases/members), so there is no
+    // benefit to running them sequentially and it dominates wall-clock time
+    // for popular artists.
+    await Promise.all(
+      targetEntities.map(async (entity) => {
+        // Search artists matching this entity name. searchArtists returns
+        // exact (case-insensitive) matches first; for a query like
+        // "List members of The Beatles" only the canonical artist is
+        // typically of interest, so we restrict the per-entity sub-pipeline
+        // to the top match (plus a couple of close fuzzy matches).
+        const artists = await searchArtists(entity, 3);
 
-        // Fetch recordings and releases for each artist
-        const recordings = await getArtistRecordings(a.gid as string, 8);
-        for (const rec of recordings) {
-          allRecordings.push({
-            id: rec.gid,
-            title: rec.name,
-            artistCredits: [rec.artist_credit_name],
-            duration: rec.length,
-          });
-        }
+        await Promise.all(
+          artists.map(async (a) => {
+            if (seenArtistGids.has(a.gid as string)) return;
+            seenArtistGids.add(a.gid as string);
 
-        const releases = await getArtistReleases(a.gid as string, 6);
-        for (const rel of releases) {
-          allReleases.push({
-            id: rel.gid,
-            title: rel.name,
-            type: mapReleaseType(rel.type as number),
-            date: rel.date_year ? `${rel.date_year}` : undefined,
-            label: rel.label_name,
-            country: rel.country_name,
-            artistCredits: [rel.artist_credit_name],
-          });
-        }
-      }
-    }
+            allArtists.push({
+              id: a.gid,
+              name: a.name,
+              type: a.type ?? 'Group',
+              area: a.area,
+              genres: [],
+              description: a.comment ?? '',
+            });
 
-    // Try to find collaborators via AGE graph
-    for (const entity of targetEntities) {
-      try {
-        const collabs = await findCollaborators(entity, 2);
-        if (collabs.length > 0) {
-          relationshipPaths.push({
-            nodes: [
-              { id: entity, label: entity, type: 'Artist' },
-              ...collabs.slice(0, 5).map((c) => ({
-                id: c.gid ?? c.name,
-                label: c.name,
-                type: 'Artist',
+            // Run the per-artist sub-queries in parallel.
+            const [recordings, releases, members] = await Promise.all([
+              getArtistRecordings(a.gid as string, 8),
+              getArtistReleases(a.gid as string, 6),
+              // Always look up artist↔artist member-of relationships.
+              // For a Group this surfaces band members; for a Person it
+              // surfaces the bands they belong to. This is what was
+              // previously missing for queries like "members of The Beatles".
+              findBandMembers(a.gid as string, 30).catch((err) => {
+                console.error(
+                  `[Music Graph] findBandMembers failed for ${a.name} (${a.gid as string}):`,
+                  err,
+                );
+                return [] as Awaited<ReturnType<typeof findBandMembers>>;
+              }),
+            ]);
+
+            for (const rec of recordings) {
+              allRecordings.push({
+                id: rec.gid,
+                title: rec.name,
+                artistCredits: [rec.artist_credit_name],
+                duration: rec.length,
+              });
+            }
+
+            for (const rel of releases) {
+              allReleases.push({
+                id: rel.gid,
+                title: rel.name,
+                type: mapReleaseType(rel.type as number),
+                date: rel.date_year ? `${rel.date_year}` : undefined,
+                label: rel.label_name,
+                country: rel.country_name,
+                artistCredits: [rel.artist_credit_name],
+              });
+            }
+
+            // Add member-of edges. For a Group, edges go member -> group;
+            // for a Person, edges go person -> band.
+            if (members.length > 0) {
+              const memberNodes: Record<string, unknown>[] = [
+                { id: a.gid, label: a.name, type: 'Artist' },
+              ];
+              const memberEdges: Record<string, unknown>[] = [];
+
+              for (const m of members) {
+                if (!seenArtistGids.has(m.gid)) {
+                  seenArtistGids.add(m.gid);
+                  allArtists.push({
+                    id: m.gid,
+                    name: m.name,
+                    type: m.type ?? 'Person',
+                    area: m.area,
+                    genres: [],
+                    description: '',
+                  });
+                }
+                memberNodes.push({ id: m.gid, label: m.name, type: 'Artist' });
+                if (m.direction === 'member_of') {
+                  // m is the member, a is the group
+                  memberEdges.push({
+                    type: m.link_name,
+                    sourceId: m.gid,
+                    sourceLabel: m.name,
+                    targetId: a.gid,
+                    targetLabel: a.name,
+                  });
+                } else {
+                  // a is the member, m is the group
+                  memberEdges.push({
+                    type: m.link_name,
+                    sourceId: a.gid,
+                    sourceLabel: a.name,
+                    targetId: m.gid,
+                    targetLabel: m.name,
+                  });
+                }
+              }
+
+              relationshipPaths.push({
+                nodes: memberNodes,
+                edges: memberEdges,
+                description: `Band membership relationships for ${a.name}`,
+              });
+            }
+          }),
+        );
+      }),
+    );
+
+    // Try to find collaborators via AGE graph (parallel across entities).
+    await Promise.all(
+      targetEntities.map(async (entity) => {
+        try {
+          const collabs = await findCollaborators(entity, 2);
+          if (collabs.length > 0) {
+            relationshipPaths.push({
+              nodes: [
+                { id: entity, label: entity, type: 'Artist' },
+                ...collabs.slice(0, 5).map((c) => ({
+                  id: c.gid ?? c.name,
+                  label: c.name,
+                  type: 'Artist',
+                })),
+              ],
+              edges: collabs.slice(0, 5).map((c) => ({
+                type: 'COLLABORATED_WITH',
+                sourceId: entity,
+                sourceLabel: entity,
+                targetId: c.gid ?? c.name,
+                targetLabel: c.name,
               })),
-            ],
-            edges: collabs.slice(0, 5).map((c) => ({
-              type: 'COLLABORATED_WITH',
-              sourceId: entity,
-              sourceLabel: entity,
-              targetId: c.gid ?? c.name,
-              targetLabel: c.name,
-            })),
-            description: `Collaboration network from ${entity}`,
-          });
+              description: `Collaboration network from ${entity}`,
+            });
+          }
+        } catch {
+          // AGE graph might not be populated yet — continue
         }
-      } catch {
-        // AGE graph might not be populated yet — continue
-      }
-    }
+      }),
+    );
 
     // Fetch labels if any area filters are present
     const filters = parsedQuery.filters as Record<string, string> | undefined;

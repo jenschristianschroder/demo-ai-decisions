@@ -121,18 +121,24 @@ export async function cypherQuery(
 // MusicBrainz-specific queries
 // ---------------------------------------------------------------------------
 
-/** Search artists by name (fuzzy ILIKE) */
+/**
+ * Search artists by name. Prefers exact (case-insensitive) match first
+ * — this both improves relevance ("The Beatles" should not be drowned out
+ * by tribute bands) and avoids the planner doing a leading-wildcard scan
+ * when an exact hit exists.
+ */
 export async function searchArtists(namePart: string, limit = 20) {
   return query(
     `SELECT a.gid, a.name, at.name AS type, ar.name AS area,
-            a.begin_date_year, a.end_date_year, a.comment
+            a.begin_date_year, a.end_date_year, a.comment,
+            CASE WHEN LOWER(a.name) = LOWER($1) THEN 0 ELSE 1 END AS rank
      FROM musicbrainz.artist a
      LEFT JOIN musicbrainz.artist_type at ON at.id = a.type
      LEFT JOIN musicbrainz.area ar ON ar.id = a.area
-     WHERE a.name ILIKE $1
-     ORDER BY a.name
-     LIMIT $2`,
-    [`%${namePart}%`, limit],
+     WHERE LOWER(a.name) = LOWER($1) OR a.name ILIKE $2
+     ORDER BY rank, a.name
+     LIMIT $3`,
+    [namePart, `%${namePart}%`, limit],
   );
 }
 
@@ -149,32 +155,53 @@ export async function getArtistGenres(artistId: number) {
   );
 }
 
-/** Get recordings for an artist via artist_credit */
+/**
+ * Get recordings for an artist via artist_credit.
+ *
+ * Uses a CTE to first resolve the artist's set of artist_credit ids, then
+ * joins those against `recording`. This pushes the artist filter down so
+ * the planner can use the index on `artist_credit_name.artist` instead of
+ * scanning recording → artist_credit → artist_credit_name → artist for
+ * popular artists (which is very expensive for e.g. The Beatles).
+ */
 export async function getArtistRecordings(artistGid: string, limit = 20) {
   return query(
-    `SELECT r.gid, r.name, r.length,
+    `WITH credits AS (
+       SELECT DISTINCT acn.artist_credit
+       FROM musicbrainz.artist_credit_name acn
+       JOIN musicbrainz.artist a ON a.id = acn.artist
+       WHERE a.gid = $1
+     )
+     SELECT r.gid, r.name, r.length,
             ac.name AS artist_credit_name
-     FROM musicbrainz.recording r
+     FROM credits c
+     JOIN musicbrainz.recording r ON r.artist_credit = c.artist_credit
      JOIN musicbrainz.artist_credit ac ON ac.id = r.artist_credit
-     JOIN musicbrainz.artist_credit_name acn ON acn.artist_credit = ac.id
-     JOIN musicbrainz.artist a ON a.id = acn.artist
-     WHERE a.gid = $1
      ORDER BY r.name
      LIMIT $2`,
     [artistGid, limit],
   );
 }
 
-/** Get releases for an artist */
+/**
+ * Get releases for an artist.
+ *
+ * Same CTE optimisation as `getArtistRecordings`.
+ */
 export async function getArtistReleases(artistGid: string, limit = 20) {
   return query(
-    `SELECT rel.gid, rel.name, rg.type, rc.date_year, rc.date_month,
+    `WITH credits AS (
+       SELECT DISTINCT acn.artist_credit
+       FROM musicbrainz.artist_credit_name acn
+       JOIN musicbrainz.artist a ON a.id = acn.artist
+       WHERE a.gid = $1
+     )
+     SELECT rel.gid, rel.name, rg.type, rc.date_year, rc.date_month,
             l.name AS label_name, ar.name AS country_name,
             ac.name AS artist_credit_name
-     FROM musicbrainz.release rel
+     FROM credits c
+     JOIN musicbrainz.release rel ON rel.artist_credit = c.artist_credit
      JOIN musicbrainz.artist_credit ac ON ac.id = rel.artist_credit
-     JOIN musicbrainz.artist_credit_name acn ON acn.artist_credit = ac.id
-     JOIN musicbrainz.artist a ON a.id = acn.artist
      LEFT JOIN musicbrainz.release_group rg ON rg.id = rel.release_group
      LEFT JOIN LATERAL (
        SELECT country, date_year, date_month, date_day
@@ -191,7 +218,6 @@ export async function getArtistReleases(artistGid: string, limit = 20) {
      ) rl ON true
      LEFT JOIN musicbrainz.label l ON l.id = rl.label
      LEFT JOIN musicbrainz.area ar ON ar.id = rc.country
-     WHERE a.gid = $1
      ORDER BY rc.date_year DESC NULLS LAST
      LIMIT $2`,
     [artistGid, limit],
@@ -220,6 +246,82 @@ export async function findCollaborators(artistName: string, maxHops = 2) {
     RETURN DISTINCT b.name AS name, b.gid AS gid
     LIMIT 20
   `);
+}
+
+/**
+ * Member of a band, as returned by `findBandMembers`.
+ *
+ * `direction` is `member_of` when the matched artist is a member of the
+ * looked-up group (the typical case for "List members of The Beatles"),
+ * and `band_of` when the looked-up artist is itself a person and the
+ * row represents a band they are a member of.
+ */
+export interface BandMember {
+  gid: string;
+  name: string;
+  type: string | null;
+  area: string | null;
+  link_name: string;
+  begin_year: number | null;
+  end_year: number | null;
+  direction: 'member_of' | 'band_of';
+}
+
+/**
+ * Find members of a band (or bands an artist belongs to) via the
+ * MusicBrainz `l_artist_artist` relationship table.
+ *
+ * Uses `link_type.name` to match the "member of band" family of
+ * relationships (which also covers things like "founder", "subgroup of"
+ * — link types whose name starts with "member" cover the membership
+ * variants used by MusicBrainz). See
+ * https://musicbrainz.org/relationships/artist-artist for the full list.
+ *
+ * Convention in `l_artist_artist` for "member of band":
+ *   entity0 = the person (member)
+ *   entity1 = the group (band)
+ */
+export async function findBandMembers(artistGid: string, limit = 50): Promise<BandMember[]> {
+  return query<BandMember>(
+    `WITH target AS (
+       SELECT id, type FROM musicbrainz.artist WHERE gid = $1
+     )
+     -- Members of the target group (target is entity1 = band)
+     SELECT a.gid, a.name, at.name AS type, ar.name AS area,
+            lt.name AS link_name,
+            lk.begin_date_year AS begin_year,
+            lk.end_date_year   AS end_year,
+            'member_of'::text  AS direction
+     FROM target t
+     JOIN musicbrainz.l_artist_artist laa ON laa.entity1 = t.id
+     JOIN musicbrainz.link lk ON lk.id = laa.link
+     JOIN musicbrainz.link_type lt ON lt.id = lk.link_type
+     JOIN musicbrainz.artist a ON a.id = laa.entity0
+     LEFT JOIN musicbrainz.artist_type at ON at.id = a.type
+     LEFT JOIN musicbrainz.area ar ON ar.id = a.area
+     WHERE lt.name ILIKE 'member%'
+
+     UNION ALL
+
+     -- Bands that the target person belongs to (target is entity0 = member)
+     SELECT a.gid, a.name, at.name AS type, ar.name AS area,
+            lt.name AS link_name,
+            lk.begin_date_year AS begin_year,
+            lk.end_date_year   AS end_year,
+            'band_of'::text    AS direction
+     FROM target t
+     JOIN musicbrainz.l_artist_artist laa ON laa.entity0 = t.id
+     JOIN musicbrainz.link lk ON lk.id = laa.link
+     JOIN musicbrainz.link_type lt ON lt.id = lk.link_type
+     JOIN musicbrainz.artist a ON a.id = laa.entity1
+     LEFT JOIN musicbrainz.artist_type at ON at.id = a.type
+     LEFT JOIN musicbrainz.area ar ON ar.id = a.area
+     WHERE lt.name ILIKE 'member%'
+
+     ORDER BY end_year NULLS LAST, begin_year NULLS LAST, name
+     LIMIT $2`,
+    [artistGid, limit],
+  );
 }
 
 /** Find relationship paths between two artists */
