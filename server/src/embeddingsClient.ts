@@ -79,7 +79,11 @@ export async function embedBatch(inputs: string[]): Promise<number[][]> {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ input: inputs }),
+    // Pass `dimensions` so deployments of `text-embedding-3-large` (default
+    // 3072 dims) return vectors that match the `vector(1536)` DB columns.
+    // The parameter is supported by `text-embedding-3-small` (where it is a
+    // no-op at 1536) and `text-embedding-3-large`.
+    body: JSON.stringify({ input: inputs, dimensions: EMBEDDING_DIM }),
   });
 
   if (!response.ok) {

@@ -14,14 +14,19 @@ name: Backfill MusicBrainz Embeddings
 #   AZURE_RESOURCE_GROUP
 #   AZURE_AI_ENDPOINT
 #   AZURE_AI_EMBEDDING_DEPLOYMENT  (optional; defaults to text-embedding-3-small)
+#   COGNITIVE_SERVICES_ACCOUNT_ID  (resource ID of the Azure AI Foundry /
+#                                   Cognitive Services account hosting the
+#                                   embedding deployment — used to grant the
+#                                   OIDC service principal the `Cognitive
+#                                   Services OpenAI User` role at job start)
 #   PG_HOST  /  PG_DATABASE  /  PG_USER  /  PG_PASSWORD  /  PG_SSLMODE
 #   — or —
 #   PG_ADMIN_PASSWORD  (uses defaults: db=musicbrainz, user=pgadmin, sslmode=require)
 #
 # The OIDC service principal MUST be assigned the `Cognitive Services
 # OpenAI User` role on the Azure OpenAI account (the same role used by
-# the Container App's managed identity). The `COGNITIVE_SERVICES_ACCOUNT_ID`
-# secret can be passed to `az role assignment create` for that purpose.
+# the Container App's managed identity). The workflow assigns this
+# automatically when `COGNITIVE_SERVICES_ACCOUNT_ID` is set.
 
 on:
   workflow_dispatch:
@@ -83,6 +88,55 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ────────────────────────────────────────────────────────────────────────
+      # Ensure the OIDC service principal can call the embeddings API.
+      #
+      # `deploy.yml` grants the Container App's managed identity the
+      # `Cognitive Services OpenAI User` role, but the GitHub Actions OIDC
+      # principal that this workflow runs as is a different identity and
+      # needs its own role assignment. Without it Azure OpenAI returns
+      # 401 PermissionDenied ("Principal does not have access to API/Operation").
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Grant OIDC principal Cognitive Services OpenAI User role
+        if: ${{ secrets.COGNITIVE_SERVICES_ACCOUNT_ID != '' }}
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          COGNITIVE_SERVICES_ACCOUNT_ID: ${{ secrets.COGNITIVE_SERVICES_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          # Cognitive Services OpenAI User
+          ROLE_ID="5e0bd9bd-7b93-4f28-af87-19fc36ad61bd"
+          PRINCIPAL_OBJECT_ID="$(az ad sp show --id "$AZURE_CLIENT_ID" --query id -o tsv)"
+          if [ -z "$PRINCIPAL_OBJECT_ID" ]; then
+            echo "::error::Failed to resolve service principal object ID for AZURE_CLIENT_ID."
+            exit 1
+          fi
+          echo "Granting role 'Cognitive Services OpenAI User' to principal $PRINCIPAL_OBJECT_ID on $COGNITIVE_SERVICES_ACCOUNT_ID"
+          # Idempotent: ignore "already exists" failures.
+          if ! az role assignment create \
+                --assignee-object-id "$PRINCIPAL_OBJECT_ID" \
+                --assignee-principal-type ServicePrincipal \
+                --role "$ROLE_ID" \
+                --scope "$COGNITIVE_SERVICES_ACCOUNT_ID" 1>/dev/null 2>role-err.log; then
+            if grep -qi "RoleAssignmentExists\|already exists" role-err.log; then
+              echo "✅ Role assignment already exists."
+            else
+              cat role-err.log >&2
+              echo "::error::Failed to create role assignment."
+              exit 1
+            fi
+          else
+            echo "✅ Role assignment created."
+          fi
+          # RBAC propagation can take ~30s before tokens reflect the new role.
+          echo "Waiting 45s for RBAC propagation..."
+          sleep 45
+
+      - name: Warn if COGNITIVE_SERVICES_ACCOUNT_ID is not set
+        if: ${{ secrets.COGNITIVE_SERVICES_ACCOUNT_ID == '' }}
+        run: |
+          echo "::warning::COGNITIVE_SERVICES_ACCOUNT_ID secret is not set; skipping role assignment. The OIDC principal must already have 'Cognitive Services OpenAI User' on the Foundry account or the backfill will fail with HTTP 401."
 
       # ────────────────────────────────────────────────────────────────────────
       # Resolve PostgreSQL connection (mirrors import-musicbrainz.yml)
