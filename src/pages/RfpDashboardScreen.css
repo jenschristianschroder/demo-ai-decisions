@@ -300,6 +300,65 @@
   line-height: 1.4;
 }
 
+.rfp-timeline-empty {
+  font-size: 13px;
+  color: #666666;
+  background: #f9fafb;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 16px 20px;
+}
+
+.rfp-timeline-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.rfp-timeline-detail {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.rfp-timeline-detail-summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1d4ed8;
+  user-select: none;
+  outline: none;
+}
+
+.rfp-timeline-detail-summary:hover {
+  color: #1e40af;
+}
+
+.rfp-timeline-detail-body {
+  margin: 8px 0 4px;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #111111;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.rfp-timeline-detail-body--prose {
+  font-family: inherit;
+  font-style: italic;
+  color: #333333;
+  white-space: pre-wrap;
+}
+
 /* ==========================================================================
    Intake Summary (rfp-intake-)
    ========================================================================== */

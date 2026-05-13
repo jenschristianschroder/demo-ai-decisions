@@ -108,6 +108,7 @@ interface SSEEvent {
   phase?: string;
   message?: string;
   reasoning?: string;
+  input?: string;
   data?: unknown;
   error?: string;
 }
@@ -790,13 +791,14 @@ musicAgentsRouter.post('/music/run-agents-sse', async (req: Request, res: Respon
       try {
         let mapped: unknown;
         let reasoning: string | undefined;
+        let agentInput: string | undefined;
 
         // ── PostgreSQL fast-path for graph-traversal and semantic-search ──
         if (agent.phase === 'graph-traversal' && isPgAvailable()) {
-          const pgData = await fetchGraphDataFromPg(
-            context.priorOutputs.parsedQuery as Record<string, unknown> ?? {},
-          );
+          const parsedQuery = (context.priorOutputs.parsedQuery as Record<string, unknown>) ?? {};
+          const pgData = await fetchGraphDataFromPg(parsedQuery);
           if (pgData) {
+            agentInput = `[PostgreSQL graph fast-path]\nParsed query:\n${JSON.stringify(parsedQuery, null, 2)}`;
             reasoning = pgData.reasoning as string;
             delete pgData.reasoning;
             mapped = pgData;
@@ -804,11 +806,11 @@ musicAgentsRouter.post('/music/run-agents-sse', async (req: Request, res: Respon
         }
 
         if (agent.phase === 'semantic-search' && isPgAvailable()) {
-          const pgData = await fetchSemanticDataFromPg(
-            context.priorOutputs.parsedQuery as Record<string, unknown> ?? {},
-            context.priorOutputs.graphData as Record<string, unknown> ?? {},
-          );
+          const parsedQuery = (context.priorOutputs.parsedQuery as Record<string, unknown>) ?? {};
+          const graphData = (context.priorOutputs.graphData as Record<string, unknown>) ?? {};
+          const pgData = await fetchSemanticDataFromPg(parsedQuery, graphData);
           if (pgData) {
+            agentInput = `[PostgreSQL semantic fast-path]\nParsed query:\n${JSON.stringify(parsedQuery, null, 2)}\n\nGraph data keys: ${Object.keys(graphData).join(', ')}`;
             reasoning = pgData.reasoning as string;
             delete pgData.reasoning;
             mapped = pgData;
@@ -818,6 +820,7 @@ musicAgentsRouter.post('/music/run-agents-sse', async (req: Request, res: Respon
         // ── Fall back to AI agent if no PG data ──
         if (mapped === undefined) {
           const userContent = agent.buildUserContent(context);
+          agentInput = userContent;
           const result = await chatCompletion<Record<string, unknown>>(
             [
               { role: 'system', content: agent.systemPrompt() },
@@ -839,6 +842,7 @@ musicAgentsRouter.post('/music/run-agents-sse', async (req: Request, res: Respon
           phase: agent.phase,
           message: `${agent.name} complete`,
           reasoning,
+          input: agentInput,
           data: mapped,
         });
       } catch (err) {

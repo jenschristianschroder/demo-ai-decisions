@@ -29,6 +29,7 @@ interface SSEEvent {
   phase?: string;
   message?: string;
   reasoning?: string;
+  input?: string;
   data?: unknown;
   error?: string;
 }
@@ -190,6 +191,8 @@ export async function runRfpWorkflow(
           status: 'done',
           message: event.message ?? `${event.phase} complete`,
           reasoning: event.reasoning,
+          input: event.input,
+          output: event.data,
         });
       } else if (event.type === 'agent-error' && event.phase) {
         onProgress({

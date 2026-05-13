@@ -35,6 +35,7 @@ interface SSEEvent {
   phase?: string;
   message?: string;
   reasoning?: string;
+  input?: string;
   data?: unknown;
   error?: string;
 }
@@ -567,6 +568,7 @@ rfpAgentsRouter.post('/rfp/run-agents-sse', async (req: Request, res: Response) 
           phase: agent.phase,
           message: `${agent.name} complete`,
           reasoning,
+          input: userContent,
           data: mapped,
         });
       } catch (err) {
