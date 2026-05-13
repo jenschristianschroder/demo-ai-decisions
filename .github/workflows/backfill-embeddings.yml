@@ -98,8 +98,19 @@ jobs:
       # needs its own role assignment. Without it Azure OpenAI returns
       # 401 PermissionDenied ("Principal does not have access to API/Operation").
       # ────────────────────────────────────────────────────────────────────────
+      - name: Check for COGNITIVE_SERVICES_ACCOUNT_ID secret
+        id: check_cog_id
+        env:
+          COGNITIVE_SERVICES_ACCOUNT_ID: ${{ secrets.COGNITIVE_SERVICES_ACCOUNT_ID }}
+        run: |
+          if [ -n "$COGNITIVE_SERVICES_ACCOUNT_ID" ]; then
+            echo "is_set=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_set=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Grant OIDC principal Cognitive Services OpenAI User role
-        if: ${{ secrets.COGNITIVE_SERVICES_ACCOUNT_ID != '' }}
+        if: steps.check_cog_id.outputs.is_set == 'true'
         env:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           COGNITIVE_SERVICES_ACCOUNT_ID: ${{ secrets.COGNITIVE_SERVICES_ACCOUNT_ID }}
@@ -134,7 +145,7 @@ jobs:
           sleep 45
 
       - name: Warn if COGNITIVE_SERVICES_ACCOUNT_ID is not set
-        if: ${{ secrets.COGNITIVE_SERVICES_ACCOUNT_ID == '' }}
+        if: steps.check_cog_id.outputs.is_set != 'true'
         run: |
           echo "::warning::COGNITIVE_SERVICES_ACCOUNT_ID secret is not set; skipping role assignment. The OIDC principal must already have 'Cognitive Services OpenAI User' on the Foundry account or the backfill will fail with HTTP 401."
 
