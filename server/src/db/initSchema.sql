@@ -18,6 +18,11 @@
 
 CREATE EXTENSION IF NOT EXISTS age;
 CREATE EXTENSION IF NOT EXISTS vector;
+-- pg_trgm and unaccent are required for the diacritic-insensitive trigram
+-- search used by `pgClient.ts::searchArtists` and friends. They must also be
+-- in the Azure extension allow-list (see import-musicbrainz.yml).
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS unaccent;
 
 -- Load AGE into the search path so Cypher functions are available
 SET search_path = ag_catalog, "$user", public;
@@ -236,14 +241,19 @@ CREATE TABLE IF NOT EXISTS musicbrainz.link_type (
 );
 
 -- ── Indexes for vector similarity search ─────────────────────────────────────
+-- Indexes are PARTIAL so they don't waste space on rows where the embedding
+-- has not yet been populated. The optimize_indexes.sql script will swap
+-- these for HNSW indexes when pgvector supports it (better recall).
 
 CREATE INDEX IF NOT EXISTS idx_artist_embedding
   ON musicbrainz.artist USING ivfflat (embedding vector_cosine_ops)
-  WITH (lists = 100);
+  WITH (lists = 100)
+  WHERE embedding IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_recording_embedding
   ON musicbrainz.recording USING ivfflat (embedding vector_cosine_ops)
-  WITH (lists = 100);
+  WITH (lists = 100)
+  WHERE embedding IS NOT NULL;
 
 -- ── Apache AGE graph ─────────────────────────────────────────────────────────
 -- Create the music knowledge graph. Vertices and edges are populated from

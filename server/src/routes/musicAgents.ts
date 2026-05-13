@@ -54,10 +54,22 @@ interface TableCount {
   count: number;
 }
 
+// ── Cache for /music/table-counts ──────────────────────────────────────────
+// The handler uses pg_class.reltuples (cheap planner estimates) but with
+// many separate round-trips. Cache the result for 60s so a busy landing
+// page doesn't hammer the DB.
+const TABLE_COUNTS_TTL_MS = 60_000;
+let tableCountsCache: { at: number; payload: { coreEntities: TableCount[]; relationships: TableCount[] } } | null = null;
+
 musicAgentsRouter.get('/music/table-counts', async (_req: Request, res: Response) => {
   console.log('[Music Table-Counts] /music/table-counts endpoint hit');
   if (!isPgAvailable()) {
     res.json({ coreEntities: [], relationships: [] });
+    return;
+  }
+
+  if (tableCountsCache && Date.now() - tableCountsCache.at < TABLE_COUNTS_TTL_MS) {
+    res.json(tableCountsCache.payload);
     return;
   }
 
@@ -86,7 +98,9 @@ musicAgentsRouter.get('/music/table-counts', async (_req: Request, res: Response
       Promise.all(relationshipTables.map(countTable)),
     ]);
 
-    res.json({ coreEntities, relationships });
+    const payload = { coreEntities, relationships };
+    tableCountsCache = { at: Date.now(), payload };
+    res.json(payload);
   } catch (err) {
     console.error('[Music Table-Counts] Error:', err);
     res.json({ coreEntities: [], relationships: [] });
@@ -291,6 +305,28 @@ No markdown, no commentary outside the JSON.`;
 // ---------------------------------------------------------------------------
 
 /**
+ * Run an async mapper over `items` with bounded concurrency. Used to keep
+ * DB fan-out queries from exhausting the PG connection pool (max=10) and
+ * to make result ordering deterministic.
+ */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  mapper: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const i = cursor++;
+      results[i] = await mapper(items[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
+/**
  * Fetch real graph data from PostgreSQL + Apache AGE for a parsed query.
  * Returns structured data matching the graph traversal agent output format.
  */
@@ -308,155 +344,172 @@ async function fetchGraphDataFromPg(
     const relationshipPaths: Record<string, unknown>[] = [];
     // Track artists already added so member lookups don't insert duplicates
     const seenArtistGids = new Set<string>();
+    // Resolved seed artists per target entity, used afterwards to run
+    // collaborator lookups against a stable gid (the AGE graph keys on gid).
+    const resolvedSeeds: { entity: string; gid: string; name: string }[] = [];
 
-    // Process target entities in parallel — each entity drives an independent
-    // sub-pipeline (search → recordings/releases/members), so there is no
-    // benefit to running them sequentially and it dominates wall-clock time
-    // for popular artists.
-    await Promise.all(
-      targetEntities.map(async (entity) => {
-        // Search artists matching this entity name. searchArtists returns
-        // exact (case-insensitive) matches first; for a query like
-        // "List members of The Beatles" only the canonical artist is
-        // typically of interest, so we restrict the per-entity sub-pipeline
-        // to the top match (plus a couple of close fuzzy matches).
-        const artists = await searchArtists(entity, 3);
+    // PG_POOL_MAX (see pgClient.ts) is 10. Reserve 2 slots and split the
+    // remainder roughly evenly between target entities and per-artist
+    // sub-queries.
+    const ENTITY_CONCURRENCY = 2;
+    const ARTIST_CONCURRENCY = 3;
 
-        await Promise.all(
-          artists.map(async (a) => {
-            if (seenArtistGids.has(a.gid as string)) return;
-            seenArtistGids.add(a.gid as string);
+    // Process target entities with bounded concurrency so we don't overrun
+    // the PG connection pool. Within each entity, also bound the per-artist
+    // fan-out for the same reason.
+    await mapWithConcurrency(targetEntities, ENTITY_CONCURRENCY, async (entity) => {
+      // Search artists matching this entity name. searchArtists returns
+      // exact (case-insensitive, diacritic-insensitive) matches first,
+      // ranked by popularity; we restrict the per-entity sub-pipeline to
+      // the top match (plus a couple of close fuzzy matches).
+      const artists = await searchArtists(entity, 3);
 
-            allArtists.push({
-              id: a.gid,
-              name: a.name,
-              type: a.type ?? 'Group',
-              area: a.area,
-              genres: [],
-              description: a.comment ?? '',
-            });
+      // Record the top seed artist for the later collaborator pass.
+      if (artists.length > 0) {
+        const top = artists[0];
+        resolvedSeeds.push({
+          entity,
+          gid: top.gid as string,
+          name: top.name as string,
+        });
+      }
 
-            // Run the per-artist sub-queries in parallel.
-            const [recordings, releases, members] = await Promise.all([
-              getArtistRecordings(a.gid as string, 8),
-              getArtistReleases(a.gid as string, 6),
-              // Always look up artist↔artist member-of relationships.
-              // For a Group this surfaces band members; for a Person it
-              // surfaces the bands they belong to. This is what was
-              // previously missing for queries like "members of The Beatles".
-              findBandMembers(a.gid as string, 30).catch((err) => {
-                console.error(
-                  `[Music Graph] findBandMembers failed for ${a.name} (${a.gid as string}):`,
-                  err,
-                );
-                return [] as Awaited<ReturnType<typeof findBandMembers>>;
-              }),
-            ]);
+      await mapWithConcurrency(artists, ARTIST_CONCURRENCY, async (a) => {
+        if (seenArtistGids.has(a.gid as string)) return;
+        seenArtistGids.add(a.gid as string);
 
-            for (const rec of recordings) {
-              allRecordings.push({
-                id: rec.gid,
-                title: rec.name,
-                artistCredits: [rec.artist_credit_name],
-                duration: rec.length,
-              });
-            }
+        allArtists.push({
+          id: a.gid,
+          name: a.name,
+          type: a.type ?? 'Group',
+          area: a.area,
+          genres: [],
+          description: a.comment ?? '',
+        });
 
-            for (const rel of releases) {
-              allReleases.push({
-                id: rel.gid,
-                title: rel.name,
-                type: mapReleaseType(rel.type as number),
-                date: rel.date_year ? `${rel.date_year}` : undefined,
-                label: rel.label_name,
-                country: rel.country_name,
-                artistCredits: [rel.artist_credit_name],
-              });
-            }
-
-            // Add member-of edges. For a Group, edges go member -> group;
-            // for a Person, edges go person -> band.
-            if (members.length > 0) {
-              const memberNodes: Record<string, unknown>[] = [
-                { id: a.gid, label: a.name, type: 'Artist' },
-              ];
-              const memberEdges: Record<string, unknown>[] = [];
-
-              for (const m of members) {
-                if (!seenArtistGids.has(m.gid)) {
-                  seenArtistGids.add(m.gid);
-                  allArtists.push({
-                    id: m.gid,
-                    name: m.name,
-                    type: m.type ?? 'Person',
-                    area: m.area,
-                    genres: [],
-                    description: '',
-                  });
-                }
-                memberNodes.push({ id: m.gid, label: m.name, type: 'Artist' });
-                if (m.direction === 'member_of') {
-                  // m is the member, a is the group
-                  memberEdges.push({
-                    type: m.link_name,
-                    sourceId: m.gid,
-                    sourceLabel: m.name,
-                    targetId: a.gid,
-                    targetLabel: a.name,
-                  });
-                } else {
-                  // a is the member, m is the group
-                  memberEdges.push({
-                    type: m.link_name,
-                    sourceId: a.gid,
-                    sourceLabel: a.name,
-                    targetId: m.gid,
-                    targetLabel: m.name,
-                  });
-                }
-              }
-
-              relationshipPaths.push({
-                nodes: memberNodes,
-                edges: memberEdges,
-                description: `Band membership relationships for ${a.name}`,
-              });
-            }
+        // Run the per-artist sub-queries in parallel (bounded above).
+        const [recordings, releases, members] = await Promise.all([
+          getArtistRecordings(a.gid as string, 8),
+          getArtistReleases(a.gid as string, 6),
+          findBandMembers(a.gid as string, 30).catch((err) => {
+            console.error(
+              `[Music Graph] findBandMembers failed for ${a.name} (${a.gid as string}):`,
+              err,
+            );
+            return [] as Awaited<ReturnType<typeof findBandMembers>>;
           }),
-        );
-      }),
-    );
+        ]);
 
-    // Try to find collaborators via AGE graph (parallel across entities).
-    await Promise.all(
-      targetEntities.map(async (entity) => {
-        try {
-          const collabs = await findCollaborators(entity, 2);
-          if (collabs.length > 0) {
-            relationshipPaths.push({
-              nodes: [
-                { id: entity, label: entity, type: 'Artist' },
-                ...collabs.slice(0, 5).map((c) => ({
-                  id: c.gid ?? c.name,
-                  label: c.name,
-                  type: 'Artist',
-                })),
-              ],
-              edges: collabs.slice(0, 5).map((c) => ({
-                type: 'COLLABORATED_WITH',
-                sourceId: entity,
-                sourceLabel: entity,
-                targetId: c.gid ?? c.name,
-                targetLabel: c.name,
-              })),
-              description: `Collaboration network from ${entity}`,
-            });
-          }
-        } catch {
-          // AGE graph might not be populated yet — continue
+        for (const rec of recordings) {
+          allRecordings.push({
+            id: rec.gid,
+            title: rec.name,
+            artistCredits: [rec.artist_credit_name],
+            duration: rec.length,
+          });
         }
-      }),
-    );
+
+        for (const rel of releases) {
+          allReleases.push({
+            id: rel.gid,
+            title: rel.name,
+            type: mapReleaseType(rel.type as number),
+            date: rel.date_year ? `${rel.date_year}` : undefined,
+            label: rel.label_name,
+            country: rel.country_name,
+            labels: rel.label_names,
+            countries: rel.country_names,
+            artistCredits: [rel.artist_credit_name],
+          });
+        }
+
+        // Add member-of edges. For a Group, edges go member -> group;
+        // for a Person, edges go person -> band. `ended` tells the UI
+        // whether the relationship is historical (ex-member) or current.
+        if (members.length > 0) {
+          const memberNodes: Record<string, unknown>[] = [
+            { id: a.gid, label: a.name, type: 'Artist' },
+          ];
+          const memberEdges: Record<string, unknown>[] = [];
+
+          for (const m of members) {
+            if (!seenArtistGids.has(m.gid)) {
+              seenArtistGids.add(m.gid);
+              allArtists.push({
+                id: m.gid,
+                name: m.name,
+                type: m.type ?? 'Person',
+                area: m.area,
+                genres: [],
+                description: '',
+              });
+            }
+            memberNodes.push({ id: m.gid, label: m.name, type: 'Artist' });
+            if (m.direction === 'member_of') {
+              memberEdges.push({
+                type: m.link_name,
+                sourceId: m.gid,
+                sourceLabel: m.name,
+                targetId: a.gid,
+                targetLabel: a.name,
+                beginYear: m.begin_year,
+                endYear: m.end_year,
+                ended: m.ended,
+              });
+            } else {
+              memberEdges.push({
+                type: m.link_name,
+                sourceId: a.gid,
+                sourceLabel: a.name,
+                targetId: m.gid,
+                targetLabel: m.name,
+                beginYear: m.begin_year,
+                endYear: m.end_year,
+                ended: m.ended,
+              });
+            }
+          }
+
+          relationshipPaths.push({
+            nodes: memberNodes,
+            edges: memberEdges,
+            description: `Band membership relationships for ${a.name}`,
+          });
+        }
+      });
+    });
+
+    // Try to find collaborators via AGE graph using the resolved seed
+    // gids. findCollaborators matches on gid (stable UUID), which is
+    // both safer and more accurate than the previous name-based lookup
+    // (many distinct MB artists share names — "John Williams" etc.).
+    await mapWithConcurrency(resolvedSeeds, ENTITY_CONCURRENCY, async (seed) => {
+      try {
+        const collabs = await findCollaborators(seed.gid, 2);
+        if (collabs.length > 0) {
+          relationshipPaths.push({
+            nodes: [
+              { id: seed.gid, label: seed.name, type: 'Artist' },
+              ...collabs.slice(0, 5).map((c) => ({
+                id: c.gid ?? c.name,
+                label: c.name,
+                type: 'Artist',
+              })),
+            ],
+            edges: collabs.slice(0, 5).map((c) => ({
+              type: 'COLLABORATED_WITH',
+              sourceId: seed.gid,
+              sourceLabel: seed.name,
+              targetId: c.gid ?? c.name,
+              targetLabel: c.name,
+            })),
+            description: `Collaboration network from ${seed.name}`,
+          });
+        }
+      } catch {
+        // AGE graph might not be populated yet — continue
+      }
+    });
 
     // Fetch labels if any area filters are present
     const filters = parsedQuery.filters as Record<string, string> | undefined;
@@ -577,51 +630,70 @@ async function fetchSemanticDataFromPg(
 
 /**
  * Fetch graph statistics from PostgreSQL.
+ *
+ * The edge count via AGE Cypher is expensive (it touches every edge row),
+ * so the result is cached for 60s. The orchestrator endpoint calls this
+ * on every run, but the underlying counts only change when the import
+ * workflow runs.
  */
+const GRAPH_STATS_TTL_MS = 60_000;
+let graphStatsCache: { at: number; value: Record<string, unknown> } | null = null;
+
 async function fetchGraphStatsFromPg(): Promise<Record<string, unknown> | null> {
   if (!isPgAvailable()) return null;
 
+  if (graphStatsCache && Date.now() - graphStatsCache.at < GRAPH_STATS_TTL_MS) {
+    return graphStatsCache.value;
+  }
+
   try {
-    const counts = await pgQuery(`
-      SELECT
-        (SELECT COUNT(*) FROM musicbrainz.artist) AS artist_count,
-        (SELECT COUNT(*) FROM musicbrainz.recording) AS recording_count,
-        (SELECT COUNT(*) FROM musicbrainz.release) AS release_count,
-        (SELECT COUNT(*) FROM musicbrainz.work) AS work_count,
-        (SELECT COUNT(*) FROM musicbrainz.label) AS label_count
+    // Use pg_class.reltuples (planner estimates) rather than COUNT(*) which
+    // scans the whole table — at MusicBrainz scale COUNT(*) on `recording`
+    // alone is multi-second.
+    const counts = await pgQuery<{
+      tbl: string;
+      cnt: string;
+    }>(`
+      SELECT relname AS tbl, reltuples::bigint::text AS cnt
+      FROM pg_class
+      WHERE relnamespace = 'musicbrainz'::regnamespace
+        AND relname IN ('artist','recording','release','work','label',
+                        'l_artist_artist','l_artist_recording',
+                        'l_artist_release','l_artist_work')
     `);
 
     if (counts.length === 0) return null;
-    const c = counts[0];
-    const artistCount = Number(c.artist_count ?? 0);
-    const recordingCount = Number(c.recording_count ?? 0);
-    const releaseCount = Number(c.release_count ?? 0);
-    const workCount = Number(c.work_count ?? 0);
-    const labelCount = Number(c.label_count ?? 0);
+    const byName: Record<string, number> = {};
+    for (const c of counts) byName[c.tbl] = Number(c.cnt ?? 0);
+    const artistCount = byName.artist ?? 0;
+    const recordingCount = byName.recording ?? 0;
+    const releaseCount = byName.release ?? 0;
+    const workCount = byName.work ?? 0;
+    const labelCount = byName.label ?? 0;
     const totalNodes = artistCount + recordingCount + releaseCount + workCount + labelCount;
 
-    // Try to get edge count from AGE graph
-    let totalEdges = 0;
-    try {
-      const edgeResult = await cypherQuery(
-        "MATCH ()-[e]->() RETURN count(e) AS cnt",
-      );
-      if (edgeResult.length > 0) {
-        totalEdges = Number(edgeResult[0].cnt ?? 0);
+    // Edge counts: prefer the sum of relationship-table estimates (fast);
+    // fall back to AGE Cypher only if the relational tables are empty.
+    let totalEdges =
+      (byName.l_artist_artist ?? 0) +
+      (byName.l_artist_recording ?? 0) +
+      (byName.l_artist_release ?? 0) +
+      (byName.l_artist_work ?? 0);
+
+    if (totalEdges === 0) {
+      try {
+        const edgeResult = await cypherQuery(
+          'MATCH ()-[e]->() RETURN count(e) AS cnt',
+        );
+        if (edgeResult.length > 0) {
+          totalEdges = Number(edgeResult[0].cnt ?? 0);
+        }
+      } catch {
+        // AGE graph may not be populated — leave at 0
       }
-    } catch {
-      // AGE graph may not be populated
-      const relCounts = await pgQuery(`
-        SELECT
-          (SELECT COUNT(*) FROM musicbrainz.l_artist_artist) +
-          (SELECT COUNT(*) FROM musicbrainz.l_artist_recording) +
-          (SELECT COUNT(*) FROM musicbrainz.l_artist_release) +
-          (SELECT COUNT(*) FROM musicbrainz.l_artist_work) AS total
-      `);
-      totalEdges = Number(relCounts[0]?.total ?? 0);
     }
 
-    return {
+    const value = {
       totalNodes,
       totalEdges,
       artistCount,
@@ -630,6 +702,8 @@ async function fetchGraphStatsFromPg(): Promise<Record<string, unknown> | null> 
       workCount,
       labelCount,
     };
+    graphStatsCache = { at: Date.now(), value };
+    return value;
   } catch (err) {
     console.error('PostgreSQL graph stats error:', err);
     return null;
