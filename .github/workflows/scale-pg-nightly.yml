@@ -38,4 +38,5 @@ jobs:
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
             --name "${{ steps.pg.outputs.pgServer }}" \
             --sku-name Standard_B1ms \
-            --tier Burstable
+            --tier Burstable \
+            --yes
