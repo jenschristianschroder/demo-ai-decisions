@@ -167,7 +167,7 @@ No markdown, no commentary outside the JSON.`;
 }
 
 function graphTraversalSystemPrompt(): string {
-  return `You are the Music Graph Traversal Agent. Given the parsed query intent, simulate traversing a MusicBrainz knowledge graph to find connected entities. Return JSON with: { artists: [{id, name, type, area?, genres, description?}], recordings: [{id, title, artistCredits, year?}], releases: [{id, title, type, date?, label?, country?, artistCredits}], works: [{id, title, composers}], labels: [{id, name, type?, area?}], relationshipPaths: [{nodes: [{id, label, type}], edges: [{type, sourceId, sourceLabel, targetId, targetLabel}], description}], reasoning: string }. Generate realistic MusicBrainz-style data related to the query. Include 5-10 artists, 5-8 recordings, 4-6 releases, 2-3 works, 2-4 labels, and 3-5 relationship paths.
+  return `You are the Music Graph Traversal Agent. Given the parsed query intent, simulate traversing a MusicBrainz knowledge graph to find connected entities. Return JSON with: { artists: [{id, name, type, area?, genres, description?}], recordings: [{id, title, artistCredits, year?}], releases: [{id, title, type, date?, label?, country?, artistCredits}], works: [{id, title, composers}], labels: [{id, name, type?, area?}], relationshipPaths: [{nodes: [{id, label, type}], edges: [{type, sourceId, sourceLabel, targetId, targetLabel}], description}], reasoning: string }. Generate realistic MusicBrainz-style data related to the query. Honor the user-configured Traversal Limits provided in the user message as HARD CAPS — never exceed them. When no traversal limits are supplied, default to 5-10 artists, 5-8 recordings, 4-6 releases, 2-3 works, 2-4 labels, and 3-5 relationship paths.
 
 Today's date: ${today()}
 
@@ -849,6 +849,7 @@ interface OrchestrationContext {
   queryType: string;
   filters: Record<string, string>;
   priorOutputs: Record<string, unknown>;
+  traversal: NormalizedTraversalOptions;
 }
 
 const AGENTS: AgentDef[] = [
@@ -866,7 +867,16 @@ const AGENTS: AgentDef[] = [
     maxTokens: 16384,
     buildUserContent: (ctx) => {
       const parsedQuery = ctx.priorOutputs.parsedQuery;
-      return `Traverse the MusicBrainz knowledge graph based on the parsed query intent:\n\nParsed Query:\n${JSON.stringify(parsedQuery, null, 2)}\n\nOriginal Query: ${ctx.query}`;
+      const t = ctx.traversal;
+      const limits = [
+        `- maxHops (collaborator traversal depth): ${t.maxHops}`,
+        `- maxArtistsPerEntity (candidate artists resolved per target entity): ${t.maxArtistsPerEntity}`,
+        `- maxRecordingsPerArtist: ${t.maxRecordingsPerArtist}`,
+        `- maxReleasesPerArtist: ${t.maxReleasesPerArtist}`,
+        `- maxCollaborators (per seed artist): ${t.maxCollaborators}`,
+        `- maxBandMembers (per resolved artist): ${t.maxBandMembers}`,
+      ].join('\n');
+      return `Traverse the MusicBrainz knowledge graph based on the parsed query intent. Respect the user-configured traversal limits below; they are hard caps, not suggestions.\n\nTraversal Limits:\n${limits}\n\nParsed Query:\n${JSON.stringify(parsedQuery, null, 2)}\n\nOriginal Query: ${ctx.query}`;
     },
   },
   {
@@ -977,6 +987,7 @@ musicAgentsRouter.post('/music/run-agents-sse', async (req: Request, res: Respon
       queryType: queryType ?? 'general',
       filters: filters ?? {},
       priorOutputs: {},
+      traversal: normalizedTraversal,
     };
 
     // Run agents sequentially — each builds on prior outputs
