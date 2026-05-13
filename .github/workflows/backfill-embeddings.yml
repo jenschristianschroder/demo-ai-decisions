@@ -1,0 +1,169 @@
+name: Backfill MusicBrainz Embeddings
+
+# Backfills `musicbrainz.artist.embedding` (and optionally
+# `musicbrainz.recording.embedding`) using Azure OpenAI embeddings.
+#
+# Runs the `server/src/scripts/backfillEmbeddings.ts` script on a GitHub
+# Actions runner. The script connects to the deployed PostgreSQL server
+# using PG_* secrets and calls Azure OpenAI embeddings via DefaultAzureCredential
+# (the runner is authenticated to Azure via the same OIDC client used by
+# `deploy.yml` and `import-musicbrainz.yml`).
+#
+# Required secrets:
+#   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
+#   AZURE_RESOURCE_GROUP
+#   AZURE_AI_ENDPOINT
+#   AZURE_AI_EMBEDDING_DEPLOYMENT  (optional; defaults to text-embedding-3-small)
+#   PG_HOST  /  PG_DATABASE  /  PG_USER  /  PG_PASSWORD  /  PG_SSLMODE
+#   — or —
+#   PG_ADMIN_PASSWORD  (uses defaults: db=musicbrainz, user=pgadmin, sslmode=require)
+#
+# The OIDC service principal MUST be assigned the `Cognitive Services
+# OpenAI User` role on the Azure OpenAI account (the same role used by
+# the Container App's managed identity). The `COGNITIVE_SERVICES_ACCOUNT_ID`
+# secret can be passed to `az role assignment create` for that purpose.
+
+on:
+  workflow_dispatch:
+    inputs:
+      entity:
+        description: 'Which entity to backfill'
+        required: false
+        type: choice
+        options:
+          - artist
+          - recording
+          - all
+        default: artist
+      batch_size:
+        description: 'Inputs per embeddings API call (max 256)'
+        required: false
+        default: '64'
+      concurrency:
+        description: 'Concurrent batches in flight (max 20)'
+        required: false
+        default: '5'
+      limit:
+        description: 'Maximum rows to process (blank = no limit)'
+        required: false
+        default: ''
+      min_id:
+        description: 'Resume from this id (default: 0)'
+        required: false
+        default: '0'
+      dry_run:
+        description: 'Compose source text without calling Azure or writing'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 720
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ────────────────────────────────────────────────────────────────────────
+      # Resolve PostgreSQL connection (mirrors import-musicbrainz.yml)
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Resolve PostgreSQL connection settings
+        id: pg
+        run: |
+          RESOLVED_PGHOST="${{ secrets.PG_HOST }}"
+          RESOLVED_PGDATABASE="${{ secrets.PG_DATABASE }}"
+          if [ -z "$RESOLVED_PGDATABASE" ]; then
+            RESOLVED_PGDATABASE="musicbrainz"
+          fi
+          RESOLVED_PGUSER="${{ secrets.PG_USER }}"
+          if [ -z "$RESOLVED_PGUSER" ]; then
+            RESOLVED_PGUSER="pgadmin"
+          fi
+          RESOLVED_PGPASSWORD="${{ secrets.PG_PASSWORD }}"
+          if [ -z "$RESOLVED_PGPASSWORD" ]; then
+            RESOLVED_PGPASSWORD="${{ secrets.PG_ADMIN_PASSWORD }}"
+          fi
+          RESOLVED_PGSSLMODE="${{ secrets.PG_SSLMODE }}"
+          if [ -z "$RESOLVED_PGSSLMODE" ]; then
+            RESOLVED_PGSSLMODE="require"
+          fi
+
+          if [ -z "$RESOLVED_PGHOST" ]; then
+            echo "::error::PG_HOST secret is not set."
+            exit 1
+          fi
+          if [ -z "$RESOLVED_PGPASSWORD" ]; then
+            echo "::error::PG_PASSWORD (or PG_ADMIN_PASSWORD) secret is not set."
+            exit 1
+          fi
+
+          echo "::add-mask::$RESOLVED_PGPASSWORD"
+          {
+            echo "PGHOST=$RESOLVED_PGHOST"
+            echo "PGDATABASE=$RESOLVED_PGDATABASE"
+            echo "PGUSER=$RESOLVED_PGUSER"
+            echo "PGPASSWORD=$RESOLVED_PGPASSWORD"
+            echo "PGSSLMODE=$RESOLVED_PGSSLMODE"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "✅ PostgreSQL: host=$RESOLVED_PGHOST db=$RESOLVED_PGDATABASE user=$RESOLVED_PGUSER"
+
+      # ────────────────────────────────────────────────────────────────────────
+      # Build the server (we only need the compiled JS for the backfill script)
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Build server
+        working-directory: server
+        run: npm run build
+
+      # ────────────────────────────────────────────────────────────────────────
+      # Run the backfill script
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Run backfill
+        working-directory: server
+        env:
+          PGHOST: ${{ steps.pg.outputs.PGHOST }}
+          PGDATABASE: ${{ steps.pg.outputs.PGDATABASE }}
+          PGUSER: ${{ steps.pg.outputs.PGUSER }}
+          PGPASSWORD: ${{ steps.pg.outputs.PGPASSWORD }}
+          PGSSLMODE: ${{ steps.pg.outputs.PGSSLMODE }}
+          AZURE_AI_ENDPOINT: ${{ secrets.AZURE_AI_ENDPOINT }}
+          AZURE_AI_EMBEDDING_DEPLOYMENT: ${{ secrets.AZURE_AI_EMBEDDING_DEPLOYMENT }}
+        run: |
+          ARGS=(
+            "--entity=${{ inputs.entity }}"
+            "--batch-size=${{ inputs.batch_size }}"
+            "--concurrency=${{ inputs.concurrency }}"
+            "--min-id=${{ inputs.min_id }}"
+          )
+          if [ -n "${{ inputs.limit }}" ]; then
+            ARGS+=("--limit=${{ inputs.limit }}")
+          fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS+=("--dry-run")
+          fi
+          echo "Running: npm run backfill:embeddings -- ${ARGS[*]}"
+          npm run backfill:embeddings -- "${ARGS[@]}"
