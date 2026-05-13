@@ -21,10 +21,21 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Resolve PostgreSQL server name
+        id: pg
+        run: |
+          RESOLVED_PGHOST="${{ secrets.PG_HOST }}"
+          if [[ "$RESOLVED_PGHOST" == *.postgres.database.azure.com ]]; then
+            PG_SERVER="${RESOLVED_PGHOST%%.*}"
+          else
+            PG_SERVER="$RESOLVED_PGHOST"
+          fi
+          echo "pgServer=$PG_SERVER" >> "$GITHUB_OUTPUT"
+
       - name: Scale PostgreSQL to Burstable B1ms
         run: |
           az postgres flexible-server update \
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-            --name ai-decisions-pg \
+            --name "${{ steps.pg.outputs.pgServer }}" \
             --sku-name Standard_B1ms \
             --tier Burstable
