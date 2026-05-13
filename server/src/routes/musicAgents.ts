@@ -14,6 +14,7 @@
 
 import { Router, type Request, type Response } from 'express';
 import { chatCompletion } from '../aiClient.js';
+import { embedOne, toPgVector } from '../embeddingsClient.js';
 import {
   isPgAvailable,
   searchArtists,
@@ -620,8 +621,78 @@ async function fetchSemanticDataFromPg(
       };
     }
 
-    // Vector similarity search would go here when embeddings are populated
-    return null;
+    // ── pgvector path: embed the query and call search_similar_artists ──
+    // Compose a query string from the parsed intent + target entities so the
+    // resulting vector reflects both what the user asked and which entities
+    // they care about. Falls back gracefully on embedding errors.
+    const queryIntent = (parsedQuery.queryIntent as string) ?? '';
+    const targetEntities = (parsedQuery.targetEntities as string[]) ?? [];
+    const filters = (parsedQuery.filters as Record<string, string>) ?? {};
+    const filterBits = Object.entries(filters)
+      .filter(([, v]) => v && v !== 'null' && v !== 'undefined')
+      .map(([k, v]) => `${k}: ${v}`);
+    const queryText = [
+      queryIntent && `Intent: ${queryIntent}`,
+      targetEntities.length > 0 && `Entities: ${targetEntities.join(', ')}`,
+      filterBits.length > 0 && `Filters: ${filterBits.join('; ')}`,
+    ]
+      .filter(Boolean)
+      .join('. ');
+
+    if (!queryText.trim()) return null;
+
+    let queryEmbedding: number[];
+    try {
+      queryEmbedding = await embedOne(queryText);
+    } catch (err) {
+      console.error('Query embedding failed:', err);
+      return null;
+    }
+
+    const graphArtists = (graphData.artists as Array<Record<string, unknown>>) ?? [];
+    const graphArtistIds = new Set(graphArtists.map((a) => a.id as string));
+
+    const similar = await pgQuery<{
+      gid: string;
+      name: string;
+      type: string | null;
+      area: string | null;
+      similarity: string | number;
+    }>(
+      `SELECT a.gid, a.name,
+              at.name AS type,
+              ar.name AS area,
+              1 - (a.embedding <=> $1::vector) AS similarity
+         FROM musicbrainz.artist a
+         LEFT JOIN musicbrainz.artist_type at ON at.id = a.type
+         LEFT JOIN musicbrainz.area ar ON ar.id = a.area
+         WHERE a.embedding IS NOT NULL
+         ORDER BY a.embedding <=> $1::vector
+         LIMIT $2`,
+      [toPgVector(queryEmbedding), 20],
+    );
+
+    const additionalArtists: Record<string, unknown>[] = [];
+    for (const row of similar) {
+      // Skip artists already surfaced by the graph traversal step so we
+      // genuinely add new entities (the contract of this agent).
+      if (graphArtistIds.has(row.gid)) continue;
+      additionalArtists.push({
+        id: row.gid,
+        name: row.name,
+        type: row.type ?? 'Artist',
+        area: row.area,
+        genres: [],
+        similarityScore: Math.max(0, Math.min(1, Number(row.similarity))),
+      });
+    }
+
+    return {
+      additionalArtists,
+      additionalRelationshipPaths: [],
+      semanticClusters: [],
+      reasoning: `pgvector cosine-similarity search against ${additionalArtists.length} additional artists not present in graph traversal results (query: "${queryText.slice(0, 120)}").`,
+    };
   } catch (err) {
     console.error('PostgreSQL semantic search error:', err);
     return null;

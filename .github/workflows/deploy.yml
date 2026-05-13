@@ -159,6 +159,7 @@ jobs:
             --set-env-vars \
               "AZURE_AI_ENDPOINT=${{ secrets.AZURE_AI_ENDPOINT }}" \
               "AZURE_AI_DEPLOYMENT=${{ secrets.AZURE_AI_DEPLOYMENT }}" \
+              "AZURE_AI_EMBEDDING_DEPLOYMENT=${{ secrets.AZURE_AI_EMBEDDING_DEPLOYMENT }}" \
               "PGHOST=${{ steps.pg.outputs.pgHost }}" \
               "PGDATABASE=${{ steps.pg.outputs.pgDatabase }}" \
               "PGUSER=${{ steps.pg.outputs.pgUser }}" \
