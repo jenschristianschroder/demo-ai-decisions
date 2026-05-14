@@ -369,6 +369,10 @@ jobs:
           PGSSLMODE: ${{ steps.pg.outputs.PGSSLMODE }}
           AZURE_AI_ENDPOINT: ${{ secrets.AZURE_AI_ENDPOINT }}
           AZURE_AI_EMBEDDING_DEPLOYMENT: ${{ secrets.AZURE_AI_EMBEDDING_DEPLOYMENT }}
+          # Passed so the embeddings client can use ClientAssertionCredential
+          # with GitHub OIDC token refresh, avoiding token expiry during long runs.
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: |
           ARGS=(
             "--entity=${{ inputs.entity }}"

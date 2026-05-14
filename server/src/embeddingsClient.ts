@@ -15,9 +15,52 @@
  *   AZURE_AI_API_VERSION          — optional API version override.
  */
 
-import { DefaultAzureCredential } from '@azure/identity';
+import { DefaultAzureCredential, ClientAssertionCredential } from '@azure/identity';
+import type { TokenCredential } from '@azure/identity';
 
-const credential = new DefaultAzureCredential();
+/**
+ * Build the appropriate Azure credential for the current environment.
+ *
+ * In GitHub Actions with OIDC federation (`id-token: write` permission),
+ * `ACTIONS_ID_TOKEN_REQUEST_URL` and `ACTIONS_ID_TOKEN_REQUEST_TOKEN` are
+ * available. We use `ClientAssertionCredential` which fetches a fresh
+ * OIDC token from GitHub's endpoint on every token refresh — this avoids
+ * the ~1-hour expiry that causes `DefaultAzureCredential` (via the `az`
+ * CLI session) to fail during long-running backfill jobs.
+ *
+ * In all other environments (Azure Container Apps with Managed Identity,
+ * local dev with `az login`, etc.) we fall back to `DefaultAzureCredential`.
+ */
+function buildCredential(): TokenCredential {
+  const clientId = process.env.AZURE_CLIENT_ID;
+  const tenantId = process.env.AZURE_TENANT_ID;
+  const idTokenRequestUrl = process.env.ACTIONS_ID_TOKEN_REQUEST_URL;
+  const idTokenRequestToken = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
+
+  if (clientId && tenantId && idTokenRequestUrl && idTokenRequestToken) {
+    return new ClientAssertionCredential(tenantId, clientId, async () => {
+      const tokenUrl = new URL(idTokenRequestUrl);
+      tokenUrl.searchParams.set('audience', 'api://AzureADTokenExchange');
+      const response = await fetch(tokenUrl.toString(), {
+        headers: { Authorization: `Bearer ${idTokenRequestToken}` },
+      });
+      if (!response.ok) {
+        throw new Error(
+          `Failed to request GitHub OIDC token (${response.status}): ${await response.text()}`,
+        );
+      }
+      const data = (await response.json()) as { value?: string };
+      if (!data.value) {
+        throw new Error('GitHub OIDC token response did not contain a value.');
+      }
+      return data.value;
+    });
+  }
+
+  return new DefaultAzureCredential();
+}
+
+const credential = buildCredential();
 
 let cachedToken: { token: string; expiresOn: number } | null = null;
 
@@ -29,6 +72,9 @@ async function getAccessToken(): Promise<string> {
   const tokenResponse = await credential.getToken(
     'https://cognitiveservices.azure.com/.default',
   );
+  if (!tokenResponse) {
+    throw new Error('Failed to obtain Azure access token (credential returned null).');
+  }
   cachedToken = {
     token: tokenResponse.token,
     expiresOn: tokenResponse.expiresOnTimestamp,
