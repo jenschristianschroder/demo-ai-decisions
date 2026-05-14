@@ -324,6 +324,19 @@ jobs:
               || echo "::warning::Failed to create idx_${t}_embedding_null (continuing; backfill will still work, just slower)."
           done
 
+          # The tag-fetch query filters artist_tag by artist id. Without an
+          # index on artist_tag(artist) PostgreSQL falls back to a sequential
+          # scan of the (potentially very large) artist_tag table, which can
+          # stall the backfill for minutes. artist_tag's MusicBrainz PK is
+          # (artist, tag), but it may not exist after a CSV-based import.
+          if [ "$ENTITY" = "artist" ] || [ "$ENTITY" = "all" ]; then
+            echo "Ensuring idx_artist_tag_artist on musicbrainz.artist_tag…"
+            PGPASSWORD="$PGPASSWORD" psql \
+              -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" \
+              -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_artist_tag_artist ON musicbrainz.artist_tag (artist);" \
+              || echo "::warning::Failed to create idx_artist_tag_artist (continuing)."
+          fi
+
       # ────────────────────────────────────────────────────────────────────────
       # Build the server (we only need the compiled JS for the backfill script)
       # ────────────────────────────────────────────────────────────────────────

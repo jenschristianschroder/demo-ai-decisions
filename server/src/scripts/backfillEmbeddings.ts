@@ -209,6 +209,9 @@ function buildPool(): pg.Pool {
     max: 4,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 15_000,
+    // Abort any single statement that runs longer than 5 minutes so the
+    // workflow never hangs indefinitely on a slow query.
+    statement_timeout: 300_000,
   });
 }
 
@@ -223,25 +226,21 @@ async function* readArtists(
 ): AsyncGenerator<ArtistSourceRow[]> {
   let cursorId = startId;
   // We page by `id` rather than OFFSET so progress is stable and resumable.
-  // `LATERAL` aggregates tags per artist so we issue one query per page,
-  // not one per row.
+  // Tags are fetched in a separate query to avoid a LATERAL subquery that
+  // can cause the planner to choose a nested-loop plan scanning the full
+  // artist_tag table for each row — which hangs on large tables without
+  // an index on artist_tag(artist).
   while (true) {
-    const { rows } = await pool.query<ArtistSourceRow>(
+    console.log(`  [readArtists] fetching page id >= ${cursorId} …`);
+    const { rows } = await pool.query<Omit<ArtistSourceRow, 'tags'> & { tags: null }>(
       `SELECT a.id, a.name, a.comment,
               a.begin_date_year, a.end_date_year,
               at.name AS type_name,
               ar.name AS area_name,
-              tg.tags AS tags
+              NULL AS tags
        FROM musicbrainz.artist a
        LEFT JOIN musicbrainz.artist_type at ON at.id = a.type
        LEFT JOIN musicbrainz.area ar ON ar.id = a.area
-       LEFT JOIN LATERAL (
-         SELECT array_agg(DISTINCT lower(t.name) ORDER BY lower(t.name)) AS tags
-         FROM musicbrainz.artist_tag atg
-         JOIN musicbrainz.tag t ON t.id = atg.tag
-         WHERE atg.artist = a.id
-           AND atg.count > 0
-       ) tg ON true
        WHERE a.embedding IS NULL
          AND a.id >= $1
        ORDER BY a.id
@@ -249,7 +248,30 @@ async function* readArtists(
       [cursorId, pageSize],
     );
     if (rows.length === 0) return;
-    yield rows;
+
+    // Batch-fetch tags for all rows in the page in a single query.
+    const ids = rows.map((r) => r.id);
+    const { rows: tagRows } = await pool.query<{
+      artist: number;
+      tags: string[];
+    }>(
+      `SELECT atg.artist,
+              array_agg(DISTINCT lower(t.name) ORDER BY lower(t.name)) AS tags
+       FROM musicbrainz.artist_tag atg
+       JOIN musicbrainz.tag t ON t.id = atg.tag
+       WHERE atg.artist = ANY($1)
+         AND atg.count > 0
+       GROUP BY atg.artist`,
+      [ids],
+    );
+    const tagMap = new Map(tagRows.map((r) => [r.artist, r.tags]));
+
+    const enriched: ArtistSourceRow[] = rows.map((r) => ({
+      ...r,
+      tags: tagMap.get(r.id) ?? null,
+    }));
+
+    yield enriched;
     cursorId = rows[rows.length - 1].id + 1;
   }
 }
