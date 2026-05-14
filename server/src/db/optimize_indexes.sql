@@ -195,6 +195,23 @@ EXCEPTION WHEN OTHERS THEN
 END
 $do$;
 
+-- ── 9b. Backfill helper indexes ────────────────────────────────────────────
+-- The embedding backfill paginates with
+--     WHERE embedding IS NULL AND id >= $1 ORDER BY id LIMIT $2
+-- As rows get embedded, the artist_pkey index walk has to skip ever-larger
+-- prefixes of already-embedded rows, each requiring a heap fetch to check
+-- the (large) `embedding` column. On Azure remote storage that walk can
+-- easily stall the workflow for tens of minutes. A partial index keyed on
+-- `id` and filtered on `embedding IS NULL` makes "find the next N NULL ids
+-- in order" O(log N): rows are automatically removed from the index as
+-- they get backfilled, so the index stays small and shrinks to zero when
+-- the backfill is complete.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_artist_embedding_null
+  ON musicbrainz.artist (id) WHERE embedding IS NULL;
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_recording_embedding_null
+  ON musicbrainz.recording (id) WHERE embedding IS NULL;
+
 -- ── 10. Artist popularity materialized view ────────────────────────────────
 -- Used as a tie-breaker in searchArtists ranking so that "Beatles" returns
 -- the canonical artist before tribute bands. Refresh after large data loads

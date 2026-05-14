@@ -264,6 +264,67 @@ jobs:
           fi
 
       # ────────────────────────────────────────────────────────────────────────
+      # Ensure the partial NULL-embedding indexes exist.
+      #
+      # The backfill paginates with `WHERE embedding IS NULL AND id >= $1
+      # ORDER BY id LIMIT $2`. Without a partial index keyed on `id` and
+      # filtered on `embedding IS NULL`, PostgreSQL walks `artist_pkey`
+      # (or `recording_pkey`) from $1 and must heap-fetch every already-
+      # embedded row to check the (large `vector(1536)`) embedding column.
+      # As partial runs fill in the low-id range, that walk can stall the
+      # workflow for tens of minutes per page on Azure remote storage.
+      #
+      # A partial index keyed on `id WHERE embedding IS NULL` makes "find
+      # the next N NULL ids in order" O(log N) and shrinks to zero rows
+      # as the backfill completes. CONCURRENTLY does not block writes and
+      # IF NOT EXISTS makes the step idempotent across continuation runs.
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Ensure partial NULL-embedding indexes exist
+        env:
+          PGHOST: ${{ steps.pg.outputs.PGHOST }}
+          PGDATABASE: ${{ steps.pg.outputs.PGDATABASE }}
+          PGUSER: ${{ steps.pg.outputs.PGUSER }}
+          PGPASSWORD: ${{ steps.pg.outputs.PGPASSWORD }}
+          PGSSLMODE: ${{ steps.pg.outputs.PGSSLMODE }}
+          ENTITY: ${{ inputs.entity }}
+        run: |
+          set -euo pipefail
+
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client >/dev/null
+          fi
+
+          case "$ENTITY" in
+            artist)    TABLES=("artist") ;;
+            recording) TABLES=("recording") ;;
+            all)       TABLES=("artist" "recording") ;;
+            *)
+              echo "::error::Unknown entity: $ENTITY"
+              exit 1
+              ;;
+          esac
+
+          # CREATE INDEX CONCURRENTLY cannot run inside a transaction block,
+          # so each statement is sent as its own command. We do NOT use
+          # ON_ERROR_STOP=1 here: a transient DDL hiccup (e.g. deadlock
+          # with autovacuum) shouldn't abort the whole backfill. If the
+          # build fails partway through, PostgreSQL leaves an INVALID
+          # index behind; `IF NOT EXISTS` will NOT rebuild it on the next
+          # run, so the backfill simply falls back to the slower pkey
+          # walk. An operator can recover by manually dropping the
+          # INVALID index — for example:
+          #   DROP INDEX musicbrainz.idx_artist_embedding_null;
+          # — and re-running this workflow.
+          for t in "${TABLES[@]}"; do
+            echo "Ensuring idx_${t}_embedding_null on musicbrainz.${t}…"
+            PGPASSWORD="$PGPASSWORD" psql \
+              -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" \
+              -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_${t}_embedding_null ON musicbrainz.${t} (id) WHERE embedding IS NULL;" \
+              || echo "::warning::Failed to create idx_${t}_embedding_null (continuing; backfill will still work, just slower)."
+          done
+
+      # ────────────────────────────────────────────────────────────────────────
       # Build the server (we only need the compiled JS for the backfill script)
       # ────────────────────────────────────────────────────────────────────────
       - name: Install server dependencies
