@@ -39,8 +39,9 @@ function buildCredential(): TokenCredential {
 
   if (clientId && tenantId && idTokenRequestUrl && idTokenRequestToken) {
     return new ClientAssertionCredential(tenantId, clientId, async () => {
-      const url = `${idTokenRequestUrl}&audience=api://AzureADTokenExchange`;
-      const response = await fetch(url, {
+      const tokenUrl = new URL(idTokenRequestUrl);
+      tokenUrl.searchParams.set('audience', 'api://AzureADTokenExchange');
+      const response = await fetch(tokenUrl.toString(), {
         headers: { Authorization: `Bearer ${idTokenRequestToken}` },
       });
       if (!response.ok) {
@@ -48,7 +49,10 @@ function buildCredential(): TokenCredential {
           `Failed to request GitHub OIDC token (${response.status}): ${await response.text()}`,
         );
       }
-      const data = (await response.json()) as { value: string };
+      const data = (await response.json()) as { value?: string };
+      if (!data.value) {
+        throw new Error('GitHub OIDC token response did not contain a value.');
+      }
       return data.value;
     });
   }
