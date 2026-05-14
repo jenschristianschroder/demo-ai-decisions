@@ -207,6 +207,63 @@ jobs:
           echo "✅ PostgreSQL: host=$RESOLVED_PGHOST db=$RESOLVED_PGDATABASE user=$RESOLVED_PGUSER"
 
       # ────────────────────────────────────────────────────────────────────────
+      # Ensure the PostgreSQL server is running before attempting the backfill.
+      # Azure Flexible Server can be auto-paused or manually stopped to save
+      # costs. Without this step the backfill hangs on the first query when
+      # the server is in the 'Stopped' state.
+      # ────────────────────────────────────────────────────────────────────────
+      - name: Ensure PostgreSQL server is running
+        env:
+          PGHOST: ${{ steps.pg.outputs.PGHOST }}
+          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+        run: |
+          # Derive the Azure Flexible Server name from the FQDN.
+          # Format: <server-name>.postgres.database.azure.com
+          PG_SERVER="${PGHOST%.postgres.database.azure.com}"
+          if [ "$PG_SERVER" = "$PGHOST" ]; then
+            echo "⚠ PGHOST ($PGHOST) is not an Azure Flexible Server FQDN; skipping server state check."
+            exit 0
+          fi
+          if [ -z "$AZURE_RESOURCE_GROUP" ]; then
+            echo "⚠ AZURE_RESOURCE_GROUP secret is not set; skipping server state check."
+            exit 0
+          fi
+
+          SERVER_STATE=$(az postgres flexible-server show \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$PG_SERVER" \
+            --query "state" -o tsv 2>/dev/null || echo "Unknown")
+          echo "Current server state: $SERVER_STATE"
+
+          if [ "$SERVER_STATE" != "Ready" ]; then
+            echo "🔄 Starting PostgreSQL server…"
+            az postgres flexible-server start \
+              --resource-group "$AZURE_RESOURCE_GROUP" \
+              --name "$PG_SERVER"
+            echo "⏳ Waiting for server to become ready…"
+            MAX_ATTEMPTS=30
+            POLL_INTERVAL=10
+            for i in $(seq 1 "$MAX_ATTEMPTS"); do
+              STATE=$(az postgres flexible-server show \
+                --resource-group "$AZURE_RESOURCE_GROUP" \
+                --name "$PG_SERVER" \
+                --query "state" -o tsv 2>/dev/null || echo "Unknown")
+              if [ "$STATE" = "Ready" ]; then
+                echo "✅ Server is ready."
+                break
+              fi
+              if [ "$i" -eq "$MAX_ATTEMPTS" ]; then
+                echo "❌ Server did not become ready after $MAX_ATTEMPTS attempts." >&2
+                exit 1
+              fi
+              echo "  …still waiting (attempt $i/$MAX_ATTEMPTS, state: $STATE)"
+              sleep "$POLL_INTERVAL"
+            done
+          else
+            echo "✅ Server is already running."
+          fi
+
+      # ────────────────────────────────────────────────────────────────────────
       # Build the server (we only need the compiled JS for the backfill script)
       # ────────────────────────────────────────────────────────────────────────
       - name: Install server dependencies
@@ -270,7 +327,7 @@ jobs:
       # cheap and the script just picks up the next un-embedded id.
       # ────────────────────────────────────────────────────────────────────────
       - name: Check remaining work and chain next run
-        if: ${{ always() && inputs.dry_run != true && !cancelled() }}
+        if: ${{ always() && inputs.dry_run != true }}
         env:
           PGHOST: ${{ steps.pg.outputs.PGHOST }}
           PGDATABASE: ${{ steps.pg.outputs.PGDATABASE }}
