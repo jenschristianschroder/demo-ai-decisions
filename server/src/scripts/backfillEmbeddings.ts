@@ -209,9 +209,13 @@ function buildPool(): pg.Pool {
     max: 4,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 15_000,
-    // Abort any single statement that runs longer than 5 minutes so the
-    // workflow never hangs indefinitely on a slow query.
-    statement_timeout: 300_000,
+    // Abort any single statement that runs longer than 15 minutes so the
+    // workflow never hangs indefinitely on a slow query. Bulk vector
+    // UPDATEs are expensive on Azure PG because each row insertion into
+    // the partial IVFFlat index (lists=1000) recomputes distances against
+    // every centroid; smaller writes (see writeEmbeddings call sites) plus
+    // this generous ceiling give the slowest pages plenty of headroom.
+    statement_timeout: 900_000,
   });
 }
 
@@ -308,6 +312,14 @@ async function* readRecordings(
  * UPDATE … FROM (VALUES …) is dramatically faster than N individual
  * UPDATE statements, especially on Azure where each round-trip carries
  * ~10–50ms of latency.
+ *
+ * Inserting `vector(1536)` values is expensive on Azure PG when a partial
+ * IVFFlat index is present (each new row must be placed into a list,
+ * which requires computing distances to every list centroid). To stay
+ * comfortably under `statement_timeout`, callers should pass in
+ * embedding-batch-sized chunks (typically 64 rows) rather than whole
+ * pages. A bounded retry handles transient timeouts so a single slow
+ * write doesn't discard already-computed embeddings.
  */
 async function writeEmbeddings(
   pool: pg.Pool,
@@ -329,14 +341,37 @@ async function writeEmbeddings(
   // `table` is a hard-coded literal from the Entity union; the assertion
   // is defence-in-depth against future callers passing arbitrary strings.
   assertEntityTable(table);
-  await pool.query(
-    `UPDATE musicbrainz.${table} AS t
+
+  const sql = `UPDATE musicbrainz.${table} AS t
         SET embedding = v.embedding::vector
        FROM (SELECT UNNEST($1::int[]) AS id,
                     UNNEST($2::text[]) AS embedding) v
-      WHERE t.id = v.id`,
-    [ids, vecs],
-  );
+      WHERE t.id = v.id`;
+
+  // Retry transient statement-timeout errors (Postgres SQLSTATE 57014).
+  // A page that times out once may complete on a second attempt if the
+  // server was momentarily contended; failing fast loses 64 freshly
+  // computed embeddings that we'd otherwise have to recompute.
+  const MAX_ATTEMPTS = 3;
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    try {
+      await pool.query(sql, [ids, vecs]);
+      return;
+    } catch (err) {
+      lastErr = err;
+      const code = (err as { code?: string } | null)?.code;
+      if (code !== '57014' || attempt === MAX_ATTEMPTS) {
+        throw err;
+      }
+      const backoffMs = 1000 * attempt;
+      console.warn(
+        `  ⚠ write for ${rows.length} rows timed out (attempt ${attempt}/${MAX_ATTEMPTS}); retrying in ${backoffMs}ms…`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, backoffMs));
+    }
+  }
+  throw lastErr;
 }
 
 // ---------------------------------------------------------------------------
@@ -392,22 +427,38 @@ async function processEntity(
       batches.map((batch) => processBatch(entity, batch, opts)),
     );
 
-    const toWrite: Array<{ id: number; embedding: number[] }> = [];
-    for (const r of results) {
+    // Write each batch as its own UPDATE rather than accumulating the
+    // entire page into a single statement. With batch-size=64 and
+    // concurrency=5 a page contains ~320 rows; bulk-updating 320
+    // `vector(1536)` values into the partial IVFFlat index on Azure PG
+    // routinely exceeds the `statement_timeout` (the index must place
+    // every new row in one of 1000 lists, recomputing distances per
+    // insert). Writing per batch keeps each statement small enough to
+    // finish well inside the timeout and means a single transient
+    // failure no longer drops 5x the embeddings.
+    let pageEmbedded = 0;
+    let pageErrors = 0;
+    for (let i = 0; i < results.length; i += 1) {
+      const r = results[i];
       stats.processed += r.processed;
       stats.skipped += r.skipped;
       stats.errors += r.errors;
-      for (const item of r.embedded) toWrite.push(item);
-    }
-    stats.embedded += toWrite.length;
+      const toWrite = r.embedded;
+      stats.embedded += toWrite.length;
 
-    if (!opts.dryRun) {
+      if (opts.dryRun || toWrite.length === 0) {
+        pageEmbedded += toWrite.length;
+        continue;
+      }
+
       try {
         await writeEmbeddings(pool, entity, toWrite);
+        pageEmbedded += toWrite.length;
       } catch (err) {
         console.error(`  ✗ write failed for ${toWrite.length} rows:`, err);
         stats.errors += toWrite.length;
         stats.embedded -= toWrite.length;
+        pageErrors += toWrite.length;
       }
     }
 
@@ -416,6 +467,7 @@ async function processEntity(
     console.log(
       `  → processed=${stats.processed} embedded=${stats.embedded} ` +
         `skipped=${stats.skipped} errors=${stats.errors} ` +
+        `(page: embedded=${pageEmbedded} write-errors=${pageErrors}) ` +
         `rate=${rate}/s elapsed=${elapsedSec.toFixed(1)}s`,
     );
 
