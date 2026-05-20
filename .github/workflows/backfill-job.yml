@@ -1,0 +1,203 @@
+name: Backfill Job — Control
+
+# Start, stop, and inspect the Azure Container Apps Job that runs the
+# MusicBrainz embeddings backfill (`ai-decisions-backfill`). This workflow
+# replaces the long-running GitHub Actions backfill: the heavy work runs
+# in Azure (no 6h cap, no public-internet PG tax), while this workflow
+# is just a remote control surface.
+#
+# Required secrets:
+#   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
+#   AZURE_RESOURCE_GROUP
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'What to do'
+        required: true
+        type: choice
+        options:
+          - start
+          - stop
+          - status
+          - logs
+        default: status
+      entity:
+        description: 'Entity (start only): artist | recording | all'
+        required: false
+        type: choice
+        options:
+          - artist
+          - recording
+          - all
+        default: artist
+      batch_size:
+        description: 'Inputs per Azure OpenAI embeddings call (start only)'
+        required: false
+        default: '128'
+      concurrency:
+        description: 'Concurrent embedding batches in flight (start only)'
+        required: false
+        default: '8'
+      write_concurrency:
+        description: 'Concurrent UPDATE writers (start only)'
+        required: false
+        default: '4'
+      min_id:
+        description: 'Resume from this id (start only, default 0)'
+        required: false
+        default: '0'
+      max_id:
+        description: 'Stop after this id (sharding; blank = no upper bound)'
+        required: false
+        default: ''
+      limit:
+        description: 'Hard cap on rows processed (start only; blank = no limit)'
+        required: false
+        default: ''
+      drop_index:
+        description: 'Drop & rebuild vector index around the run (faster but breaks vector queries while it runs)'
+        required: false
+        type: boolean
+        default: false
+      execution_name:
+        description: 'Execution name (required for stop/logs)'
+        required: false
+        default: ''
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  JOB_NAME: ai-decisions-backfill
+
+jobs:
+  control:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure Login (OIDC)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify job exists
+        run: |
+          set -euo pipefail
+          if ! az containerapp job show \
+                --name "$JOB_NAME" \
+                --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+                >/dev/null 2>&1; then
+            echo "::error::Container Apps Job '$JOB_NAME' not found in resource group '${{ secrets.AZURE_RESOURCE_GROUP }}'. Has the deploy workflow run successfully?"
+            exit 1
+          fi
+
+      # ── START ────────────────────────────────────────────────────────────
+      - name: Start a backfill execution
+        if: inputs.action == 'start'
+        run: |
+          set -euo pipefail
+          ENV_VARS=(
+            "BACKFILL_ENTITY=${{ inputs.entity }}"
+            "BACKFILL_BATCH_SIZE=${{ inputs.batch_size }}"
+            "BACKFILL_CONCURRENCY=${{ inputs.concurrency }}"
+            "BACKFILL_WRITE_CONCURRENCY=${{ inputs.write_concurrency }}"
+            "BACKFILL_MIN_ID=${{ inputs.min_id }}"
+            "BACKFILL_TRACK_PROGRESS=true"
+          )
+          if [ -n "${{ inputs.max_id }}" ]; then
+            ENV_VARS+=("BACKFILL_MAX_ID=${{ inputs.max_id }}")
+          fi
+          if [ -n "${{ inputs.limit }}" ]; then
+            ENV_VARS+=("BACKFILL_LIMIT=${{ inputs.limit }}")
+          fi
+          if [ "${{ inputs.drop_index }}" = "true" ]; then
+            ENV_VARS+=("BACKFILL_DROP_INDEX=true")
+          fi
+
+          echo "Starting $JOB_NAME with overrides:"
+          printf '  %s\n' "${ENV_VARS[@]}"
+
+          # `az containerapp job start --env-vars` accepts space-separated
+          # KEY=VALUE pairs. They override the env vars set in the job
+          # template for this execution only.
+          EXEC_OUTPUT="$(az containerapp job start \
+              --name "$JOB_NAME" \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --env-vars "${ENV_VARS[@]}" \
+              --output json)"
+          echo "$EXEC_OUTPUT"
+          EXEC_NAME="$(echo "$EXEC_OUTPUT" | jq -r '.name // .properties.name // empty')"
+          if [ -n "$EXEC_NAME" ]; then
+            echo "✅ Started execution: $EXEC_NAME"
+            echo "   Tail logs with:"
+            echo "     az containerapp job logs show -n $JOB_NAME -g ${{ secrets.AZURE_RESOURCE_GROUP }} --execution $EXEC_NAME --container $JOB_NAME --follow"
+            echo "   Or watch progress in DB:   GET https://<spa>/api/backfill/status"
+          fi
+
+      # ── STOP ─────────────────────────────────────────────────────────────
+      - name: Stop a running execution
+        if: inputs.action == 'stop'
+        run: |
+          set -euo pipefail
+          if [ -n "${{ inputs.execution_name }}" ]; then
+            EXEC_NAME="${{ inputs.execution_name }}"
+          else
+            # Default to the most recent running execution.
+            EXEC_NAME="$(az containerapp job execution list \
+                --name "$JOB_NAME" \
+                --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+                --query "[?properties.status=='Running'] | [0].name" -o tsv)"
+          fi
+          if [ -z "$EXEC_NAME" ]; then
+            echo "::error::No running execution to stop. Pass execution_name explicitly or check 'status' first."
+            exit 1
+          fi
+          echo "Stopping execution: $EXEC_NAME"
+          az containerapp job stop \
+              --name "$JOB_NAME" \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --execution-name "$EXEC_NAME"
+          echo "✅ Stop signal sent to $EXEC_NAME (SIGTERM; backfill will finish current page then mark progress as cancelled)."
+
+      # ── STATUS ───────────────────────────────────────────────────────────
+      - name: Show recent executions
+        if: inputs.action == 'status'
+        run: |
+          set -euo pipefail
+          echo "Recent executions of $JOB_NAME:"
+          az containerapp job execution list \
+              --name "$JOB_NAME" \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --query "reverse(sort_by([].{name:name, status:properties.status, startTime:properties.startTime, endTime:properties.endTime}, &startTime))[:10]" \
+              -o table
+
+      # ── LOGS ─────────────────────────────────────────────────────────────
+      - name: Show logs for an execution
+        if: inputs.action == 'logs'
+        run: |
+          set -euo pipefail
+          if [ -n "${{ inputs.execution_name }}" ]; then
+            EXEC_NAME="${{ inputs.execution_name }}"
+          else
+            EXEC_NAME="$(az containerapp job execution list \
+                --name "$JOB_NAME" \
+                --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+                --query "reverse(sort_by([], &properties.startTime)) | [0].name" -o tsv)"
+          fi
+          if [ -z "$EXEC_NAME" ]; then
+            echo "::error::No executions found."
+            exit 1
+          fi
+          echo "Logs for execution: $EXEC_NAME"
+          # `--tail` keeps the output bounded for the Actions UI. Operators
+          # who want live tailing should run `--follow` from their own shell.
+          az containerapp job logs show \
+              --name "$JOB_NAME" \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --container "$JOB_NAME" \
+              --execution "$EXEC_NAME" \
+              --tail 500 || echo "::warning::Could not stream logs (the execution may still be initialising)."
