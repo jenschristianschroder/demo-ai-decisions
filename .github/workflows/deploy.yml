@@ -57,6 +57,7 @@ jobs:
             imageTag=${{ github.sha }}
             azureAiEndpoint=${{ secrets.AZURE_AI_ENDPOINT }}
             azureAiDeployment=${{ secrets.AZURE_AI_DEPLOYMENT }}
+            azureAiEmbeddingDeployment=${{ secrets.AZURE_AI_EMBEDDING_DEPLOYMENT }}
             cognitiveServicesAccountId=${{ secrets.COGNITIVE_SERVICES_ACCOUNT_ID }}
             pgAdminPassword=${{ secrets.PG_ADMIN_PASSWORD }}
           failOnStdErr: false
@@ -166,6 +167,28 @@ jobs:
               "PGPASSWORD=${{ steps.pg.outputs.pgPassword }}" \
               "PGSSLMODE=${{ steps.pg.outputs.pgSslMode }}" \
             --min-replicas 1
+
+      # ─── Update backfill Container Apps Job image ───────────────────
+      # The job reuses the SPA image (overriding the entrypoint). Updating
+      # its image here ensures subsequent `az containerapp job start`
+      # executions pick up the latest backfill script + dependencies.
+      - name: Update backfill Container Apps Job
+        if: steps.pg.outputs.pgHost != ''
+        continue-on-error: true
+        run: |
+          JOB_NAME="${{ env.APP_NAME }}-backfill"
+          if az containerapp job show \
+                --name "$JOB_NAME" \
+                --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+                >/dev/null 2>&1; then
+            echo "Updating $JOB_NAME image…"
+            az containerapp job update \
+              --name "$JOB_NAME" \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --image ${{ steps.acr.outputs.acrLoginServer }}/${{ env.APP_NAME }}-spa:${{ github.sha }}
+          else
+            echo "⚠ Backfill job $JOB_NAME not found yet (likely first deploy); skipping image update."
+          fi
 
       # ─── Initialize PostgreSQL database (schema + extensions) ────────
       - name: Initialize PostgreSQL database

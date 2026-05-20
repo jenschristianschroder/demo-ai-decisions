@@ -17,6 +17,9 @@ param azureAiEndpoint string = ''
 @description('Azure AI Foundry model deployment name')
 param azureAiDeployment string = 'gpt-4o'
 
+@description('Azure OpenAI embedding deployment name (must produce 1536-dim vectors to match the schema)')
+param azureAiEmbeddingDeployment string = 'text-embedding-3-small'
+
 @description('Resource ID of the Cognitive Services account for role assignment')
 param cognitiveServicesAccountId string = ''
 
@@ -30,6 +33,7 @@ var acrName = '${replace('${appName}acr', '-', '')}${uniqueString(resourceGroup(
 var envName = '${appName}-env'
 var identityName = '${appName}-identity'
 var spaAppName = '${appName}-spa'
+var backfillJobName = '${appName}-backfill'
 var pgServerName = '${appName}-pg'
 var pgDatabaseName = 'musicbrainz'
 
@@ -97,6 +101,35 @@ module aiRoleAssignment 'modules/ai-role-assignment.bicep' = if (!empty(cognitiv
   }
 }
 
+// ── Backfill Container Apps Job ──────────────────────────────────────────────
+// Runs the embeddings backfill as a manual-trigger ACA Job. Same image as
+// the SPA, but with the entrypoint overridden to the backfill script.
+module backfillJob 'modules/aca-backfill-job.bicep' = if (!empty(pgAdminPassword)) {
+  name: 'aca-backfill-job'
+  params: {
+    location: location
+    name: backfillJobName
+    environmentId: environment.outputs.id
+    containerImage: '${acr.outputs.loginServer}/${spaAppName}:${imageTag}'
+    acrLoginServer: acr.outputs.loginServer
+    identityId: identity.outputs.id
+    azureAiEndpoint: azureAiEndpoint
+    azureAiEmbeddingDeployment: azureAiEmbeddingDeployment
+    pgHost: postgresql.?outputs.?fqdn ?? ''
+    pgDatabase: pgDatabaseName
+    pgUser: 'pgadmin'
+    pgPassword: pgAdminPassword
+  }
+}
+
+module backfillAiRoleAssignment 'modules/ai-role-assignment.bicep' = if (!empty(cognitiveServicesAccountId) && !empty(pgAdminPassword)) {
+  name: 'backfill-ai-role-assignment'
+  params: {
+    principalId: backfillJob.?outputs.?principalId ?? ''
+    cognitiveServicesAccountId: cognitiveServicesAccountId
+  }
+}
+
 // ─── Outputs ─────────────────────────────────────────────────────────────────
 
 @description('Public URL of the SPA')
@@ -107,3 +140,6 @@ output acrLoginServer string = acr.outputs.loginServer
 
 @description('PostgreSQL server FQDN')
 output pgFqdn string = postgresql.?outputs.?fqdn ?? ''
+
+@description('Backfill Container Apps Job name')
+output backfillJobName string = backfillJob.?outputs.?name ?? ''
