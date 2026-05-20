@@ -332,6 +332,115 @@ Replace the files in `sample-data/rfp/` with your own RFP content in markdown fo
 
 ---
 
+## MusicBrainz Embedding Backfill (Azure Container Apps Job)
+
+The MusicBrainz semantic-search feature stores `pgvector(1536)` embeddings on
+`musicbrainz.artist` and `musicbrainz.recording`. Computing those embeddings
+in bulk is done by a dedicated **Azure Container Apps Job**
+(`ai-decisions-backfill`), provisioned by `infra/modules/aca-backfill-job.bicep`
+and updated on every successful `deploy.yml` run.
+
+The job runs the same container image as the SPA, but overrides the
+entrypoint to `node dist/scripts/backfillEmbeddings.js`. Running the
+backfill inside Azure (rather than from a GitHub Actions runner) removes
+the public-internet PG round-trip tax and the 6 h GitHub job cap.
+
+### Controlling the job (GitHub Actions)
+
+Use the **Backfill Job — Control** workflow
+(`.github/workflows/backfill-job.yml`) for one-click operations:
+
+| Action  | What it does                                                                 |
+| ------- | ---------------------------------------------------------------------------- |
+| `start` | Starts a new execution with per-execution env-var overrides                  |
+| `stop`  | Sends SIGTERM to a running execution (script finishes current page, exits)   |
+| `status`| Lists the 10 most recent executions and their state                          |
+| `logs`  | Tails the last 500 log lines for a given (or the latest) execution           |
+
+### Controlling the job (Azure CLI)
+
+```bash
+JOB=ai-decisions-backfill
+RG=<your-resource-group>
+
+# Start an execution (overrides applied for this run only)
+az containerapp job start -n "$JOB" -g "$RG" --env-vars \
+  BACKFILL_ENTITY=artist BACKFILL_BATCH_SIZE=128 BACKFILL_CONCURRENCY=8
+
+# List executions
+az containerapp job execution list -n "$JOB" -g "$RG" -o table
+
+# Stop a specific execution (graceful SIGTERM)
+az containerapp job stop -n "$JOB" -g "$RG" --execution-name <exec>
+
+# Tail logs
+az containerapp job logs show -n "$JOB" -g "$RG" \
+  --container "$JOB" --execution <exec> --follow
+```
+
+### Tracking progress
+
+The script persists per-execution progress in `musicbrainz.backfill_progress`
+on every page. Read it from the SPA:
+
+```bash
+curl https://<spa-fqdn>/api/backfill/status        # most recent 20 runs
+curl https://<spa-fqdn>/api/backfill/status/<runId>
+```
+
+Each row reports `processed`, `embedded`, `errors`, `last_id`,
+`last_heartbeat_at`, the run status (`running` / `completed` / `cancelled`
+/ `failed`), and a computed rate / elapsed time. The same data is visible
+to anyone with PostgreSQL access via `SELECT * FROM musicbrainz.backfill_progress`.
+
+### Configuration (env vars)
+
+All options can be set per-execution with `az containerapp job start --env-vars`
+or persisted as defaults on the job template (see `aca-backfill-job.bicep`).
+
+| Env var                       | Default | Notes                                             |
+| ----------------------------- | ------- | ------------------------------------------------- |
+| `BACKFILL_ENTITY`             | `artist`| `artist`, `recording`, or `all`                   |
+| `BACKFILL_BATCH_SIZE`         | `128`   | Inputs per Azure OpenAI embeddings call (max 2048)|
+| `BACKFILL_CONCURRENCY`        | `8`     | Concurrent embedding batches in flight            |
+| `BACKFILL_WRITE_CONCURRENCY`  | `4`     | Concurrent UPDATE writers                         |
+| `BACKFILL_MIN_ID`             | `0`     | Resume from this id                               |
+| `BACKFILL_MAX_ID`             | _none_  | Stop at this id (sharding across executions)      |
+| `BACKFILL_LIMIT`              | _none_  | Hard cap on rows processed                        |
+| `BACKFILL_DRY_RUN`            | `false` | Compose text but skip Azure calls + writes        |
+| `BACKFILL_DROP_INDEX`         | `false` | Drop & rebuild the vector index around the run    |
+| `BACKFILL_TRACK_PROGRESS`     | `true`  | Write to `musicbrainz.backfill_progress`          |
+| `BACKFILL_RUN_ID`             | auto    | Defaults to the ACA execution name                |
+| `BACKFILL_HEARTBEAT_EVERY`    | `1`     | Heartbeat to progress table every N pages         |
+
+### Sharding (parallel executions)
+
+To parallelise across the id range, start multiple executions with
+disjoint `BACKFILL_MIN_ID` / `BACKFILL_MAX_ID` windows — for example to
+split artists into 4 shards:
+
+```bash
+for i in 0 1 2 3; do
+  az containerapp job start -n "$JOB" -g "$RG" --env-vars \
+    BACKFILL_ENTITY=artist \
+    BACKFILL_MIN_ID=$((i * 1000000)) \
+    BACKFILL_MAX_ID=$(((i + 1) * 1000000 - 1))
+done
+```
+
+Each execution writes its own row to `musicbrainz.backfill_progress`
+(keyed on the ACA execution name) so progress is independently visible
+per shard.
+
+### Legacy GitHub Actions workflow
+
+`.github/workflows/backfill-embeddings.yml` remains as a fallback for
+running the backfill from a GitHub-hosted runner (useful when the Azure
+job is not yet deployed). Prefer the Container Apps Job for any non-trivial
+backfill — it is dramatically faster and has no 6 h cap.
+
+---
+
 ## Suggested Future Enhancements
 
 - Live integration with Azure AI Foundry for real explanation generation

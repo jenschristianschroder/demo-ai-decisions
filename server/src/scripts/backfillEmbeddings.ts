@@ -12,11 +12,17 @@
  *
  *   npm run backfill:embeddings -- [--entity=artist|recording|all] \
  *                                  [--batch-size=64] [--limit=10000] \
- *                                  [--min-id=0] [--dry-run]
+ *                                  [--min-id=0] [--max-id=N] [--dry-run]
  *
- * Defaults are tuned for Azure OpenAI throughput limits:
- *   - 64 inputs per embeddings request (well under the 2048-input cap)
- *   - 5 concurrent batches in flight at a time
+ * All flags also read from `BACKFILL_*` env vars (see --help). Env-var
+ * config is the primary path when running as an Azure Container Apps Job
+ * (`infra/modules/aca-backfill-job.bicep`).
+ *
+ * Script defaults are intentionally conservative (batch=64, concurrency=5)
+ * so local / GitHub-Actions runs don't accidentally saturate the embedding
+ * quota. The ACA Job template sets higher production defaults
+ * (batch=128, concurrency=8); per-execution overrides remain available
+ * via `az containerapp job start --env-vars …`.
  *
  * Required environment variables:
  *   AZURE_AI_ENDPOINT, AZURE_AI_EMBEDDING_DEPLOYMENT (optional, defaults

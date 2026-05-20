@@ -41,7 +41,7 @@ param cpu string = '1.0'
 @description('Memory allocated to the job container (e.g. 2Gi)')
 param memory string = '2Gi'
 
-@description('Per-execution timeout in seconds (default: 24h)')
+@description('Per-execution timeout in seconds (default: 24h = 86400s)')
 param replicaTimeoutSeconds int = 86400
 
 @description('How many times to retry a failed replica before marking the execution failed')
