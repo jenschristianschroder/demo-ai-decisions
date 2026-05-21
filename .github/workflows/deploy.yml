@@ -112,6 +112,31 @@ jobs:
             -t ${{ steps.acr.outputs.acrLoginServer }}/${{ env.APP_NAME }}-spa:${{ github.sha }} .
           docker push ${{ steps.acr.outputs.acrLoginServer }}/${{ env.APP_NAME }}-spa:${{ github.sha }}
 
+      # ─── Deploy Bicep (final pass — image now available) ─────────────
+      # The first Bicep deploy above is expected to fail with
+      # MANIFEST_UNKNOWN on a fresh ACR (chicken-and-egg: the Container
+      # App revision references the image tag that we only push after
+      # ACR exists). Now that the image is in ACR, re-run Bicep so any
+      # new resources defined in the template — most notably the
+      # `ai-decisions-backfill` Container Apps Job — actually get
+      # provisioned. Existing resources are reconciled idempotently.
+      - name: Deploy Bicep (final pass)
+        uses: azure/bicep-deploy@v2
+        with:
+          type: deployment
+          operation: create
+          name: ${{ env.INFRA_DEPLOYMENT_NAME }}
+          scope: resourceGroup
+          resource-group-name: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          template-file: infra/main.bicep
+          parameters: >-
+            imageTag=${{ github.sha }}
+            azureAiEndpoint=${{ secrets.AZURE_AI_ENDPOINT }}
+            azureAiDeployment=${{ secrets.AZURE_AI_DEPLOYMENT }}
+            azureAiEmbeddingDeployment=${{ secrets.AZURE_AI_EMBEDDING_DEPLOYMENT }}
+            cognitiveServicesAccountId=${{ secrets.COGNITIVE_SERVICES_ACCOUNT_ID }}
+            pgAdminPassword=${{ secrets.PG_ADMIN_PASSWORD }}
+
       # ─── Resolve PostgreSQL connection settings ─────────────────────
       # Uses infra Bicep outputs when available, otherwise falls back to
       # GitHub secrets: PG_HOST, PG_DATABASE, PG_USER, PG_PASSWORD, PG_SSLMODE
