@@ -101,15 +101,20 @@ jobs:
         run: |
           set -euo pipefail
 
-          # When --env-vars is used, `az containerapp job start` creates a
-          # container override that also requires --image and --container-name.
-          # Read the current image from the job template so we don't need to
-          # hard-code it here.
-          CURRENT_IMAGE="$(az containerapp job show \
-              --name "$JOB_NAME" \
-              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-              --query "properties.template.containers[0].image" -o tsv)"
-          echo "Resolved container image: $CURRENT_IMAGE"
+          # NOTE: We intentionally do NOT use `az containerapp job start
+          # --image/--container-name/--env-vars` here. Passing those flags
+          # creates an execution-level *container override* that replaces
+          # (not merges with) the template's container spec. That drops
+          # every env var from the Bicep template (AZURE_AI_ENDPOINT,
+          # AZURE_AI_EMBEDDING_DEPLOYMENT, PGHOST/PGDATABASE/PGUSER/
+          # PGPASSWORD/PGSSLMODE, …) and the missing command/args fall back
+          # to the Dockerfile CMD (the SPA Express server), so the
+          # execution never runs the backfill script.
+          #
+          # Instead, patch the per-run BACKFILL_* env vars onto the job
+          # template via `az containerapp job update --set-env-vars`, then
+          # start the execution with no overrides so it inherits the full
+          # template (command, args, AI + PG env vars).
 
           ENV_VARS=(
             "BACKFILL_ENTITY=${{ inputs.entity }}"
@@ -129,19 +134,23 @@ jobs:
             ENV_VARS+=("BACKFILL_DROP_INDEX=true")
           fi
 
-          echo "Starting $JOB_NAME with overrides:"
+          echo "Patching BACKFILL_* env vars onto $JOB_NAME template:"
           printf '  %s\n' "${ENV_VARS[@]}"
 
-          # `az containerapp job start --env-vars` accepts space-separated
-          # KEY=VALUE pairs. They override the env vars set in the job
-          # template for this execution only. --image and --container-name
-          # are required when using container overrides.
+          # `--set-env-vars` upserts the listed KEY=VALUE pairs into the
+          # template's existing env array, leaving the other (AI/PG) env
+          # vars untouched. `--replace-env-vars` would wipe them, so do
+          # not use it here.
+          az containerapp job update \
+              --name "$JOB_NAME" \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --set-env-vars "${ENV_VARS[@]}" \
+              --output none
+
+          echo "Starting $JOB_NAME (no container overrides — execution will inherit the full template)…"
           EXEC_OUTPUT="$(az containerapp job start \
               --name "$JOB_NAME" \
               --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-              --image "$CURRENT_IMAGE" \
-              --container-name "$JOB_NAME" \
-              --env-vars "${ENV_VARS[@]}" \
               --output json)"
           echo "$EXEC_OUTPUT"
           EXEC_NAME="$(echo "$EXEC_OUTPUT" | jq -r '.name // .properties.name // empty')"
