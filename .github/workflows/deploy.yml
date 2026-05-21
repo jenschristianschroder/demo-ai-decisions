@@ -55,13 +55,13 @@ jobs:
           scope: resourceGroup
           resource-group-name: ${{ secrets.AZURE_RESOURCE_GROUP }}
           template-file: infra/main.bicep
-          parameters: >-
-            imageTag=${{ github.sha }}
-            azureAiEndpoint=${{ secrets.AZURE_AI_ENDPOINT }}
-            azureAiDeployment=${{ secrets.AZURE_AI_DEPLOYMENT }}
-            azureAiEmbeddingDeployment=${{ secrets.AZURE_AI_EMBEDDING_DEPLOYMENT }}
-            cognitiveServicesAccountId=${{ secrets.COGNITIVE_SERVICES_ACCOUNT_ID }}
-            pgAdminPassword=${{ secrets.PG_ADMIN_PASSWORD }}
+          parameters: |
+            imageTag: ${{ github.sha }}
+            azureAiEndpoint: ${{ secrets.AZURE_AI_ENDPOINT }}
+            azureAiDeployment: ${{ secrets.AZURE_AI_DEPLOYMENT }}
+            azureAiEmbeddingDeployment: ${{ secrets.AZURE_AI_EMBEDDING_DEPLOYMENT }}
+            cognitiveServicesAccountId: ${{ secrets.COGNITIVE_SERVICES_ACCOUNT_ID }}
+            pgAdminPassword: ${{ secrets.PG_ADMIN_PASSWORD }}
 
       - name: Validate infra deployment failure reason
         if: steps.infra.outcome == 'failure'
@@ -129,13 +129,13 @@ jobs:
           scope: resourceGroup
           resource-group-name: ${{ secrets.AZURE_RESOURCE_GROUP }}
           template-file: infra/main.bicep
-          parameters: >-
-            imageTag=${{ github.sha }}
-            azureAiEndpoint=${{ secrets.AZURE_AI_ENDPOINT }}
-            azureAiDeployment=${{ secrets.AZURE_AI_DEPLOYMENT }}
-            azureAiEmbeddingDeployment=${{ secrets.AZURE_AI_EMBEDDING_DEPLOYMENT }}
-            cognitiveServicesAccountId=${{ secrets.COGNITIVE_SERVICES_ACCOUNT_ID }}
-            pgAdminPassword=${{ secrets.PG_ADMIN_PASSWORD }}
+          parameters: |
+            imageTag: ${{ github.sha }}
+            azureAiEndpoint: ${{ secrets.AZURE_AI_ENDPOINT }}
+            azureAiDeployment: ${{ secrets.AZURE_AI_DEPLOYMENT }}
+            azureAiEmbeddingDeployment: ${{ secrets.AZURE_AI_EMBEDDING_DEPLOYMENT }}
+            cognitiveServicesAccountId: ${{ secrets.COGNITIVE_SERVICES_ACCOUNT_ID }}
+            pgAdminPassword: ${{ secrets.PG_ADMIN_PASSWORD }}
 
       # ─── Resolve PostgreSQL connection settings ─────────────────────
       # Uses infra Bicep outputs when available, otherwise falls back to
