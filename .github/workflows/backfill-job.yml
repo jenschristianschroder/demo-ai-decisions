@@ -209,9 +209,13 @@ jobs:
           echo "Logs for execution: $EXEC_NAME"
           # `--tail` keeps the output bounded for the Actions UI. Operators
           # who want live tailing should run `--follow` from their own shell.
-          az containerapp job logs show \
+          # NOTE: `az containerapp job logs show` rejects --tail values above
+          # 300 ("ERROR: --tail must be between 0 and 300."), so we cap here.
+          if ! az containerapp job logs show \
               --name "$JOB_NAME" \
               --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
               --container "$JOB_NAME" \
               --execution "$EXEC_NAME" \
-              --tail 500 || echo "::warning::Could not stream logs (the execution may still be initialising)."
+              --tail 300; then
+            echo "::warning::Could not stream logs for $EXEC_NAME (the execution may still be initialising, or the Container Apps Logs API rejected the request)."
+          fi
