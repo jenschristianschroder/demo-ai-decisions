@@ -100,6 +100,17 @@ jobs:
         if: inputs.action == 'start'
         run: |
           set -euo pipefail
+
+          # When --env-vars is used, `az containerapp job start` creates a
+          # container override that also requires --image and --container-name.
+          # Read the current image from the job template so we don't need to
+          # hard-code it here.
+          CURRENT_IMAGE="$(az containerapp job show \
+              --name "$JOB_NAME" \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --query "properties.template.containers[0].image" -o tsv)"
+          echo "Resolved container image: $CURRENT_IMAGE"
+
           ENV_VARS=(
             "BACKFILL_ENTITY=${{ inputs.entity }}"
             "BACKFILL_BATCH_SIZE=${{ inputs.batch_size }}"
@@ -123,10 +134,13 @@ jobs:
 
           # `az containerapp job start --env-vars` accepts space-separated
           # KEY=VALUE pairs. They override the env vars set in the job
-          # template for this execution only.
+          # template for this execution only. --image and --container-name
+          # are required when using container overrides.
           EXEC_OUTPUT="$(az containerapp job start \
               --name "$JOB_NAME" \
               --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --image "$CURRENT_IMAGE" \
+              --container-name "$JOB_NAME" \
               --env-vars "${ENV_VARS[@]}" \
               --output json)"
           echo "$EXEC_OUTPUT"
