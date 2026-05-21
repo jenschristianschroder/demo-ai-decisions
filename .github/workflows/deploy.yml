@@ -43,6 +43,47 @@ jobs:
         env:
           LOCATION: ${{ vars.AZURE_LOCATION }}
 
+      # ─── Ensure PostgreSQL server is running ────────────────────────────
+      # The server may be stopped to save costs. Start it before Bicep
+      # deployment to avoid ServerIsBusy errors when configuring extensions.
+      - name: Ensure PostgreSQL server is running
+        run: |
+          PG_SERVER="${{ env.APP_NAME }}-pg"
+          SERVER_STATE=$(az postgres flexible-server show \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --name "$PG_SERVER" \
+            --query "state" -o tsv 2>/dev/null || echo "NotFound")
+          echo "Current server state: $SERVER_STATE"
+          if [ "$SERVER_STATE" = "NotFound" ]; then
+            echo "PostgreSQL server does not exist yet — Bicep will create it."
+          elif [ "$SERVER_STATE" != "Ready" ]; then
+            echo "🔄 Starting PostgreSQL server…"
+            az postgres flexible-server start \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --name "$PG_SERVER"
+            echo "⏳ Waiting for server to become ready…"
+            MAX_ATTEMPTS=30
+            POLL_INTERVAL=10
+            for i in $(seq 1 "$MAX_ATTEMPTS"); do
+              STATE=$(az postgres flexible-server show \
+                --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+                --name "$PG_SERVER" \
+                --query "state" -o tsv 2>/dev/null || echo "Unknown")
+              if [ "$STATE" = "Ready" ]; then
+                echo "✅ Server is ready."
+                break
+              fi
+              echo "  Attempt $i/$MAX_ATTEMPTS — state: $STATE"
+              sleep "$POLL_INTERVAL"
+            done
+            if [ "$STATE" != "Ready" ]; then
+              echo "::error::PostgreSQL server did not become ready in time."
+              exit 1
+            fi
+          else
+            echo "✅ Server is already running."
+          fi
+
       # ─── Deploy infrastructure (creates ACR if needed) ───────────────
       - name: Deploy Bicep (infra only — placeholder images)
         uses: azure/bicep-deploy@v2
