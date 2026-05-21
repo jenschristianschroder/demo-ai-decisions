@@ -64,6 +64,8 @@ resource allowAzureServices 'Microsoft.DBforPostgreSQL/flexibleServers/firewallR
 }
 
 // ─── Enable required extensions via server configuration ─────────────────────
+// Resources are serialized with explicit dependsOn to avoid ServerIsBusy
+// errors — Azure Flexible Server cannot process concurrent operations.
 
 resource azureExtensions 'Microsoft.DBforPostgreSQL/flexibleServers/configurations@2023-12-01-preview' = {
   parent: pgServer
@@ -72,6 +74,7 @@ resource azureExtensions 'Microsoft.DBforPostgreSQL/flexibleServers/configuratio
     value: 'age,vector'
     source: 'user-override'
   }
+  dependsOn: [allowAzureServices]
 }
 
 resource sharedPreloadLibraries 'Microsoft.DBforPostgreSQL/flexibleServers/configurations@2023-12-01-preview' = {
@@ -93,6 +96,7 @@ resource database 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2023-12-0
     charset: 'UTF8'
     collation: 'en_US.utf8'
   }
+  dependsOn: [sharedPreloadLibraries]
 }
 
 // ─── Outputs ─────────────────────────────────────────────────────────────────
