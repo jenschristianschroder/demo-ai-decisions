@@ -49,10 +49,12 @@ jobs:
         id: infra
         continue-on-error: true
         with:
-          deploymentName: ${{ env.INFRA_DEPLOYMENT_NAME }}
-          resourceGroupName: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          type: deployment
+          operation: create
+          name: ${{ env.INFRA_DEPLOYMENT_NAME }}
           scope: resourceGroup
-          templateFile: infra/main.bicep
+          resource-group-name: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          template-file: infra/main.bicep
           parameters: >-
             imageTag=${{ github.sha }}
             azureAiEndpoint=${{ secrets.AZURE_AI_ENDPOINT }}
@@ -60,7 +62,6 @@ jobs:
             azureAiEmbeddingDeployment=${{ secrets.AZURE_AI_EMBEDDING_DEPLOYMENT }}
             cognitiveServicesAccountId=${{ secrets.COGNITIVE_SERVICES_ACCOUNT_ID }}
             pgAdminPassword=${{ secrets.PG_ADMIN_PASSWORD }}
-          failOnStdErr: false
 
       - name: Validate infra deployment failure reason
         if: steps.infra.outcome == 'failure'
