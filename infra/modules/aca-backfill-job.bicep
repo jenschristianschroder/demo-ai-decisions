@@ -161,7 +161,15 @@ resource backfillJob 'Microsoft.App/jobs@2024-03-01' = {
               name: 'PGSSLMODE'
               value: 'require'
             }
-            // ── Backfill defaults (override per-execution with `az containerapp job start --env-vars …`) ──
+            // ── Backfill defaults ──
+            // To change these per-execution, patch them onto the template
+            // with `az containerapp job update --set-env-vars KEY=VALUE …`
+            // before `az containerapp job start`. Do NOT use
+            // `az containerapp job start --env-vars` — that creates a
+            // container override that replaces the entire container spec
+            // and drops every other env var below (AZURE_AI_ENDPOINT, all
+            // PG* vars, …) plus the command/args, so the execution falls
+            // back to the SPA entrypoint.
             {
               name: 'BACKFILL_ENTITY'
               value: defaultEntity
