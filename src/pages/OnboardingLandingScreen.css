@@ -1,0 +1,185 @@
+/* Onboarding Intelligence — Landing screen */
+.onb-landing-root {
+  min-height: 100vh;
+  background: #f8f9fa;
+  padding: 32px 24px 64px;
+}
+
+.onb-landing-shell {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.onb-landing-back {
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 13px;
+  padding: 4px 0;
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+
+.onb-landing-back:hover { color: #111; }
+
+.onb-landing-header {
+  background: #ffffff;
+  border: 1.5px solid #222222;
+  border-radius: 12px;
+  padding: 32px 40px;
+  margin-bottom: 24px;
+}
+
+.onb-landing-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: #f0f0f0;
+  border: 1px solid #222;
+  color: #111;
+  padding: 3px 10px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.onb-landing-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 12px;
+}
+
+.onb-landing-subtitle {
+  font-size: 15px;
+  color: #444;
+  line-height: 1.6;
+  max-width: 720px;
+}
+
+.onb-landing-h2 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0 0 16px 0;
+}
+
+.onb-landing-agents {
+  margin-bottom: 32px;
+}
+
+.onb-landing-agent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.onb-landing-agent {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.onb-landing-agent h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111;
+  margin: 8px 0 8px 0;
+}
+
+.onb-landing-agent p {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.onb-landing-agent-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #111;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.onb-landing-personas {
+  margin-bottom: 32px;
+}
+
+.onb-landing-persona-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.onb-landing-persona-card {
+  background: #ffffff;
+  border: 1.5px solid #222;
+  border-radius: 10px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.onb-landing-persona-who {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.onb-landing-persona-label {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111;
+  margin: 0 0 12px 0;
+}
+
+.onb-landing-persona-desc {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.5;
+  margin: 0 0 16px 0;
+  flex: 1;
+}
+
+.onb-landing-persona-cta {
+  align-self: flex-start;
+  background: #111;
+  color: #fff;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.onb-landing-persona-cta:hover { background: #000; }
+
+.onb-landing-footer {
+  background: #ffffff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 16px 20px;
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.55;
+}
+
+.onb-landing-footer code {
+  background: #f1f5f9;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}

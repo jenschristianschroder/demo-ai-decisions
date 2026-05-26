@@ -1,0 +1,38 @@
+{
+  "activeClientId": "CASE-NORTHSTAR-2026",
+  "cases": [
+    {
+      "caseId": "CASE-NORTHSTAR-2026",
+      "clientName": "Northstar Remit Ltd",
+      "currentStep": "aml",
+      "stepStatus": "in-review",
+      "openItems": [
+        "Submit proof-of-address for signatory M. Okafor",
+        "Confirm intended go-live month for UK → Nigeria corridor"
+      ],
+      "completedSteps": [
+        { "step": "intake", "completedOn": "2026-04-22" },
+        { "step": "kyc", "completedOn": "2026-04-30" }
+      ],
+      "publicNote": "KYC complete, AML in review — typical wait at this step is 3–5 business days.",
+      "expectedGoLiveWindow": "18–24 June 2026"
+    },
+    {
+      "caseId": "CASE-COBALT-2026",
+      "clientName": "Cobalt PSP GmbH",
+      "currentStep": "tech-integration",
+      "stepStatus": "in-progress",
+      "openItems": [
+        "Complete sandbox certification suite",
+        "Provide production callback URL"
+      ],
+      "completedSteps": [
+        { "step": "intake", "completedOn": "2026-03-10" },
+        { "step": "kyc", "completedOn": "2026-03-15" },
+        { "step": "aml", "completedOn": "2026-03-27" }
+      ],
+      "publicNote": "AML complete, technical integration in progress — most clients finish this step in 8–12 business days.",
+      "expectedGoLiveWindow": "2–10 July 2026"
+    }
+  ]
+}
