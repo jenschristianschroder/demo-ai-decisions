@@ -23,6 +23,11 @@ import NdaLandingScreen from './pages/NdaLandingScreen';
 import NdaDashboardScreen from './pages/NdaDashboardScreen';
 import MusicLandingScreen from './pages/MusicLandingScreen';
 import MusicDashboardScreen from './pages/MusicDashboardScreen';
+import OnboardingLandingScreen from './pages/OnboardingLandingScreen';
+import OnboardingQueueScreen from './pages/OnboardingQueueScreen';
+import OnboardingCaseDetailScreen from './pages/OnboardingCaseDetailScreen';
+import OnboardingPortfolioScreen from './pages/OnboardingPortfolioScreen';
+import OnboardingClientPortalScreen from './pages/OnboardingClientPortalScreen';
 
 const App: React.FC = () => {
   return (
@@ -50,6 +55,11 @@ const App: React.FC = () => {
       <Route path="/nda/dashboard" element={<NdaDashboardScreen />} />
       <Route path="/music" element={<MusicLandingScreen />} />
       <Route path="/music/dashboard" element={<MusicDashboardScreen />} />
+      <Route path="/onboarding" element={<OnboardingLandingScreen />} />
+      <Route path="/onboarding/queue" element={<OnboardingQueueScreen />} />
+      <Route path="/onboarding/case/:caseId" element={<OnboardingCaseDetailScreen />} />
+      <Route path="/onboarding/portfolio" element={<OnboardingPortfolioScreen />} />
+      <Route path="/onboarding/portal" element={<OnboardingClientPortalScreen />} />
     </Routes>
   );
 };

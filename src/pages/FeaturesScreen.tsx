@@ -59,6 +59,13 @@ const DEMOS: DemoInfo[] = [
       'Discover hidden relationships across artists, recordings, releases, labels, and genres using PostgreSQL graph capabilities, semantic search, and AI-powered natural language queries',
     route: '/music',
   },
+  {
+    id: 'onboarding-intelligence',
+    label: 'Onboarding Intelligence',
+    description:
+      'Prioritize prospective payments clients with a revenue estimation agent, surface onboarding bottlenecks with a duration analysis agent, and guide clients through go-live with a cited, bounded portal chat assistant',
+    route: '/onboarding',
+  },
 ];
 
 const DemoIcon: React.FC<{ id: string }> = ({ id }) => {
@@ -137,6 +144,17 @@ const DemoIcon: React.FC<{ id: string }> = ({ id }) => {
           <line x1="12.5" y1="11.5" x2="19.5" y2="11.5" stroke="white" strokeWidth="1.2" opacity="0.7" />
           <line x1="11" y1="12.5" x2="14.5" y2="19.5" stroke="white" strokeWidth="1.2" opacity="0.7" />
           <line x1="21" y1="12.5" x2="17.5" y2="19.5" stroke="white" strokeWidth="1.2" opacity="0.7" />
+        </svg>
+      );
+    case 'onboarding-intelligence':
+      return (
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" rx="8" fill="#111111" />
+          <rect x="6" y="8" width="13" height="3" rx="1.5" fill="white" opacity="0.9" />
+          <rect x="6" y="14" width="20" height="3" rx="1.5" fill="white" opacity="0.7" />
+          <rect x="6" y="20" width="9" height="3" rx="1.5" fill="white" opacity="0.5" />
+          <circle cx="24" cy="22" r="4" fill="#0f766e" />
+          <path d="M22 22L23.5 23.5L26 21" stroke="white" strokeWidth="1.4" fill="none" />
         </svg>
       );
     default:

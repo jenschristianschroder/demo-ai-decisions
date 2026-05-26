@@ -15,6 +15,7 @@ import { rndAgentsRouter } from './routes/rndAgents.js';
 import { rfpAgentsRouter } from './routes/rfpAgents.js';
 import { contractAgentsRouter } from './routes/contractAgents.js';
 import { ndaAgentsRouter } from './routes/ndaAgents.js';
+import { onboardingAgentsRouter } from './routes/onboardingAgents.js';
 import { musicAgentsRouter } from './routes/musicAgents.js';
 import { backfillStatusRouter } from './routes/backfillStatus.js';
 import { DEFAULT_DEPLOYMENT } from './aiClient.js';
@@ -42,6 +43,7 @@ app.use('/api/ai/rnd', apiLimiter, rndAgentsRouter);
 app.use('/api/ai', apiLimiter, rfpAgentsRouter);
 app.use('/api/ai', apiLimiter, contractAgentsRouter);
 app.use('/api/ai', apiLimiter, ndaAgentsRouter);
+app.use('/api/ai', apiLimiter, onboardingAgentsRouter);
 app.use('/api/ai', apiLimiter, musicAgentsRouter);
 app.use('/api', apiLimiter, backfillStatusRouter);
 

@@ -1,0 +1,48 @@
+{
+  "baseline": {
+    "intake": { "medianDays": 1, "p90Days": 2 },
+    "kyc": { "medianDays": 3, "p90Days": 6 },
+    "aml": { "medianDays": 5, "p90Days": 9 },
+    "tech-integration": { "medianDays": 10, "p90Days": 18 },
+    "signatory-verification": { "medianDays": 3, "p90Days": 5 },
+    "product-configuration": { "medianDays": 4, "p90Days": 7 },
+    "go-live": { "medianDays": 1, "p90Days": 2 }
+  },
+  "segmentDeviations": [
+    {
+      "segment": "nested-payments",
+      "step": "aml",
+      "multiplierVsBaseline": 2.4,
+      "evidence": [
+        "Atlas Cross-Border AG — AML cleared in 12 days vs 5 baseline",
+        "Cobalt PSP GmbH (marketplace + nested) — AML cleared in 11 days"
+      ]
+    },
+    {
+      "segment": "latam-corridor",
+      "step": "aml",
+      "multiplierVsBaseline": 1.6,
+      "evidence": [
+        "Andes Pay SpA — AML cleared in 8 days, EDD on cross-border flows"
+      ]
+    },
+    {
+      "segment": "embedded-finance",
+      "step": "tech-integration",
+      "multiplierVsBaseline": 1.8,
+      "evidence": [
+        "Meridian Treasury Services — tech integration spanned 19 business days due to multi-product certification"
+      ]
+    },
+    {
+      "segment": "complex-ownership",
+      "step": "kyc",
+      "multiplierVsBaseline": 1.7,
+      "evidence": [
+        "Solis Capital Markets — KYC took 6 days due to nested fund vehicles"
+      ]
+    }
+  ],
+  "endToEndMedianDays": 27,
+  "endToEndP90Days": 48
+}
