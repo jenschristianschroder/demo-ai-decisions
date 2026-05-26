@@ -202,28 +202,49 @@
 
 .onb-chat-form {
   display: flex;
+  align-items: center;
   gap: 8px;
   border-top: 1px solid #e5e7eb;
   padding: 12px 14px;
+  flex: 0 0 auto;
 }
 .onb-chat-input {
   flex: 1;
+  width: 100%;
+  min-height: 44px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
   padding: 8px 10px;
   font-size: 13px;
+  line-height: 1.4;
   font-family: inherit;
+  resize: none;
+  background: #fff;
+  color: #111;
+}
+.onb-chat-input:focus {
+  outline: none;
+  border-color: #111;
+  box-shadow: 0 0 0 2px rgba(17, 17, 17, 0.08);
+}
+.onb-chat-input:disabled {
+  opacity: 0.7;
+  background: #f9fafb;
+  cursor: not-allowed;
 }
 .onb-chat-submit {
   background: #111;
   color: #fff;
   border: none;
-  padding: 8px 16px;
+  height: 44px;
+  padding: 0 18px;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  flex: 0 0 auto;
 }
+.onb-chat-submit:hover:not(:disabled) { background: #1f2937; }
 .onb-chat-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 .onb-chat-suggestions {
   display: flex;

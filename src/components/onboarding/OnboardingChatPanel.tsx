@@ -102,8 +102,9 @@ const OnboardingChatPanel: React.FC<Props> = ({ caseState, messages, sending, on
         )}
       </div>
 
-      <form className="onb-chat-input" onSubmit={handleSubmit}>
+      <form className="onb-chat-form" onSubmit={handleSubmit}>
         <textarea
+          className="onb-chat-input"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Ask a question — e.g. 'What documents do I still need to submit?'"
@@ -116,7 +117,11 @@ const OnboardingChatPanel: React.FC<Props> = ({ caseState, messages, sending, on
           }}
           disabled={sending}
         />
-        <button type="submit" disabled={sending || draft.trim().length === 0}>
+        <button
+          type="submit"
+          className="onb-chat-submit"
+          disabled={sending || draft.trim().length === 0}
+        >
           Send
         </button>
       </form>
