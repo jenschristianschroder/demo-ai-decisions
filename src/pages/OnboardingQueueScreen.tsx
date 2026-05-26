@@ -42,7 +42,7 @@ const OnboardingQueueScreen: React.FC = () => {
     });
   };
 
-  const estimateForCase = async (
+  const estimateForCase = useCallback(async (
     c: OnboardingCase,
     comparablesText: string,
     rubricText: string,
@@ -82,7 +82,7 @@ const OnboardingQueueScreen: React.FC = () => {
         message: `Failed: ${c.intake.clientName} — ${message}`,
       });
     }
-  };
+  }, []);
 
   const runEstimatesForMissing = useCallback(async () => {
     setLoadingAll(true);
@@ -96,7 +96,6 @@ const OnboardingQueueScreen: React.FC = () => {
       const targets = getAllCases().filter((c) => !c.revenueEstimate);
       // Run sequentially to avoid hammering the backend rate limit.
       for (const c of targets) {
-        // eslint-disable-next-line no-await-in-loop
         await estimateForCase(c, comparablesText, rubricText);
         refresh();
       }
@@ -107,7 +106,7 @@ const OnboardingQueueScreen: React.FC = () => {
       setLoadingAll(false);
       refresh();
     }
-  }, [refresh]);
+  }, [refresh, estimateForCase]);
 
   // Auto-run on first mount if no cases have estimates yet.
   useEffect(() => {

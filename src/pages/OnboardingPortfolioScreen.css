@@ -205,3 +205,67 @@
   font-size: 11px;
   text-decoration: none;
 }
+
+/* --- Aliases & additional classes used by components --- */
+.onb-cycle-chart { display: flex; flex-direction: column; gap: 12px; }
+.onb-cycle-chart-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7280;
+  margin: 0 0 4px 0;
+}
+.onb-cycle-flow-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 8px;
+}
+.onb-cycle-flow-table th,
+.onb-cycle-flow-table td {
+  border-bottom: 1px solid #f1f5f9;
+  padding: 8px 10px;
+  text-align: left;
+}
+.onb-cycle-flow-table th {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7280;
+  background: #f9fafb;
+}
+
+/* Insight aliases */
+.onb-insights-list { display: flex; flex-direction: column; gap: 12px; }
+.onb-insight-card {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.onb-insight-h-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111;
+}
+.onb-insight-cite {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: #475569;
+  font-size: 11px;
+  text-decoration: none;
+}
+.onb-insight-case-chip {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1d4ed8;
+  cursor: pointer;
+}
+.onb-insight-case-chip:hover { background: #dbeafe; }
