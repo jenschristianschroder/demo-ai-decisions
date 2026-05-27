@@ -95,6 +95,80 @@ jobs:
             exit 1
           fi
 
+      # ────────────────────────────────────────────────────────────────────
+      # Ensure the PostgreSQL server is running before starting a backfill
+      # execution. Azure Flexible Server can be auto-paused or manually
+      # stopped to save costs (the demo uses a Burstable SKU). Without
+      # this check, the Container Apps Job opens a TCP connection that
+      # never completes the handshake; pg-pool then aborts at
+      # `connectionTimeoutMillis: 15_000` with
+      #   "Error: Connection terminated due to connection timeout"
+      # — exactly the failure mode observed for execution
+      # `ai-decisions-backfill-o09hhky` (see backfill-embeddings.yml for
+      # the equivalent guard that was added for the GHA-runner path).
+      #
+      # Only needed for `start`; `stop`, `status`, and `logs` talk to the
+      # Container Apps control plane, not to PostgreSQL.
+      # ────────────────────────────────────────────────────────────────────
+      - name: Ensure PostgreSQL server is running
+        if: inputs.action == 'start'
+        env:
+          PG_HOST_SECRET: ${{ secrets.PG_HOST }}
+          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${PG_HOST_SECRET:-}" ]; then
+            echo "⚠ PG_HOST secret is not set; skipping server state check (the job template's PGHOST will be used, but we cannot resolve the Flexible Server name from here)."
+            exit 0
+          fi
+
+          # Derive the Azure Flexible Server name from the FQDN.
+          # Format: <server-name>.postgres.database.azure.com
+          PG_SERVER="${PG_HOST_SECRET%.postgres.database.azure.com}"
+          if [ "$PG_SERVER" = "$PG_HOST_SECRET" ]; then
+            echo "⚠ PG_HOST ($PG_HOST_SECRET) is not an Azure Flexible Server FQDN; skipping server state check."
+            exit 0
+          fi
+          if [ -z "${AZURE_RESOURCE_GROUP:-}" ]; then
+            echo "⚠ AZURE_RESOURCE_GROUP secret is not set; skipping server state check."
+            exit 0
+          fi
+
+          SERVER_STATE=$(az postgres flexible-server show \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$PG_SERVER" \
+            --query "state" -o tsv 2>/dev/null || echo "Unknown")
+          echo "Current server state: $SERVER_STATE"
+
+          if [ "$SERVER_STATE" != "Ready" ]; then
+            echo "🔄 Starting PostgreSQL server…"
+            az postgres flexible-server start \
+              --resource-group "$AZURE_RESOURCE_GROUP" \
+              --name "$PG_SERVER"
+            echo "⏳ Waiting for server to become ready…"
+            MAX_ATTEMPTS=30
+            POLL_INTERVAL=10
+            for i in $(seq 1 "$MAX_ATTEMPTS"); do
+              STATE=$(az postgres flexible-server show \
+                --resource-group "$AZURE_RESOURCE_GROUP" \
+                --name "$PG_SERVER" \
+                --query "state" -o tsv 2>/dev/null || echo "Unknown")
+              if [ "$STATE" = "Ready" ]; then
+                echo "✅ Server is ready."
+                break
+              fi
+              if [ "$i" -eq "$MAX_ATTEMPTS" ]; then
+                echo "❌ Server did not become ready after $MAX_ATTEMPTS attempts." >&2
+                exit 1
+              fi
+              echo "  …still waiting (attempt $i/$MAX_ATTEMPTS, state: $STATE)"
+              sleep "$POLL_INTERVAL"
+            done
+          else
+            echo "✅ Server is already running."
+          fi
+
       # ── START ────────────────────────────────────────────────────────────
       - name: Start a backfill execution
         if: inputs.action == 'start'
