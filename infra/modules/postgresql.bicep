@@ -71,7 +71,7 @@ resource azureExtensions 'Microsoft.DBforPostgreSQL/flexibleServers/configuratio
   parent: pgServer
   name: 'azure.extensions'
   properties: {
-    value: 'age,vector'
+    value: 'age,pg_trgm,unaccent,vector'
     source: 'user-override'
   }
   dependsOn: [allowAzureServices]
