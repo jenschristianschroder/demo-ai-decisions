@@ -250,11 +250,19 @@ jobs:
                 --name "$JOB_NAME" \
                 --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
                 >/dev/null 2>&1; then
-            echo "Updating $JOB_NAME image…"
+            echo "Updating $JOB_NAME image and env vars…"
             az containerapp job update \
               --name "$JOB_NAME" \
               --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-              --image ${{ steps.acr.outputs.acrLoginServer }}/${{ env.APP_NAME }}-spa:${{ github.sha }}
+              --image ${{ steps.acr.outputs.acrLoginServer }}/${{ env.APP_NAME }}-spa:${{ github.sha }} \
+              --set-env-vars \
+                "PGHOST=${{ steps.pg.outputs.pgHost }}" \
+                "PGDATABASE=${{ steps.pg.outputs.pgDatabase }}" \
+                "PGUSER=${{ steps.pg.outputs.pgUser }}" \
+                "PGPASSWORD=${{ steps.pg.outputs.pgPassword }}" \
+                "PGSSLMODE=${{ steps.pg.outputs.pgSslMode }}" \
+                "AZURE_AI_ENDPOINT=${{ secrets.AZURE_AI_ENDPOINT }}" \
+                "AZURE_AI_EMBEDDING_DEPLOYMENT=${{ secrets.AZURE_AI_EMBEDDING_DEPLOYMENT }}"
           else
             echo "⚠ Backfill job $JOB_NAME not found yet (likely first deploy); skipping image update."
           fi
