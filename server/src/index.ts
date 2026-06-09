@@ -10,6 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { aiRouter } from './routes/ai.js';
 import { financeAiRouter } from './routes/financeAi.js';
+import { doeAiRouter } from './routes/doeAi.js';
 import { rndAiRouter } from './routes/rndAi.js';
 import { rndAgentsRouter } from './routes/rndAgents.js';
 import { rfpAgentsRouter } from './routes/rfpAgents.js';
@@ -38,6 +39,7 @@ const apiLimiter = rateLimit({
 // ── API routes ──────────────────────────────────────────────────────────────
 app.use('/api/ai', apiLimiter, aiRouter);
 app.use('/api/ai/finance', apiLimiter, financeAiRouter);
+app.use('/api/ai/doe', apiLimiter, doeAiRouter);
 app.use('/api/ai/rnd', apiLimiter, rndAiRouter);
 app.use('/api/ai/rnd', apiLimiter, rndAgentsRouter);
 app.use('/api/ai', apiLimiter, rfpAgentsRouter);
