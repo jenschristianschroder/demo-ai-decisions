@@ -734,7 +734,7 @@ async function rankKnowledgeAi(study: DoeStudy): Promise<KnowledgeHit[]> {
     hits.push({
       report,
       relevance,
-      matchedTags: Array.isArray(h?.matchedTags) ? h!.matchedTags!.filter((t) => typeof t === 'string') : [],
+      matchedTags: Array.isArray(h?.matchedTags) ? h.matchedTags.filter((t) => typeof t === 'string') : [],
       reason: typeof h?.reason === 'string' && h.reason.trim().length > 0
         ? h.reason
         : 'Related R&D experiment in the same product area.',
