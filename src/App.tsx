@@ -32,6 +32,7 @@ import DoeLandingScreen from './pages/DoeLandingScreen';
 import DoeDashboardScreen from './pages/DoeDashboardScreen';
 import DoeExperimentScreen from './pages/DoeExperimentScreen';
 import DoeUploadScreen from './pages/DoeUploadScreen';
+import DoeDataScreen from './pages/DoeDataScreen';
 
 const App: React.FC = () => {
   return (
@@ -68,6 +69,8 @@ const App: React.FC = () => {
       <Route path="/doe/dashboard" element={<DoeDashboardScreen />} />
       <Route path="/doe/experiment/:id" element={<DoeExperimentScreen />} />
       <Route path="/doe/upload" element={<DoeUploadScreen />} />
+      <Route path="/doe/data" element={<DoeDataScreen />} />
+      <Route path="/doe/data/:id" element={<DoeDataScreen />} />
     </Routes>
   );
 };
