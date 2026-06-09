@@ -24,12 +24,13 @@ export interface MainEffectDatum {
   significant: boolean;
 }
 
-export const MainEffectBarChart: React.FC<{ data: MainEffectDatum[]; unit: string; title?: string }> = ({
+export const MainEffectBarChart: React.FC<{ data: MainEffectDatum[]; unit: string; title?: string; className?: string }> = ({
   data,
   unit,
   title,
+  className,
 }) => (
-  <div className="chart-wrapper">
+  <div className={`chart-wrapper${className ? ` ${className}` : ''}`}>
     {title && <div className="chart-title">{title}</div>}
     <ResponsiveContainer width="100%" height={220}>
       <BarChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
@@ -53,12 +54,13 @@ export interface ParetoDatum {
   significant: boolean;
 }
 
-export const ParetoChart: React.FC<{ data: ParetoDatum[]; unit: string; title?: string }> = ({
+export const ParetoChart: React.FC<{ data: ParetoDatum[]; unit: string; title?: string; className?: string }> = ({
   data,
   unit,
   title,
+  className,
 }) => (
-  <div className="chart-wrapper">
+  <div className={`chart-wrapper${className ? ` ${className}` : ''}`}>
     {title && <div className="chart-title">{title}</div>}
     <ResponsiveContainer width="100%" height={240}>
       <BarChart
@@ -90,8 +92,9 @@ export const InteractionPlot: React.FC<{
   seriesKeys: string[];
   unit: string;
   title?: string;
-}> = ({ data, seriesKeys, unit, title }) => (
-  <div className="chart-wrapper">
+  className?: string;
+}> = ({ data, seriesKeys, unit, title, className }) => (
+  <div className={`chart-wrapper${className ? ` ${className}` : ''}`}>
     {title && <div className="chart-title">{title}</div>}
     <ResponsiveContainer width="100%" height={220}>
       <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>

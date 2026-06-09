@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getDoeStudy } from '../data/mockDoeData';
 import {
@@ -17,6 +17,7 @@ import {
   type InteractionDatum,
 } from '../components/charts/DoeCharts';
 import './DoeExperimentScreen.css';
+import { buildReportPdf, collectChartImages } from '../lib/doePdf';
 
 interface AuditItem {
   id: string;
@@ -85,6 +86,8 @@ const DoeExperimentScreen: React.FC = () => {
   const [editing, setEditing] = useState(false);
   const [approved, setApproved] = useState(false);
   const [audit, setAudit] = useState<AuditItem[]>([]);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const chartsRef = useRef<HTMLDivElement>(null);
 
   const addAudit = (action: string, actor = 'DoE Report Assistant') => {
     setAudit((prev) => [
@@ -129,6 +132,31 @@ const DoeExperimentScreen: React.FC = () => {
     a.click();
     URL.revokeObjectURL(url);
     addAudit('Report downloaded (Markdown).', 'R&D Scientist (demo)');
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!study || !report) return;
+    setGeneratingPdf(true);
+    try {
+      const merged: DoeReport = {
+        ...report,
+        sections: report.sections.map((s) => ({ ...s, markdown: edited[s.id] ?? s.markdown })),
+      };
+      const wrappers = chartsRef.current
+        ? Array.from(chartsRef.current.querySelectorAll<HTMLElement>('.chart-wrapper'))
+        : [];
+      const charts = await collectChartImages(
+        wrappers.map((el) => {
+          const title = el.querySelector('.chart-title')?.textContent ?? '';
+          return { title, el };
+        }),
+      );
+      const doc = buildReportPdf(study, merged, charts);
+      doc.save(`${study.id}-DoE-report.pdf`);
+      addAudit('Report downloaded (PDF).', 'R&D Scientist (demo)');
+    } finally {
+      setGeneratingPdf(false);
+    }
   };
 
   const leadResponse = report
@@ -275,15 +303,16 @@ const DoeExperimentScreen: React.FC = () => {
                 <h2 className="doe-card-title">Effects — {leadResponse.responseLabel}</h2>
                 <span className="doe-card-sub">Significant effects in black</span>
               </div>
-              <div className="doe-charts-grid">
-                <MainEffectBarChart data={mainEffectData} unit={leadResponse.unit} title="Main-effect magnitudes" />
-                <ParetoChart data={paretoData} unit={leadResponse.unit} title="Pareto of factors & interactions" />
+              <div className="doe-charts-grid" ref={chartsRef}>
+                <MainEffectBarChart data={mainEffectData} unit={leadResponse.unit} title="Main-effect magnitudes" className="doe-pdf-chart" />
+                <ParetoChart data={paretoData} unit={leadResponse.unit} title="Pareto of factors & interactions" className="doe-pdf-chart" />
                 {interaction && (
                   <InteractionPlot
                     data={interaction.data}
                     seriesKeys={interaction.seriesKeys}
                     unit={leadResponse.unit}
                     title={`Interaction: ${interaction.label}`}
+                    className="doe-pdf-chart"
                   />
                 )}
               </div>
@@ -390,6 +419,9 @@ const DoeExperimentScreen: React.FC = () => {
                     {editing ? 'Done editing' : '✎ Edit'}
                   </button>
                   <button className="doe-btn-secondary" onClick={handleDownload}>⬇ Download report (Markdown)</button>
+                  <button className="doe-btn-secondary" onClick={handleDownloadPdf} disabled={generatingPdf}>
+                    {generatingPdf ? (<><span className="doe-spinner" /> Generating…</>) : '⬇ Download report (PDF)'}
+                  </button>
                   <button className="doe-btn-primary" onClick={handleApprove} disabled={approved}>
                     {approved ? '✓ Approved' : 'Approve'}
                   </button>
