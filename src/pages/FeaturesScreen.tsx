@@ -66,6 +66,13 @@ const DEMOS: DemoInfo[] = [
       'Prioritize prospective payments clients with a revenue estimation agent, surface onboarding bottlenecks with a duration analysis agent, and guide clients through go-live with a cited, bounded portal chat assistant',
     route: '/onboarding',
   },
+  {
+    id: 'rnd-doe-report',
+    label: 'R&D DoE Report Assistant',
+    description:
+      'AI-augmented Design of Experiments reporting for a medical-device R&D team — a chain of specialized agents computes real statistics, drafts a compliant report, fact-checks every numeric claim, and keeps the scientist accountable',
+    route: '/doe',
+  },
 ];
 
 const DemoIcon: React.FC<{ id: string }> = ({ id }) => {
@@ -155,6 +162,16 @@ const DemoIcon: React.FC<{ id: string }> = ({ id }) => {
           <rect x="6" y="20" width="9" height="3" rx="1.5" fill="white" opacity="0.5" />
           <circle cx="24" cy="22" r="4" fill="#0f766e" />
           <path d="M22 22L23.5 23.5L26 21" stroke="white" strokeWidth="1.4" fill="none" />
+        </svg>
+      );
+    case 'rnd-doe-report':
+      return (
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" rx="8" fill="#111111" />
+          <path d="M13 6H19V13L23 23C23.4 24 22.7 25 21.6 25H10.4C9.3 25 8.6 24 9 23L13 13V6Z" fill="white" opacity="0.9" />
+          <line x1="13" y1="6" x2="19" y2="6" stroke="#111111" strokeWidth="1.4" />
+          <circle cx="14" cy="20" r="1.3" fill="#0f766e" />
+          <circle cx="18" cy="22" r="1.1" fill="#0f766e" />
         </svg>
       );
     default:

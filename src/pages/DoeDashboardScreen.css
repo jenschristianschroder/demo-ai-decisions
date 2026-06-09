@@ -1,0 +1,279 @@
+.doe-dash-root {
+  min-height: 100vh;
+  background: #f8f9fa;
+}
+
+.doe-dash-header {
+  background: #ffffff;
+  border-bottom: 1.5px solid #222222;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.doe-dash-header-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px 0;
+}
+
+.doe-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.doe-breadcrumb-link {
+  font-size: 13px;
+  color: #666666;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.doe-breadcrumb-link:hover {
+  color: #111111;
+}
+
+.doe-breadcrumb-sep {
+  font-size: 13px;
+  color: #cccccc;
+}
+
+.doe-breadcrumb-current {
+  font-size: 13px;
+  color: #111111;
+  font-weight: 500;
+}
+
+.doe-dash-title-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.doe-dash-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111111;
+  margin-bottom: 2px;
+}
+
+.doe-dash-period {
+  font-size: 13px;
+  color: #666666;
+}
+
+.doe-btn-header-action {
+  background: #111111;
+  color: #ffffff;
+  border: 1.5px solid #111111;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.doe-btn-header-action:hover {
+  background: #333333;
+}
+
+.doe-dash-main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.doe-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 36px;
+}
+
+@media (max-width: 640px) {
+  .doe-summary-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.doe-summary-card {
+  background: #ffffff;
+  border: 1.5px solid #222222;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.doe-summary-card-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #111111;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.doe-summary-card-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #111111;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.doe-summary-card-sub {
+  font-size: 11px;
+  color: #999999;
+}
+
+.doe-section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.doe-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111111;
+}
+
+.doe-section-subtitle {
+  font-size: 13px;
+  color: #999999;
+}
+
+.doe-table-wrap {
+  background: #ffffff;
+  border: 1.5px solid #222222;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.doe-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.doe-table thead th {
+  background: #fafafa;
+  border-bottom: 1px solid #f0f0f0;
+  padding: 12px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #666666;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.doe-table thead th.doe-text-right {
+  text-align: right;
+}
+
+.doe-row {
+  cursor: pointer;
+  transition: background 0.1s;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.doe-row:last-child {
+  border-bottom: none;
+}
+
+.doe-row:hover {
+  background: #fafafa;
+}
+
+.doe-table td {
+  padding: 13px 16px;
+  font-size: 13px;
+  color: #111111;
+  vertical-align: middle;
+}
+
+.doe-table td.doe-text-right {
+  text-align: right;
+}
+
+.doe-table td.doe-text-secondary {
+  color: #666666;
+}
+
+.doe-study-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.doe-study-id {
+  font-size: 12px;
+  font-weight: 700;
+  color: #111111;
+  letter-spacing: 0.04em;
+}
+
+.doe-study-name {
+  font-size: 12px;
+  color: #666666;
+}
+
+.doe-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.doe-badge-approved { background: #dcfce7; color: #166534; }
+.doe-badge-ready { background: #e0f2fe; color: #075985; }
+.doe-badge-analysis { background: #fef3c7; color: #92400e; }
+.doe-badge-draft { background: #f0f0f0; color: #666666; }
+
+.doe-readiness-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.doe-readiness-bar-bg {
+  width: 64px;
+  height: 5px;
+  background: #f0f0f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.doe-readiness-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.doe-readiness-num {
+  font-size: 13px;
+  font-weight: 700;
+  min-width: 36px;
+  text-align: right;
+  color: #111111;
+}
+
+.doe-dash-note {
+  margin-top: 18px;
+  font-size: 12px;
+  color: #999999;
+  line-height: 1.5;
+}
