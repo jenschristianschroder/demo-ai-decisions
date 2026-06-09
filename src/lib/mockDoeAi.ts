@@ -278,7 +278,7 @@ function draftSectionsMock(study: DoeStudy, analysis: DoeAnalysisResult): Report
     {
       id: 'appendix',
       title: 'Appendix (raw data)',
-      markdown: resultsTable,
+      markdown: buildAppendixMarkdown(study),
     },
   ];
 }
@@ -307,6 +307,21 @@ export function buildResultsTable(study: DoeStudy): string {
     return `| ${cells.join(' | ')}${tag} |`;
   });
   return [header, sep, ...rows].join('\n');
+}
+
+/**
+ * Build the canonical Appendix (raw data) markdown: a short intro followed by
+ * the COMPLETE results table for every run. This is deterministic, code-owned
+ * content — it is force-applied after drafting so the AI can never truncate the
+ * raw-data table (e.g. with "..." rows). The legend documents the (C)/(R) tags
+ * emitted by buildResultsTable.
+ */
+export function buildAppendixMarkdown(study: DoeStudy): string {
+  const intro =
+    `The full raw data for all ${study.runs.length} runs, including replicates and center points, is provided below. ` +
+    'Factor columns A/B/C hold the actual (uncoded) factor settings.';
+  const legend = '_(C) = center point · (R) = replicate run._';
+  return `${intro}\n\n${buildResultsTable(study)}\n\n${legend}`;
 }
 
 export function buildStatisticsTable(analysis: DoeAnalysisResult): string {
@@ -591,6 +606,10 @@ async function draftSectionsAi(
   specs: NumericClaimSpec[],
 ): Promise<{ sections: ReportSection[]; claimedValues: Record<string, number> }> {
   const template = getDoeTemplate();
+  // The Appendix (raw data) table is inserted deterministically by code after
+  // drafting, so do not ask the model to author it (avoids wasted tokens and
+  // any chance of a truncated raw-data table leaking through).
+  const draftTemplate = template.filter((t) => t.id !== 'appendix');
   const claimSpecs = specs.map((s) => ({
     id: s.id,
     metric: s.metric,
@@ -602,7 +621,7 @@ async function draftSectionsAi(
   const res = await apiPost<DraftSectionsResponse>('/api/ai/doe/draft-sections', {
     study,
     analysis,
-    template,
+    template: draftTemplate,
     claimSpecs,
   });
 
@@ -828,6 +847,13 @@ export async function runDoePipeline(
     sections = draftSectionsMock(study, analysis);
     setStep('drafting', 'done', `Drafted ${sections.length} sections (deterministic mock) grounded in the analysis + template.`);
   }
+
+  // The Appendix (raw data) table is ALWAYS deterministic, code-owned content:
+  // overwrite whatever was drafted so the full results table (every run) is
+  // guaranteed in the report and both exports — the model can never truncate it.
+  sections = sections.map((s) =>
+    s.id === 'appendix' ? { ...s, markdown: buildAppendixMarkdown(study) } : s,
+  );
 
   // 4. Fact-check / grounding (numeric verification ALWAYS in code; the AI is
   // only used to rewrite the prose of flagged claims).

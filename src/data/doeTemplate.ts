@@ -17,7 +17,7 @@ export const doeTemplate: DoeTemplateSection[] = [
   { id: 'discussion', title: 'Discussion', guidance: 'Interpret the effects, relate them to the hypothesis, and note limitations.' },
   { id: 'conclusions', title: 'Conclusions', guidance: 'State the conclusions that trace directly to the data and analysis.' },
   { id: 'recommendations', title: 'Recommendations & next steps', guidance: 'Give actionable settings and the recommended next experiments or confirmation runs.' },
-  { id: 'appendix', title: 'Appendix (raw data)', guidance: 'Append the full raw run data and any supporting detail.' },
+  { id: 'appendix', title: 'Appendix (raw data)', guidance: 'The full raw run table is inserted automatically by code; do not summarize, abbreviate, or re-create it.' },
 ];
 
 export function getDoeTemplate(): DoeTemplateSection[] {
