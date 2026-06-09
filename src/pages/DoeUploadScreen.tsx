@@ -93,6 +93,13 @@ const DoeUploadScreen: React.FC = () => {
                 <div className="doe-drop-title">Drag &amp; drop a DoE dataset here</div>
                 <div className="doe-drop-subtitle">CSV, JSON, or Excel with one row per run (factor settings + responses)</div>
                 <div className="doe-drop-hint">Or continue with the sample dataset already loaded (DOE-2026-ADH-014)</div>
+                <button
+                  type="button"
+                  className="doe-drop-preview-link"
+                  onClick={(e) => { e.stopPropagation(); navigate(`/doe/data/${study.id}`); }}
+                >
+                  Preview this dataset →
+                </button>
               </>
             )}
           </div>

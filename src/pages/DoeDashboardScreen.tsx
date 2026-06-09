@@ -83,6 +83,7 @@ const DoeDashboardScreen: React.FC = () => {
                 <th className="doe-text-right">Runs</th>
                 <th>Top factor</th>
                 <th className="doe-text-right">Report readiness</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -117,6 +118,14 @@ const DoeDashboardScreen: React.FC = () => {
                       </div>
                       <span className="doe-readiness-num">{s.reportReadiness}%</span>
                     </div>
+                  </td>
+                  <td className="doe-text-right">
+                    <button
+                      className="doe-view-data-btn"
+                      onClick={(e) => { e.stopPropagation(); navigate(`/doe/data/${s.id}`); }}
+                    >
+                      View data
+                    </button>
                   </td>
                 </tr>
               ))}

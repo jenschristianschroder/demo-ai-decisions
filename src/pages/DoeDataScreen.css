@@ -1,0 +1,262 @@
+.doe-data-root {
+  min-height: 100vh;
+  background: #f8f9fa;
+}
+
+.doe-data-header {
+  background: #ffffff;
+  border-bottom: 1.5px solid #222222;
+  padding: 0 24px;
+}
+
+.doe-data-header-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px 0 22px;
+}
+
+.doe-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.doe-breadcrumb-link {
+  font-size: 13px;
+  color: #666666;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.doe-breadcrumb-link:hover { color: #111111; }
+.doe-breadcrumb-sep { font-size: 13px; color: #cccccc; }
+.doe-breadcrumb-current { font-size: 13px; color: #111111; font-weight: 500; }
+
+.doe-data-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111111;
+  margin: 14px 0 6px;
+}
+
+.doe-data-subtitle {
+  font-size: 14px;
+  color: #555555;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 760px;
+}
+
+.doe-data-main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Shared card styling (mirrors DoeExperimentScreen.css) */
+.doe-card {
+  background: #ffffff;
+  border: 1px solid #e8e8e8;
+  border-radius: 12px;
+  padding: 22px 24px;
+}
+
+.doe-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.doe-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111111;
+  margin: 0;
+}
+
+.doe-card-sub {
+  font-size: 12px;
+  color: #999999;
+}
+
+/* Study selector */
+.doe-data-selector {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.doe-data-study-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  padding: 14px 16px;
+  border: 1.5px solid #e8e8e8;
+  border-radius: 10px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.doe-data-study-pill:hover { border-color: #bbbbbb; }
+
+.doe-data-study-pill--active {
+  border-color: #111111;
+  box-shadow: 0 0 0 1px #111111 inset;
+}
+
+.doe-data-pill-id { font-size: 13px; font-weight: 700; color: #111111; }
+.doe-data-pill-name { font-size: 12px; color: #555555; line-height: 1.4; }
+.doe-data-pill-meta { font-size: 11px; color: #999999; }
+
+/* Study context (mirrors meta-card) */
+.doe-meta-card .doe-meta-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.doe-data-study-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111111;
+  margin: 0 0 4px;
+}
+
+.doe-data-study-subid { font-size: 12px; color: #777777; }
+
+.doe-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 28px;
+}
+
+@media (max-width: 760px) { .doe-meta-grid { grid-template-columns: 1fr; } }
+
+.doe-meta-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #999999; margin-bottom: 4px; }
+.doe-meta-value { font-size: 13px; color: #333333; line-height: 1.5; }
+
+.doe-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.doe-badge-ready { background: #ecfdf5; color: #047857; }
+
+/* Tables (mirrors data-table styling) */
+.doe-data-table-wrap { overflow-x: auto; }
+.doe-data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.doe-data-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #777777;
+  padding: 8px 10px;
+  border-bottom: 1.5px solid #e8e8e8;
+  white-space: nowrap;
+}
+.doe-data-table td { padding: 7px 10px; border-bottom: 1px solid #f5f5f5; color: #111111; white-space: nowrap; }
+.doe-data-table th.doe-text-right, .doe-data-table td.doe-text-right { text-align: right; }
+.doe-text-secondary { color: #666666; }
+.doe-data-cell-wrap { white-space: normal; min-width: 280px; }
+.doe-row-center { background: #f5f3ff; }
+.doe-row-rep { background: #fafafa; }
+
+/* Download buttons */
+.doe-data-actions { display: flex; gap: 8px; }
+.doe-data-download-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: #111111;
+  background: #ffffff;
+  border: 1.5px solid #d0d0d0;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.doe-data-download-btn:hover { border-color: #111111; background: #f5f5f5; }
+
+.doe-data-empty {
+  font-size: 13px;
+  color: #777777;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Reference inputs */
+.doe-data-ref-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111111;
+  margin: 22px 0 10px;
+}
+.doe-data-ref-title:first-of-type { margin-top: 4px; }
+
+.doe-data-checklist {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 28px;
+}
+@media (max-width: 760px) { .doe-data-checklist { grid-template-columns: 1fr; } }
+.doe-data-checklist li { font-size: 13px; color: #333333; line-height: 1.5; }
+
+.doe-data-prior-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.doe-data-prior-card {
+  border: 1px solid #ececec;
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: #fcfcfc;
+}
+
+.doe-data-prior-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.doe-data-prior-id { font-size: 12px; font-weight: 700; color: #111111; }
+.doe-data-prior-year { font-size: 11px; color: #999999; }
+.doe-data-prior-title { font-size: 13px; font-weight: 600; color: #222222; margin-bottom: 6px; }
+.doe-data-prior-summary { font-size: 12px; color: #555555; line-height: 1.5; margin: 0 0 6px; }
+.doe-data-prior-takeaway { font-size: 12px; color: #333333; line-height: 1.5; margin: 0; }
+
+/* Footer CTA */
+.doe-data-footer-actions { display: flex; justify-content: center; padding: 4px 0 12px; }
+.doe-data-cta {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  background: #111111;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 22px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.doe-data-cta:hover { background: #000000; }

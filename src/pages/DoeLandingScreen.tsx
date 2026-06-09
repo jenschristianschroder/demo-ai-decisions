@@ -75,6 +75,9 @@ const DoeLandingScreen: React.FC = () => {
           <button className="doe-btn-secondary" onClick={() => navigate('/doe/upload')}>
             Upload Dataset
           </button>
+          <button className="doe-btn-secondary" onClick={() => navigate('/doe/data')}>
+            View Demo Data
+          </button>
         </div>
 
         <div className="doe-landing-footer">
