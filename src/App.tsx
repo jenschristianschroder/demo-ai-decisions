@@ -28,6 +28,10 @@ import OnboardingQueueScreen from './pages/OnboardingQueueScreen';
 import OnboardingCaseDetailScreen from './pages/OnboardingCaseDetailScreen';
 import OnboardingPortfolioScreen from './pages/OnboardingPortfolioScreen';
 import OnboardingClientPortalScreen from './pages/OnboardingClientPortalScreen';
+import DoeLandingScreen from './pages/DoeLandingScreen';
+import DoeDashboardScreen from './pages/DoeDashboardScreen';
+import DoeExperimentScreen from './pages/DoeExperimentScreen';
+import DoeUploadScreen from './pages/DoeUploadScreen';
 
 const App: React.FC = () => {
   return (
@@ -60,6 +64,10 @@ const App: React.FC = () => {
       <Route path="/onboarding/case/:caseId" element={<OnboardingCaseDetailScreen />} />
       <Route path="/onboarding/portfolio" element={<OnboardingPortfolioScreen />} />
       <Route path="/onboarding/portal" element={<OnboardingClientPortalScreen />} />
+      <Route path="/doe" element={<DoeLandingScreen />} />
+      <Route path="/doe/dashboard" element={<DoeDashboardScreen />} />
+      <Route path="/doe/experiment/:id" element={<DoeExperimentScreen />} />
+      <Route path="/doe/upload" element={<DoeUploadScreen />} />
     </Routes>
   );
 };

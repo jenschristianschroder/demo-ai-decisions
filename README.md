@@ -332,7 +332,83 @@ Replace the files in `sample-data/rfp/` with your own RFP content in markdown fo
 
 ---
 
+## R&D DoE Report Assistant Demo
+
+> **Route:** `/doe` → `/doe/dashboard` → `/doe/experiment/:id`
+
+The **R&D DoE Report Assistant** is a Decision / Documentation demo showing how a chain of
+specialized AI steps can turn raw **Design of Experiments (DoE)** data into a structured,
+compliant, human-reviewable report for a medical-device R&D team (Coloplast-style context).
+The theme is **AI drafts, the scientist stays accountable**: the AI computes the statistics
+and drafts every section, but each numeric claim is fact-checked against the real computed
+values and the scientist must review and approve.
+
+> All data in this demo is **synthetic / sample data** for demonstration only.
+
+### How to Run
+
+1. Start the app: `npm install && npm run dev` and open [http://localhost:5173](http://localhost:5173)
+2. Navigate to **Demos** → **R&D DoE Report Assistant** (or go directly to `/doe`)
+3. Click **Launch Demo**, open the primary study **DOE-2026-ADH-014**, then **Run AI pipeline**
+4. Review the generated report, fact-check panel, completeness checklist, and audit trail;
+   edit, approve, and **Download report (Markdown)**
+
+### Screens Included
+
+| Screen | Route | Description |
+|--------|-------|-------------|
+| Scenario Landing | `/doe` | Demo introduction with "Launch Demo" CTA |
+| DoE Dashboard | `/doe/dashboard` | List of studies with status, #factors, #runs, readiness score, top factor |
+| Experiment Report | `/doe/experiment/:id` | Agent pipeline, data table, effects charts, generated report, fact-check, completeness checklist, knowledge, edit & approve, audit trail |
+| Upload Dataset | `/doe/upload` | Mock upload area for a new experiment dataset |
+
+### The AI Pipeline (6 Steps)
+
+| # | Step | What It Does |
+|---|------|-------------|
+| 1 | Intake | Loads the experiment definition + runs and validates the schema |
+| 2 | Analysis | **Real statistics** in TypeScript — main effects, all two-factor interactions, factor ranking, and significance from replicate variance (t-test) or Lenth's PSE |
+| 3 | Drafting | Generates the report section-by-section, grounded only in the Analysis output + template |
+| 4 | Grounding / Fact-Check | Verifies every numeric claim against the computed values (one claim is deliberately wrong, caught, and corrected) |
+| 5 | Completeness | Checks the draft against a "Definition of Good" checklist and lists gaps |
+| 6 | Knowledge | Surfaces relevant prior experiments from the mock corpus |
+
+### Real Statistics (not faked)
+
+The numbers are computed from the mock runs in `src/lib/doeAnalysis.ts` — the demo does **not**
+hard-code results. The primary study **DOE-2026-ADH-014** is a 2³ full factorial + 3 center
+points + 1 replicate (19 runs) over three factors (hydrocolloid content, coating thickness,
+cure temperature) and five responses (peel adhesion, wear time, moisture absorption, skin
+stripping, leakage). The engine codes the factors, computes main effects and interactions,
+estimates significance from the replicate error, and reports R² / adjusted R².
+
+### Mock Data
+
+All data is static TypeScript in `src/data/`:
+
+| File | Contents |
+|------|----------|
+| `src/data/mockDoeData.ts` | 3 studies (primary + 2 dashboard rows) with factors, responses, and the 19 primary runs |
+| `src/data/doeTemplate.ts` | The 11 report section headings with one-line guidance each |
+| `src/data/doeDefinitionOfGood.ts` | Completeness checklist ("Definition of Good") items |
+| `src/data/doePriorReports.ts` | 3 prior-experiment summaries for the Knowledge step |
+
+Logic lives in `src/lib/`: `doeAnalysis.ts` (real statistics) and `mockDoeAi.ts` (the
+deterministic mock pipeline, with **"Where Azure AI Foundry Would Be Integrated"** TODO
+markers for the Foundry model endpoint, Foundry Agent Service, Azure AI Search, AI Content
+Safety, Application Insights, and Azure SQL / Fabric Lakehouse).
+
+### Known Limitations
+
+- Uses deterministic mock pipeline logic (no real AI calls) — works without an Azure backend
+- The narrative text is templated, grounded in the real computed statistics
+- Secondary dashboard studies are illustrative rows (no run data)
+- No persistence — state resets on page refresh
+
+---
+
 ## MusicBrainz Embedding Backfill (Azure Container Apps Job)
+
 
 The MusicBrainz semantic-search feature stores `pgvector(1536)` embeddings on
 `musicbrainz.artist` and `musicbrainz.recording`. Computing those embeddings
