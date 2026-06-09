@@ -76,6 +76,66 @@ export async function collectChartImages(
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// jsPDF's standard fonts (helvetica) only support WinAnsi (Latin-1) encoding.
+// Any code point > 255 forces jsPDF to fall back to a UTF-16 rendering path
+// that emits corrupted, space-separated glyphs (e.g. "R e s p o n s e s").
+// Replace the typographic characters used in the report text with safe ASCII
+// equivalents, then strip anything else outside the printable range.
+// ---------------------------------------------------------------------------
+const PDF_CHAR_REPLACEMENTS: [RegExp, string][] = [
+  [/[\u2018\u2019\u201A\u201B]/g, "'"], // single quotes
+  [/[\u201C\u201D\u201E\u201F]/g, '"'], // double quotes
+  [/[\u2013\u2014\u2015]/g, '-'], // en/em dashes
+  [/\u2026/g, '...'], // ellipsis
+  [/\u2265/g, '>='], // greater-than-or-equal
+  [/\u2264/g, '<='], // less-than-or-equal
+  [/\u2260/g, '!='], // not equal
+  [/\u00D7/g, 'x'], // multiplication sign
+  [/[\u00B7\u2022]/g, '-'], // middle dot / bullet
+  [/\u00B0/g, ' deg'], // degree sign
+  [/\u00B2/g, '2'], // superscript two
+  [/\u00B3/g, '3'], // superscript three
+  [/\u00B9/g, '1'], // superscript one
+  [/\u00B1/g, '+/-'], // plus-minus
+  [/[\u00A0\u2007\u202F]/g, ' '], // non-breaking spaces
+];
+
+function sanitizePdfText(text: string): string {
+  let out = text;
+  for (const [re, rep] of PDF_CHAR_REPLACEMENTS) out = out.replace(re, rep);
+  // Drop any remaining characters outside the WinAnsi-safe printable range.
+  return out.replace(/[^\u0020-\u00FF\n\r\t]/g, '');
+}
+
+interface ParsedTable {
+  headers: string[];
+  rows: string[][];
+}
+
+/** Parse a contiguous markdown table starting at `lines[start]`. */
+function parseMarkdownTable(lines: string[], start: number): { table: ParsedTable; next: number } | null {
+  const isRow = (l: string) => l.trim().startsWith('|') && l.includes('|');
+  const isSeparator = (l: string) => /^\s*\|?[\s:|-]+\|?\s*$/.test(l) && l.includes('-');
+  if (!isRow(lines[start]) || start + 1 >= lines.length || !isSeparator(lines[start + 1])) return null;
+
+  const splitRow = (l: string) =>
+    l
+      .trim()
+      .replace(/^\|/, '')
+      .replace(/\|$/, '')
+      .split('|')
+      .map((c) => c.trim().replace(/\*\*/g, ''));
+
+  const headers = splitRow(lines[start]);
+  const rows: string[][] = [];
+  let i = start + 2;
+  for (; i < lines.length && isRow(lines[i]) && !isSeparator(lines[i]); i++) {
+    rows.push(splitRow(lines[i]));
+  }
+  return { table: { headers, rows }, next: i };
+}
+
 export function buildReportPdf(study: DoeStudy, report: DoeReport, charts: ChartImage[]): jsPDF {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
@@ -96,12 +156,89 @@ export function buildReportPdf(study: DoeStudy, report: DoeReport, charts: Chart
     doc.setFontSize(fontSize);
     doc.setTextColor(color);
     const lineH = fontSize * 1.4;
-    const lines = doc.splitTextToSize(text, contentW);
+    const lines = doc.splitTextToSize(sanitizePdfText(text), contentW);
     for (const line of lines) {
       ensureSpace(lineH);
       doc.text(line, margin, y);
       y += lineH;
     }
+  };
+
+  // --- Markdown table rendering -----------------------------------------
+  const drawTable = (table: ParsedTable, fontSize: number) => {
+    const cols = table.headers.length;
+    if (!cols) return;
+    const cellPadX = 4;
+    const cellPadY = 3;
+    const lineH = fontSize * 1.3;
+    const colW = contentW / cols;
+
+    // Pre-wrap every cell so we can size each row to its tallest cell.
+    const wrap = (txt: string, style: 'normal' | 'bold') => {
+      doc.setFont('helvetica', style);
+      doc.setFontSize(fontSize);
+      return doc.splitTextToSize(sanitizePdfText(txt), colW - cellPadX * 2) as string[];
+    };
+
+    const drawRow = (cells: string[], style: 'normal' | 'bold', shaded: boolean) => {
+      const wrapped = cells.map((c) => wrap(c, style));
+      const rowLines = Math.max(1, ...wrapped.map((w) => w.length));
+      const rowH = rowLines * lineH + cellPadY * 2;
+      ensureSpace(rowH);
+
+      if (shaded) {
+        doc.setFillColor('#f0f0f0');
+        doc.rect(margin, y, colW * cols, rowH, 'F');
+      }
+      doc.setDrawColor('#cccccc');
+      doc.setFont('helvetica', style);
+      doc.setFontSize(fontSize);
+      doc.setTextColor('#111111');
+      for (let c = 0; c < cols; c++) {
+        const x = margin + c * colW;
+        doc.rect(x, y, colW, rowH);
+        const linesForCell = wrapped[c] || [];
+        let ty = y + cellPadY + fontSize;
+        for (const ln of linesForCell) {
+          doc.text(ln, x + cellPadX, ty);
+          ty += lineH;
+        }
+      }
+      y += rowH;
+    };
+
+    drawRow(table.headers, 'bold', true);
+    for (const r of table.rows) {
+      // Pad/truncate to the header column count to keep the grid aligned.
+      const cells = Array.from({ length: cols }, (_, i) => r[i] ?? '');
+      drawRow(cells, 'normal', false);
+    }
+    y += 6;
+  };
+
+  // Render markdown text, promoting markdown tables to real PDF tables.
+  const writeMarkdown = (markdown: string, fontSize: number) => {
+    const lines = markdown.split('\n');
+    let i = 0;
+    let buffer: string[] = [];
+    const flush = () => {
+      if (!buffer.length) return;
+      // Strip markdown bold markers for cleaner output; keep the text.
+      writeLines(buffer.join('\n').replace(/\*\*/g, ''), fontSize, 'normal');
+      buffer = [];
+    };
+    while (i < lines.length) {
+      const parsed = parseMarkdownTable(lines, i);
+      if (parsed) {
+        flush();
+        drawTable(parsed.table, fontSize);
+        i = parsed.next;
+        continue;
+      }
+      buffer.push(lines[i]);
+      i++;
+    }
+    flush();
   };
 
   // --- Title -------------------------------------------------------------
@@ -166,7 +303,7 @@ export function buildReportPdf(study: DoeStudy, report: DoeReport, charts: Chart
   ordered.forEach((s, i) => {
     writeLines(`${i + 1}. ${s.title}`, 12, 'bold');
     y += 2;
-    writeLines(s.markdown, 10, 'normal');
+    writeMarkdown(s.markdown, 10);
     y += 8;
   });
 
