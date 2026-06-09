@@ -38,6 +38,7 @@ CRITICAL RULES:
 - When a section needs a value covered by a claimSpec, state exactly that value and unit.
 - Write one markdown body per template section. Keep the section id and title from the template.
 - Be concise and factual. Do not add sections that are not in the template.
+- The raw-data run table (the "Appendix (raw data)" section) is inserted deterministically by code. Do NOT author, summarize, abbreviate (e.g. with "..." rows), or re-create that table; if an appendix section is included, write only a brief introductory sentence and no table.
 
 Respond with ONLY valid JSON matching this schema:
 {
