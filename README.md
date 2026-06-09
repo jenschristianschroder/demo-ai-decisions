@@ -369,9 +369,28 @@ values and the scientist must review and approve.
 | 1 | Intake | Loads the experiment definition + runs and validates the schema |
 | 2 | Analysis | **Real statistics** in TypeScript — main effects, all two-factor interactions, factor ranking, and significance from replicate variance (t-test) or Lenth's PSE |
 | 3 | Drafting | Generates the report section-by-section, grounded only in the Analysis output + template |
-| 4 | Grounding / Fact-Check | Verifies every numeric claim against the computed values (one claim is deliberately wrong, caught, and corrected) |
+| 4 | Grounding / Fact-Check | Verifies every numeric claim against the computed values (a flagged claim is caught and corrected) |
 | 5 | Completeness | Checks the draft against a "Definition of Good" checklist and lists gaps |
-| 6 | Knowledge | Surfaces relevant prior experiments from the mock corpus |
+| 6 | Knowledge | Surfaces relevant prior experiments from the corpus |
+
+### Real Azure AI Foundry (with deterministic fallback)
+
+This demo is **mock-first but Foundry-backed**. When the Express backend is
+served with `AZURE_AI_ENDPOINT` configured (see [`.env.example`](.env.example)),
+the **Drafting**, **Fact-Check correction**, **Completeness**, and **Knowledge**
+steps call **real Azure AI Foundry** through backend routes in
+`server/src/routes/doeAi.ts` (`/api/ai/doe/draft-sections`, `/correct-claims`,
+`/check-completeness`, `/rank-knowledge`). The backend authenticates with
+**Managed Identity** via `server/src/aiClient.ts` — the frontend never handles
+credentials. Set `VITE_AI_BACKEND_ENABLED=false` (or run without a backend) to
+use the deterministic mock so `npm run dev` works with zero credentials. The
+pipeline badge and audit trail show whether a run used **Azure AI Foundry** or
+the **mock**, and any failed AI call falls back to the mock for that step.
+
+> **AI drafts, the scientist stays accountable.** The statistics are *always*
+> computed in code and *every* numeric claim is *always* re-verified in code
+> against the computed analysis — regardless of backend — so the model can never
+> alter a number without it being caught and corrected before approval.
 
 ### Real Statistics (not faked)
 
@@ -393,15 +412,15 @@ All data is static TypeScript in `src/data/`:
 | `src/data/doeDefinitionOfGood.ts` | Completeness checklist ("Definition of Good") items |
 | `src/data/doePriorReports.ts` | 3 prior-experiment summaries for the Knowledge step |
 
-Logic lives in `src/lib/`: `doeAnalysis.ts` (real statistics) and `mockDoeAi.ts` (the
-deterministic mock pipeline, with **"Where Azure AI Foundry Would Be Integrated"** TODO
-markers for the Foundry model endpoint, Foundry Agent Service, Azure AI Search, AI Content
-Safety, Application Insights, and Azure SQL / Fabric Lakehouse).
+Logic lives in `src/lib/`: `doeAnalysis.ts` (real statistics) and `mockDoeAi.ts`
+(the pipeline orchestrator — calls real Azure AI Foundry via the backend
+`/api/ai/doe/*` routes when configured, with a deterministic mock fallback).
 
 ### Known Limitations
 
-- Uses deterministic mock pipeline logic (no real AI calls) — works without an Azure backend
-- The narrative text is templated, grounded in the real computed statistics
+- The narrative steps use real Azure AI Foundry when the backend is configured, and fall back to a deterministic mock otherwise (works without an Azure backend)
+- The numeric statistics are always computed in code and every numeric claim is re-verified in code (the model never alters numbers)
+- Knowledge grounding uses an in-memory corpus (Azure AI Search integration is a future enhancement)
 - Secondary dashboard studies are illustrative rows (no run data)
 - No persistence — state resets on page refresh
 
